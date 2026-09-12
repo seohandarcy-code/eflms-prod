@@ -31,9 +31,9 @@ const layout: Partial<Layout> = {
   margin: { l: 0, r: 0, t: 10, b: 0 },
   paper_bgcolor: "rgba(0,0,0,0)",
   scene: {
-    xaxis: { title: { text: "PoF" }, backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
-    yaxis: { title: { text: "CoF" }, backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
-    zaxis: { title: { text: "DoF" }, backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
+    xaxis: { title: { text: "PoF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
+    yaxis: { title: { text: "CoF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
+    zaxis: { title: { text: "DoF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
     camera: { eye: { x: 1.4, y: -1.4, z: 1.0 } },
   },
 };

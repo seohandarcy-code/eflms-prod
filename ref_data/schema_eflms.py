@@ -36,6 +36,16 @@ def _gen_transformer_name():
     return f"{prefix}{next(_tr_name_counters[prefix])}"
 
 
+def _gen_applied(applied_ratio=0.8):
+    """설계기준 적용/미적용 목업 값. 현실적으로 대부분 적용된 상태를 기본으로 한다(적용 80% : 미적용 20%)."""
+    return random.choices(["적용", "미적용"], weights=[applied_ratio, 1 - applied_ratio])[0]
+
+
+def _gen_redundancy():
+    """예비화 등급. N+N(완전이중화) 50% / N+1(부분이중화) 30% / N+0(미이중화) 20%."""
+    return random.choices(["N+N", "N+1", "N+0"], weights=[0.5, 0.3, 0.2])[0]
+
+
 INPUT_COLUMNS = [
     {
         "name": "factory_code",
@@ -336,25 +346,25 @@ INPUT_COLUMNS = [
         "name": "redundancy",
         "label": "예비화",
         "dtype": "str",
-        "generator": lambda: random.choice(["N+N","N+1,N+0"]),
+        "generator": _gen_redundancy,
     },
     {
         "name": "ato",
         "label": "계통자동전환",
         "dtype": "str",
-        "generator": lambda: random.choice(["적용","미적용"]),
+        "generator": _gen_applied,
     },
     {
         "name": "online_og_chk",
         "label": "온라인_유중가스",
         "dtype": "str",
-        "generator": lambda: random.choice(["적용","미적용"]),
+        "generator": _gen_applied,
     },
     {
         "name": "offline_safety_chk",
         "label": "안전공사_정밀점검",
         "dtype": "str",
-        "generator": lambda: random.choice(["적용","미적용"]),
+        "generator": _gen_applied,
     },
     {
         "name": "sec_num",
@@ -372,43 +382,43 @@ INPUT_COLUMNS = [
         "name": "insul_1st_lvup",
         "label": "절연1단계상승",
         "dtype": "str",
-        "generator": lambda: random.choice(["적용","미적용"]),
+        "generator": _gen_applied,
     },
     {
         "name": "high_insul_adt",
         "label": "고밀도절연지",
         "dtype": "str",
-        "generator": lambda: random.choice(["적용","미적용"]),
+        "generator": _gen_applied,
     },
     {
         "name": "double_insul",
         "label": "이중절연",
         "dtype": "str",
-        "generator": lambda: random.choice(["적용","미적용"]),
+        "generator": _gen_applied,
     },
     {
         "name": "55k_install",
         "label": "온도상승한도",
         "dtype": "str",
-        "generator": lambda: random.choice(["적용","미적용"]),
+        "generator": _gen_applied,
     },
     {
         "name": "sfra_test",
         "label": "sfra_시험",
         "dtype": "str",
-        "generator": lambda: random.choice(["적용","미적용"]),
+        "generator": _gen_applied,
     },
     {
         "name": "rip_install",
         "label": "부싱",
         "dtype": "str",
-        "generator": lambda: random.choice(["적용","미적용"]),
+        "generator": _gen_applied,
     },
     {
         "name": "vacuum_set",
         "label": "OLTC",
         "dtype": "str",
-        "generator": lambda: random.choice(["적용","미적용"]),
+        "generator": _gen_applied,
     },    
 ]
 

@@ -1,64 +1,240 @@
 - id: 1
-  factory_code: H2
-  EF_code: EF7
+  factory_code: P1
+  EF_code: EF4
   transformer_name: TR1
   voltage: 154000
-  ONAN_val: 35
-  ONAF_val: 43.75
-  operation_start_time: '2024-06-03'
+  ONAN_val: 30
+  ONAF_val: 100
+  operation_start_time: '2016-04-19'
   dga_diag_time: '2020-06-01'
   dga_h2: 0
   dga_c2h2: 0
-  dga_c2h4: 23
-  dga_c2h6: 0
-  dga_ch4: 82
-  dga_co: 449
-  dga_co2: 2932
-  dga_o2: 23815
-  dga_n2: 49393
-  dga_fluc: -17
-  load_percent: 68.6
-  coil_max_temp: 60
-  dielec_str_te_1: 40.9
-  dielec_str_te_2: 31.2
-  dielec_str_te_3: 44.4
-  dielec_str_te_4: 43.5
-  dielec_str_te_5: 47.4
-  dielec_str_te_6: 33.6
-  acid_measure_val: 0.03
-  moisture_rslt: 19.8
+  dga_c2h4: 30
+  dga_c2h6: 288
+  dga_ch4: 42
+  dga_co: 516
+  dga_co2: 593
+  dga_o2: 26901
+  dga_n2: 48317
+  dga_fluc: 60
+  load_percent: 13.4
+  coil_max_temp: 45
+  dielec_str_te_1: 47.5
+  dielec_str_te_2: 51.5
+  dielec_str_te_3: 47.5
+  dielec_str_te_4: 40.8
+  dielec_str_te_5: 37.9
+  dielec_str_te_6: 51.9
+  acid_measure_val: 0.02
+  moisture_rslt: 24.4
   furan_diag_time: '2020-06-01'
   furan_5H2F: 0
   furan_2FOL: 0
-  furan_2FAL: 20
+  furan_2FAL: 16
   furan_2ACF: 0
   furan_5M2F: 0
-  oltc_96T_diag: 이상
-  oltc_rslt: 6000
-  oltc_type: Vaccum
-  thermal_img_temp: 이상
+  oltc_96T_diag: 정상
+  oltc_rslt: 0
+  oltc_type: Oil
+  thermal_img_temp: 정상
   noise_diag: 이상
-  fire_vul_type: 유입
-  fire_spread_loc: 옥내
-  emerge_response_1s: 불가
-  redundancy: N+N
+  fire_vul_type: 몰드
+  fire_spread_loc: 옥외
+  emerge_response_1s: 가능
+  redundancy: N+1
   ato: 적용
   online_og_chk: 적용
-  offline_safety_chk: 미적용
+  offline_safety_chk: 적용
   sec_num: 4
   alarm_num: 5
   insul_1st_lvup: 적용
-  high_insul_adt: 미적용
-  double_insul: 미적용
-  55k_install: 미적용
+  high_insul_adt: 적용
+  double_insul: 적용
+  55k_install: 적용
   rip_install: 적용
   vacuum_set: 적용
   today: '2026-09-12'
-  operation_year: 2.3
-  age_minus: -2
+  operation_year: 10.4
+  age_minus: -10
+  load_minus: 0
+  temp_minus: 0
+  dielec_str_te_avg: 46.18333333333334
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: -20
+  thermal_img_minus: 0
+  noise_minus: -2
+  fire_minus: 0
+  fire_spread_minus: -12
+  emerge_response_minus: 0
+  redundancy_minus: -18
+  ato_minus: 0
+  online_og_minus: 0
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: 0
+  prod_life_minus: 0
+  connect_part_minus: 0
+  temp_inc_limit_minus: 0
+  test_reliability_minus: 0
+  bushing_minus: 0
+  oltc_minus: 0
+  dof_minus: -18
+  dof: 82
+- id: 2
+  factory_code: P1
+  EF_code: EF6
+  transformer_name: TR2
+  voltage: 154000
+  ONAN_val: 25
+  ONAF_val: 30
+  operation_start_time: '2018-11-22'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 35
+  dga_c2h6: 288
+  dga_ch4: 22
+  dga_co: 637
+  dga_co2: 1985
+  dga_o2: 17253
+  dga_n2: 56927
+  dga_fluc: 1
+  load_percent: 76.8
+  coil_max_temp: 54
+  dielec_str_te_1: 32.3
+  dielec_str_te_2: 47.9
+  dielec_str_te_3: 48.3
+  dielec_str_te_4: 40.0
+  dielec_str_te_5: 37.3
+  dielec_str_te_6: 31.6
+  acid_measure_val: 0.03
+  moisture_rslt: 29.5
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 6
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 이상
+  oltc_rslt: 18000
+  oltc_type: Oil
+  thermal_img_temp: 정상
+  noise_diag: 정상
+  fire_vul_type: 몰드
+  fire_spread_loc: 옥내
+  emerge_response_1s: 가능
+  redundancy: N+N
+  ato: 적용
+  online_og_chk: 적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 적용
+  high_insul_adt: 적용
+  double_insul: 적용
+  55k_install: 적용
+  rip_install: 적용
+  vacuum_set: 적용
+  today: '2026-09-12'
+  operation_year: 7.8
+  age_minus: -7
+  load_minus: -15
+  temp_minus: 0
+  dielec_str_te_avg: 39.56666666666667
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: -20
+  thermal_img_minus: 0
+  noise_minus: 0
+  fire_minus: 0
+  fire_spread_minus: 0
+  emerge_response_minus: 0
+  redundancy_minus: 0
+  ato_minus: 0
+  online_og_minus: 0
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: 0
+  prod_life_minus: 0
+  connect_part_minus: 0
+  temp_inc_limit_minus: 0
+  test_reliability_minus: 0
+  bushing_minus: 0
+  oltc_minus: 0
+  dof_minus: 0
+  dof: 100
+- id: 3
+  factory_code: P1
+  EF_code: EF4
+  transformer_name: BANK1
+  voltage: 22900
+  ONAN_val: 25
+  ONAF_val: 37.5
+  operation_start_time: '2022-07-19'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 50
+  dga_c2h6: 288
+  dga_ch4: 28
+  dga_co: 136
+  dga_co2: 1679
+  dga_o2: 16591
+  dga_n2: 82278
+  dga_fluc: 60
+  load_percent: 68.1
+  coil_max_temp: 56
+  dielec_str_te_1: 41.4
+  dielec_str_te_2: 39.8
+  dielec_str_te_3: 33.4
+  dielec_str_te_4: 49.3
+  dielec_str_te_5: 32.9
+  dielec_str_te_6: 58.4
+  acid_measure_val: 0.02
+  moisture_rslt: 17.1
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 4
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 정상
+  oltc_rslt: 9000
+  oltc_type: Oil
+  thermal_img_temp: 이상
+  noise_diag: 이상
+  fire_vul_type: 몰드
+  fire_spread_loc: 옥내
+  emerge_response_1s: 불가
+  redundancy: N+1
+  ato: 적용
+  online_og_chk: 적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 미적용
+  high_insul_adt: 적용
+  double_insul: 적용
+  55k_install: 적용
+  rip_install: 적용
+  vacuum_set: 적용
+  today: '2026-09-12'
+  operation_year: 4.2
+  age_minus: -4
   load_minus: -10
   temp_minus: 0
-  dielec_str_te_avg: 40.166666666666664
+  dielec_str_te_avg: 42.53333333333333
   dielec_str_te_diag: 적합
   dielec_str_te_minus: 0
   acid_measure_desc: 적합
@@ -68,85 +244,85 @@
   part_discharge_minus: 0
   thermal_img_minus: -8
   noise_minus: -2
-  fire_minus: -8
+  fire_minus: 0
   fire_spread_minus: 0
   emerge_response_minus: -6
-  redundancy_minus: 0
+  redundancy_minus: -18
   ato_minus: 0
   online_og_minus: 0
-  offline_safety_minus: -25
+  offline_safety_minus: 0
   sec_minus: 0
   alarm_minus: 0
-  winding_minus: 0
-  prod_life_minus: -6
-  connect_part_minus: -2
-  temp_inc_limit_minus: -9
-  test_reliability_minus: 0
+  winding_minus: -16
+  prod_life_minus: 0
+  connect_part_minus: 0
+  temp_inc_limit_minus: 0
+  test_reliability_minus: -8
   bushing_minus: 0
   oltc_minus: 0
   dof_minus: -42
   dof: 58
-- id: 2
-  factory_code: P1
-  EF_code: EF2
-  transformer_name: BANK1
-  voltage: 22900
-  ONAN_val: 30
-  ONAF_val: 43.75
-  operation_start_time: '2022-09-05'
+- id: 4
+  factory_code: H2
+  EF_code: EF6
+  transformer_name: TR3
+  voltage: 154000
+  ONAN_val: 80
+  ONAF_val: 100
+  operation_start_time: '2016-09-21'
   dga_diag_time: '2020-06-01'
   dga_h2: 0
   dga_c2h2: 0
-  dga_c2h4: 41
-  dga_c2h6: 288
-  dga_ch4: 77
-  dga_co: 463
-  dga_co2: 514
-  dga_o2: 12512
-  dga_n2: 57646
-  dga_fluc: -1
-  load_percent: 12.6
-  coil_max_temp: 59
-  dielec_str_te_1: 55.1
-  dielec_str_te_2: 56.1
-  dielec_str_te_3: 35.4
-  dielec_str_te_4: 55.7
-  dielec_str_te_5: 43.2
-  dielec_str_te_6: 44.3
+  dga_c2h4: 10
+  dga_c2h6: 394
+  dga_ch4: 34
+  dga_co: 176
+  dga_co2: 1883
+  dga_o2: 29675
+  dga_n2: 82609
+  dga_fluc: -17
+  load_percent: 43.7
+  coil_max_temp: 53
+  dielec_str_te_1: 46.0
+  dielec_str_te_2: 46.8
+  dielec_str_te_3: 57.1
+  dielec_str_te_4: 56.0
+  dielec_str_te_5: 43.7
+  dielec_str_te_6: 30.5
   acid_measure_val: 0.02
-  moisture_rslt: 30.4
+  moisture_rslt: 32.2
   furan_diag_time: '2020-06-01'
   furan_5H2F: 0
   furan_2FOL: 0
-  furan_2FAL: 20
+  furan_2FAL: 17
   furan_2ACF: 0
   furan_5M2F: 0
   oltc_96T_diag: 정상
-  oltc_rslt: 18000
+  oltc_rslt: 0
   oltc_type: Oil
   thermal_img_temp: 이상
   noise_diag: 정상
   fire_vul_type: 유입
-  fire_spread_loc: 옥외
-  emerge_response_1s: 가능
-  redundancy: N+1,N+0
+  fire_spread_loc: 옥내
+  emerge_response_1s: 불가
+  redundancy: N+N
   ato: 적용
   online_og_chk: 적용
   offline_safety_chk: 적용
   sec_num: 4
   alarm_num: 5
   insul_1st_lvup: 적용
-  high_insul_adt: 미적용
+  high_insul_adt: 적용
   double_insul: 적용
   55k_install: 적용
-  rip_install: 미적용
+  rip_install: 적용
   vacuum_set: 적용
   today: '2026-09-12'
-  operation_year: 4.0
-  age_minus: -4
+  operation_year: 10.0
+  age_minus: -10
   load_minus: 0
   temp_minus: 0
-  dielec_str_te_avg: 48.300000000000004
+  dielec_str_te_avg: 46.68333333333334
   dielec_str_te_diag: 적합
   dielec_str_te_minus: 0
   acid_measure_desc: 적합
@@ -157,7 +333,183 @@
   thermal_img_minus: -8
   noise_minus: 0
   fire_minus: -8
+  fire_spread_minus: 0
+  emerge_response_minus: -6
+  redundancy_minus: 0
+  ato_minus: 0
+  online_og_minus: 0
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: 0
+  prod_life_minus: 0
+  connect_part_minus: 0
+  temp_inc_limit_minus: 0
+  test_reliability_minus: 0
+  bushing_minus: 0
+  oltc_minus: 0
+  dof_minus: 0
+  dof: 100
+- id: 5
+  factory_code: H1
+  EF_code: EF3
+  transformer_name: BANK2
+  voltage: 154000
+  ONAN_val: 35
+  ONAF_val: 37.5
+  operation_start_time: '2022-05-22'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 62
+  dga_c2h6: 394
+  dga_ch4: 62
+  dga_co: 418
+  dga_co2: 2082
+  dga_o2: 28797
+  dga_n2: 34467
+  dga_fluc: 60
+  load_percent: 34.6
+  coil_max_temp: 58
+  dielec_str_te_1: 39.4
+  dielec_str_te_2: 46.8
+  dielec_str_te_3: 45.8
+  dielec_str_te_4: 30.0
+  dielec_str_te_5: 45.1
+  dielec_str_te_6: 47.7
+  acid_measure_val: 0.02
+  moisture_rslt: 27.4
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 2
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 이상
+  oltc_rslt: 18000
+  oltc_type: Oil
+  thermal_img_temp: 정상
+  noise_diag: 이상
+  fire_vul_type: 몰드
+  fire_spread_loc: 옥외
+  emerge_response_1s: 불가
+  redundancy: N+1
+  ato: 적용
+  online_og_chk: 적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 적용
+  high_insul_adt: 적용
+  double_insul: 적용
+  55k_install: 적용
+  rip_install: 미적용
+  vacuum_set: 적용
+  today: '2026-09-12'
+  operation_year: 4.3
+  age_minus: -4
+  load_minus: 0
+  temp_minus: 0
+  dielec_str_te_avg: 42.46666666666667
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: -20
+  thermal_img_minus: 0
+  noise_minus: -2
+  fire_minus: 0
   fire_spread_minus: -12
+  emerge_response_minus: -6
+  redundancy_minus: -18
+  ato_minus: 0
+  online_og_minus: 0
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: 0
+  prod_life_minus: 0
+  connect_part_minus: 0
+  temp_inc_limit_minus: 0
+  test_reliability_minus: -8
+  bushing_minus: -8
+  oltc_minus: 0
+  dof_minus: -34
+  dof: 66
+- id: 6
+  factory_code: P1
+  EF_code: EF6
+  transformer_name: TR4
+  voltage: 22900
+  ONAN_val: 35
+  ONAF_val: 37.5
+  operation_start_time: '2024-01-29'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 15
+  dga_c2h6: 288
+  dga_ch4: 27
+  dga_co: 644
+  dga_co2: 2121
+  dga_o2: 13381
+  dga_n2: 40498
+  dga_fluc: -17
+  load_percent: 98.0
+  coil_max_temp: 46
+  dielec_str_te_1: 33.9
+  dielec_str_te_2: 45.9
+  dielec_str_te_3: 47.5
+  dielec_str_te_4: 41.4
+  dielec_str_te_5: 46.2
+  dielec_str_te_6: 55.6
+  acid_measure_val: 0.03
+  moisture_rslt: 21.9
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 8
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 이상
+  oltc_rslt: 9000
+  oltc_type: Oil
+  thermal_img_temp: 정상
+  noise_diag: 이상
+  fire_vul_type: 몰드
+  fire_spread_loc: 옥내
+  emerge_response_1s: 가능
+  redundancy: N+0
+  ato: 적용
+  online_og_chk: 적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 미적용
+  high_insul_adt: 미적용
+  double_insul: 적용
+  55k_install: 적용
+  rip_install: 적용
+  vacuum_set: 적용
+  today: '2026-09-12'
+  operation_year: 2.6
+  age_minus: -2
+  load_minus: -20
+  temp_minus: 0
+  dielec_str_te_avg: 45.083333333333336
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: 0
+  thermal_img_minus: 0
+  noise_minus: -2
+  fire_minus: 0
+  fire_spread_minus: 0
   emerge_response_minus: 0
   redundancy_minus: -36
   ato_minus: 0
@@ -165,44 +517,484 @@
   offline_safety_minus: 0
   sec_minus: 0
   alarm_minus: 0
-  winding_minus: 0
+  winding_minus: -16
   prod_life_minus: -6
   connect_part_minus: 0
   temp_inc_limit_minus: 0
-  test_reliability_minus: -8
-  bushing_minus: -8
+  test_reliability_minus: 0
+  bushing_minus: 0
   oltc_minus: 0
   dof_minus: -58
   dof: 42
-- id: 3
+- id: 7
   factory_code: H2
-  EF_code: EF7
-  transformer_name: BANK2
+  EF_code: EF6
+  transformer_name: BANK3
   voltage: 22900
-  ONAN_val: 30
-  ONAF_val: 43.75
-  operation_start_time: '2019-05-16'
+  ONAN_val: 25
+  ONAF_val: 30
+  operation_start_time: '2024-07-09'
   dga_diag_time: '2020-06-01'
   dga_h2: 0
   dga_c2h2: 0
-  dga_c2h4: 87
-  dga_c2h6: 0
-  dga_ch4: 19
-  dga_co: 225
-  dga_co2: 2915
-  dga_o2: 26750
-  dga_n2: 64428
-  dga_fluc: -1
-  load_percent: 62.5
-  coil_max_temp: 56
-  dielec_str_te_1: 56.5
-  dielec_str_te_2: 52.9
-  dielec_str_te_3: 52.4
-  dielec_str_te_4: 38.6
-  dielec_str_te_5: 49.1
-  dielec_str_te_6: 46.1
+  dga_c2h4: 90
+  dga_c2h6: 288
+  dga_ch4: 47
+  dga_co: 313
+  dga_co2: 1807
+  dga_o2: 17800
+  dga_n2: 90483
+  dga_fluc: 30
+  load_percent: 94.0
+  coil_max_temp: 47
+  dielec_str_te_1: 35.0
+  dielec_str_te_2: 53.1
+  dielec_str_te_3: 37.8
+  dielec_str_te_4: 58.2
+  dielec_str_te_5: 31.9
+  dielec_str_te_6: 48.3
   acid_measure_val: 0.02
-  moisture_rslt: 31.7
+  moisture_rslt: 15.5
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 4
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 이상
+  oltc_rslt: 13000
+  oltc_type: Vaccum
+  thermal_img_temp: 정상
+  noise_diag: 이상
+  fire_vul_type: 몰드
+  fire_spread_loc: 옥내
+  emerge_response_1s: 가능
+  redundancy: N+0
+  ato: 미적용
+  online_og_chk: 미적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 미적용
+  high_insul_adt: 적용
+  double_insul: 적용
+  55k_install: 적용
+  rip_install: 적용
+  vacuum_set: 적용
+  today: '2026-09-12'
+  operation_year: 2.2
+  age_minus: -2
+  load_minus: -20
+  temp_minus: 0
+  dielec_str_te_avg: 44.050000000000004
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: 0
+  thermal_img_minus: 0
+  noise_minus: -2
+  fire_minus: 0
+  fire_spread_minus: 0
+  emerge_response_minus: 0
+  redundancy_minus: -36
+  ato_minus: -36
+  online_og_minus: -30
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: -16
+  prod_life_minus: 0
+  connect_part_minus: 0
+  temp_inc_limit_minus: 0
+  test_reliability_minus: 0
+  bushing_minus: 0
+  oltc_minus: 0
+  dof_minus: -118
+  dof: -18
+- id: 8
+  factory_code: H2
+  EF_code: EF5
+  transformer_name: BANK4
+  voltage: 154000
+  ONAN_val: 80
+  ONAF_val: 30
+  operation_start_time: '2019-05-02'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 93
+  dga_c2h6: 288
+  dga_ch4: 93
+  dga_co: 324
+  dga_co2: 2680
+  dga_o2: 12905
+  dga_n2: 97934
+  dga_fluc: -17
+  load_percent: 47.4
+  coil_max_temp: 42
+  dielec_str_te_1: 51.1
+  dielec_str_te_2: 32.1
+  dielec_str_te_3: 50.5
+  dielec_str_te_4: 38.5
+  dielec_str_te_5: 44.7
+  dielec_str_te_6: 38.9
+  acid_measure_val: 0.03
+  moisture_rslt: 28.3
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 18
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 정상
+  oltc_rslt: 0
+  oltc_type: Vaccum
+  thermal_img_temp: 이상
+  noise_diag: 이상
+  fire_vul_type: 유입
+  fire_spread_loc: 옥외
+  emerge_response_1s: 가능
+  redundancy: N+1
+  ato: 적용
+  online_og_chk: 적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 적용
+  high_insul_adt: 적용
+  double_insul: 적용
+  55k_install: 적용
+  rip_install: 적용
+  vacuum_set: 적용
+  today: '2026-09-12'
+  operation_year: 7.4
+  age_minus: -7
+  load_minus: 0
+  temp_minus: 0
+  dielec_str_te_avg: 42.63333333333333
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: 0
+  thermal_img_minus: -8
+  noise_minus: -2
+  fire_minus: -8
+  fire_spread_minus: -12
+  emerge_response_minus: 0
+  redundancy_minus: -18
+  ato_minus: 0
+  online_og_minus: 0
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: 0
+  prod_life_minus: 0
+  connect_part_minus: 0
+  temp_inc_limit_minus: 0
+  test_reliability_minus: 0
+  bushing_minus: 0
+  oltc_minus: 0
+  dof_minus: -18
+  dof: 82
+- id: 9
+  factory_code: H1
+  EF_code: EF6
+  transformer_name: TR5
+  voltage: 154000
+  ONAN_val: 35
+  ONAF_val: 43.75
+  operation_start_time: '2018-09-14'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 74
+  dga_c2h6: 288
+  dga_ch4: 39
+  dga_co: 332
+  dga_co2: 2069
+  dga_o2: 15027
+  dga_n2: 71833
+  dga_fluc: 30
+  load_percent: 12.7
+  coil_max_temp: 41
+  dielec_str_te_1: 37.0
+  dielec_str_te_2: 36.5
+  dielec_str_te_3: 50.2
+  dielec_str_te_4: 46.0
+  dielec_str_te_5: 50.0
+  dielec_str_te_6: 49.2
+  acid_measure_val: 0.02
+  moisture_rslt: 15.2
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 9
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 정상
+  oltc_rslt: 13000
+  oltc_type: Oil
+  thermal_img_temp: 이상
+  noise_diag: 정상
+  fire_vul_type: 유입
+  fire_spread_loc: 옥내
+  emerge_response_1s: 가능
+  redundancy: N+N
+  ato: 적용
+  online_og_chk: 적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 적용
+  high_insul_adt: 적용
+  double_insul: 적용
+  55k_install: 적용
+  rip_install: 적용
+  vacuum_set: 미적용
+  today: '2026-09-12'
+  operation_year: 8.0
+  age_minus: -8
+  load_minus: 0
+  temp_minus: 0
+  dielec_str_te_avg: 44.81666666666666
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: -20
+  thermal_img_minus: -8
+  noise_minus: 0
+  fire_minus: -8
+  fire_spread_minus: 0
+  emerge_response_minus: 0
+  redundancy_minus: 0
+  ato_minus: 0
+  online_og_minus: 0
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: 0
+  prod_life_minus: 0
+  connect_part_minus: 0
+  temp_inc_limit_minus: 0
+  test_reliability_minus: 0
+  bushing_minus: 0
+  oltc_minus: 0
+  dof_minus: -8
+  dof: 92
+- id: 10
+  factory_code: P1
+  EF_code: EF3
+  transformer_name: TR6
+  voltage: 22900
+  ONAN_val: 80
+  ONAF_val: 100
+  operation_start_time: '2021-02-13'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 24
+  dga_c2h6: 0
+  dga_ch4: 74
+  dga_co: 534
+  dga_co2: 1724
+  dga_o2: 14058
+  dga_n2: 97759
+  dga_fluc: -1
+  load_percent: 37.4
+  coil_max_temp: 58
+  dielec_str_te_1: 55.5
+  dielec_str_te_2: 39.3
+  dielec_str_te_3: 50.8
+  dielec_str_te_4: 48.1
+  dielec_str_te_5: 44.6
+  dielec_str_te_6: 32.6
+  acid_measure_val: 0.02
+  moisture_rslt: 16.0
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 8
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 정상
+  oltc_rslt: 0
+  oltc_type: Vaccum
+  thermal_img_temp: 이상
+  noise_diag: 이상
+  fire_vul_type: 유입
+  fire_spread_loc: 옥내
+  emerge_response_1s: 불가
+  redundancy: N+1
+  ato: 적용
+  online_og_chk: 적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 적용
+  high_insul_adt: 적용
+  double_insul: 미적용
+  55k_install: 적용
+  rip_install: 미적용
+  vacuum_set: 미적용
+  today: '2026-09-12'
+  operation_year: 5.6
+  age_minus: -5
+  load_minus: 0
+  temp_minus: 0
+  dielec_str_te_avg: 45.15
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: -20
+  thermal_img_minus: -8
+  noise_minus: -2
+  fire_minus: -8
+  fire_spread_minus: 0
+  emerge_response_minus: -6
+  redundancy_minus: -18
+  ato_minus: 0
+  online_og_minus: 0
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: 0
+  prod_life_minus: 0
+  connect_part_minus: -2
+  temp_inc_limit_minus: 0
+  test_reliability_minus: 0
+  bushing_minus: -8
+  oltc_minus: 0
+  dof_minus: -36
+  dof: 64
+- id: 11
+  factory_code: H2
+  EF_code: EF3
+  transformer_name: TR7
+  voltage: 154000
+  ONAN_val: 25
+  ONAF_val: 37.5
+  operation_start_time: '2016-11-13'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 60
+  dga_c2h6: 288
+  dga_ch4: 46
+  dga_co: 483
+  dga_co2: 1001
+  dga_o2: 15569
+  dga_n2: 30285
+  dga_fluc: -17
+  load_percent: 26.4
+  coil_max_temp: 50
+  dielec_str_te_1: 36.9
+  dielec_str_te_2: 58.2
+  dielec_str_te_3: 39.1
+  dielec_str_te_4: 46.8
+  dielec_str_te_5: 53.9
+  dielec_str_te_6: 58.3
+  acid_measure_val: 0.02
+  moisture_rslt: 19.8
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 13
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 이상
+  oltc_rslt: 0
+  oltc_type: Vaccum
+  thermal_img_temp: 이상
+  noise_diag: 이상
+  fire_vul_type: 유입
+  fire_spread_loc: 옥내
+  emerge_response_1s: 가능
+  redundancy: N+1
+  ato: 미적용
+  online_og_chk: 적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 적용
+  high_insul_adt: 적용
+  double_insul: 미적용
+  55k_install: 적용
+  rip_install: 적용
+  vacuum_set: 적용
+  today: '2026-09-12'
+  operation_year: 9.8
+  age_minus: -9
+  load_minus: 0
+  temp_minus: 0
+  dielec_str_te_avg: 48.86666666666667
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: -20
+  thermal_img_minus: -8
+  noise_minus: -2
+  fire_minus: -8
+  fire_spread_minus: 0
+  emerge_response_minus: 0
+  redundancy_minus: -18
+  ato_minus: -36
+  online_og_minus: 0
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: 0
+  prod_life_minus: 0
+  connect_part_minus: -2
+  temp_inc_limit_minus: 0
+  test_reliability_minus: 0
+  bushing_minus: 0
+  oltc_minus: 0
+  dof_minus: -56
+  dof: 44
+- id: 12
+  factory_code: H2
+  EF_code: EF1
+  transformer_name: BANK5
+  voltage: 22900
+  ONAN_val: 25
+  ONAF_val: 43.75
+  operation_start_time: '2016-04-01'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 67
+  dga_c2h6: 394
+  dga_ch4: 78
+  dga_co: 621
+  dga_co2: 874
+  dga_o2: 15588
+  dga_n2: 36694
+  dga_fluc: -17
+  load_percent: 77.1
+  coil_max_temp: 46
+  dielec_str_te_1: 58.6
+  dielec_str_te_2: 48.7
+  dielec_str_te_3: 34.4
+  dielec_str_te_4: 59.9
+  dielec_str_te_5: 58.9
+  dielec_str_te_6: 53.3
+  acid_measure_val: 0.02
+  moisture_rslt: 33.5
   furan_diag_time: '2020-06-01'
   furan_5H2F: 0
   furan_2FOL: 0
@@ -210,31 +1002,31 @@
   furan_2ACF: 0
   furan_5M2F: 0
   oltc_96T_diag: 정상
-  oltc_rslt: 18000
-  oltc_type: Oil
-  thermal_img_temp: 이상
+  oltc_rslt: 6000
+  oltc_type: Vaccum
+  thermal_img_temp: 정상
   noise_diag: 이상
   fire_vul_type: 몰드
-  fire_spread_loc: 옥내
-  emerge_response_1s: 불가
-  redundancy: N+1,N+0
-  ato: 미적용
+  fire_spread_loc: 옥외
+  emerge_response_1s: 가능
+  redundancy: N+0
+  ato: 적용
   online_og_chk: 적용
   offline_safety_chk: 적용
   sec_num: 4
   alarm_num: 5
   insul_1st_lvup: 적용
-  high_insul_adt: 미적용
+  high_insul_adt: 적용
   double_insul: 적용
-  55k_install: 적용
+  55k_install: 미적용
   rip_install: 적용
   vacuum_set: 미적용
   today: '2026-09-12'
-  operation_year: 7.3
-  age_minus: -7
-  load_minus: -10
+  operation_year: 10.5
+  age_minus: -10
+  load_minus: -15
   temp_minus: 0
-  dielec_str_te_avg: 49.26666666666667
+  dielec_str_te_avg: 52.300000000000004
   dielec_str_te_diag: 적합
   dielec_str_te_minus: 0
   acid_measure_desc: 적합
@@ -242,343 +1034,79 @@
   moisture_desc: 정상
   moisture_minus: 0
   part_discharge_minus: 0
-  thermal_img_minus: -8
+  thermal_img_minus: 0
   noise_minus: -2
   fire_minus: 0
-  fire_spread_minus: 0
-  emerge_response_minus: -6
+  fire_spread_minus: -12
+  emerge_response_minus: 0
   redundancy_minus: -36
-  ato_minus: -36
+  ato_minus: 0
   online_og_minus: 0
   offline_safety_minus: 0
   sec_minus: 0
   alarm_minus: 0
   winding_minus: 0
-  prod_life_minus: -6
+  prod_life_minus: 0
   connect_part_minus: 0
-  temp_inc_limit_minus: 0
+  temp_inc_limit_minus: -9
   test_reliability_minus: 0
   bushing_minus: 0
   oltc_minus: 0
-  dof_minus: -86
-  dof: 14
-- id: 4
+  dof_minus: -53
+  dof: 47
+- id: 13
   factory_code: P1
-  EF_code: EF5
-  transformer_name: TR2
+  EF_code: EF6
+  transformer_name: TR8
   voltage: 22900
   ONAN_val: 35
   ONAF_val: 43.75
-  operation_start_time: '2015-09-07'
+  operation_start_time: '2024-10-09'
   dga_diag_time: '2020-06-01'
   dga_h2: 0
   dga_c2h2: 0
-  dga_c2h4: 25
+  dga_c2h4: 1
   dga_c2h6: 394
-  dga_ch4: 18
-  dga_co: 132
-  dga_co2: 726
-  dga_o2: 25524
-  dga_n2: 47104
+  dga_ch4: 89
+  dga_co: 99
+  dga_co2: 1663
+  dga_o2: 14638
+  dga_n2: 94392
   dga_fluc: -17
-  load_percent: 42.7
-  coil_max_temp: 53
-  dielec_str_te_1: 52.6
-  dielec_str_te_2: 59.0
-  dielec_str_te_3: 55.4
-  dielec_str_te_4: 46.0
-  dielec_str_te_5: 51.9
-  dielec_str_te_6: 55.7
+  load_percent: 3.0
+  coil_max_temp: 59
+  dielec_str_te_1: 30.0
+  dielec_str_te_2: 30.4
+  dielec_str_te_3: 55.8
+  dielec_str_te_4: 52.1
+  dielec_str_te_5: 35.7
+  dielec_str_te_6: 51.3
   acid_measure_val: 0.02
-  moisture_rslt: 32.4
+  moisture_rslt: 23.9
   furan_diag_time: '2020-06-01'
   furan_5H2F: 0
   furan_2FOL: 0
-  furan_2FAL: 10
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 정상
-  oltc_rslt: 9000
-  oltc_type: Vaccum
-  thermal_img_temp: 이상
-  noise_diag: 정상
-  fire_vul_type: 몰드
-  fire_spread_loc: 옥외
-  emerge_response_1s: 불가
-  redundancy: N+N
-  ato: 미적용
-  online_og_chk: 적용
-  offline_safety_chk: 미적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 미적용
-  high_insul_adt: 미적용
-  double_insul: 적용
-  55k_install: 적용
-  rip_install: 적용
-  vacuum_set: 적용
-  today: '2026-09-12'
-  operation_year: 11.0
-  age_minus: -11
-  load_minus: 0
-  temp_minus: 0
-  dielec_str_te_avg: 53.43333333333333
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: -20
-  thermal_img_minus: -8
-  noise_minus: 0
-  fire_minus: 0
-  fire_spread_minus: -12
-  emerge_response_minus: -6
-  redundancy_minus: 0
-  ato_minus: -36
-  online_og_minus: 0
-  offline_safety_minus: -25
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: -16
-  prod_life_minus: -6
-  connect_part_minus: 0
-  temp_inc_limit_minus: 0
-  test_reliability_minus: 0
-  bushing_minus: 0
-  oltc_minus: 0
-  dof_minus: -83
-  dof: 17
-- id: 5
-  factory_code: H1
-  EF_code: EF5
-  transformer_name: BANK3
-  voltage: 154000
-  ONAN_val: 80
-  ONAF_val: 30
-  operation_start_time: '2023-04-17'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 55
-  dga_c2h6: 0
-  dga_ch4: 81
-  dga_co: 287
-  dga_co2: 811
-  dga_o2: 23509
-  dga_n2: 97882
-  dga_fluc: -17
-  load_percent: 22.7
-  coil_max_temp: 58
-  dielec_str_te_1: 55.1
-  dielec_str_te_2: 46.8
-  dielec_str_te_3: 30.7
-  dielec_str_te_4: 54.6
-  dielec_str_te_5: 50.6
-  dielec_str_te_6: 44.8
-  acid_measure_val: 0.03
-  moisture_rslt: 21.1
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 4
+  furan_2FAL: 15
   furan_2ACF: 0
   furan_5M2F: 0
   oltc_96T_diag: 이상
-  oltc_rslt: 0
-  oltc_type: Vaccum
-  thermal_img_temp: 정상
-  noise_diag: 이상
-  fire_vul_type: 유입
-  fire_spread_loc: 옥외
-  emerge_response_1s: 가능
-  redundancy: N+N
-  ato: 적용
-  online_og_chk: 적용
-  offline_safety_chk: 미적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 적용
-  high_insul_adt: 적용
-  double_insul: 적용
-  55k_install: 미적용
-  rip_install: 미적용
-  vacuum_set: 미적용
-  today: '2026-09-12'
-  operation_year: 3.4
-  age_minus: -3
-  load_minus: 0
-  temp_minus: 0
-  dielec_str_te_avg: 47.099999999999994
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: 0
-  thermal_img_minus: 0
-  noise_minus: -2
-  fire_minus: -8
-  fire_spread_minus: -12
-  emerge_response_minus: 0
-  redundancy_minus: 0
-  ato_minus: 0
-  online_og_minus: 0
-  offline_safety_minus: -25
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: 0
-  prod_life_minus: 0
-  connect_part_minus: 0
-  temp_inc_limit_minus: -9
-  test_reliability_minus: 0
-  bushing_minus: -8
-  oltc_minus: 0
-  dof_minus: -50
-  dof: 50
-- id: 6
-  factory_code: K1
-  EF_code: EF6
-  transformer_name: TR3
-  voltage: 22900
-  ONAN_val: 30
-  ONAF_val: 37.5
-  operation_start_time: '2024-11-17'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 27
-  dga_c2h6: 0
-  dga_ch4: 87
-  dga_co: 416
-  dga_co2: 2248
-  dga_o2: 10258
-  dga_n2: 81189
-  dga_fluc: 60
-  load_percent: 12.0
-  coil_max_temp: 51
-  dielec_str_te_1: 51.6
-  dielec_str_te_2: 35.9
-  dielec_str_te_3: 57.4
-  dielec_str_te_4: 34.8
-  dielec_str_te_5: 36.3
-  dielec_str_te_6: 30.2
-  acid_measure_val: 0.03
-  moisture_rslt: 35.0
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 20
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 정상
   oltc_rslt: 13000
   oltc_type: Oil
-  thermal_img_temp: 정상
-  noise_diag: 정상
+  thermal_img_temp: 이상
+  noise_diag: 이상
   fire_vul_type: 유입
-  fire_spread_loc: 옥외
+  fire_spread_loc: 옥내
   emerge_response_1s: 불가
-  redundancy: N+N
+  redundancy: N+1
   ato: 적용
-  online_og_chk: 미적용
+  online_og_chk: 적용
   offline_safety_chk: 미적용
   sec_num: 4
   alarm_num: 5
   insul_1st_lvup: 적용
   high_insul_adt: 적용
-  double_insul: 미적용
-  55k_install: 미적용
-  rip_install: 적용
-  vacuum_set: 미적용
-  today: '2026-09-12'
-  operation_year: 1.8
-  age_minus: -1
-  load_minus: 0
-  temp_minus: 0
-  dielec_str_te_avg: 41.03333333333333
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: 0
-  thermal_img_minus: 0
-  noise_minus: 0
-  fire_minus: -8
-  fire_spread_minus: -12
-  emerge_response_minus: -6
-  redundancy_minus: 0
-  ato_minus: 0
-  online_og_minus: -30
-  offline_safety_minus: -25
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: 0
-  prod_life_minus: 0
-  connect_part_minus: -2
-  temp_inc_limit_minus: -9
-  test_reliability_minus: -8
-  bushing_minus: 0
-  oltc_minus: 0
-  dof_minus: -82
-  dof: 18
-- id: 7
-  factory_code: H2
-  EF_code: EF2
-  transformer_name: TR4
-  voltage: 154000
-  ONAN_val: 30
-  ONAF_val: 43.75
-  operation_start_time: '2024-10-22'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 81
-  dga_c2h6: 394
-  dga_ch4: 24
-  dga_co: 495
-  dga_co2: 2283
-  dga_o2: 29110
-  dga_n2: 87127
-  dga_fluc: 30
-  load_percent: 29.6
-  coil_max_temp: 41
-  dielec_str_te_1: 30.5
-  dielec_str_te_2: 58.8
-  dielec_str_te_3: 49.7
-  dielec_str_te_4: 43.9
-  dielec_str_te_5: 57.7
-  dielec_str_te_6: 53.6
-  acid_measure_val: 0.02
-  moisture_rslt: 24.9
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 14
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 이상
-  oltc_rslt: 6000
-  oltc_type: Oil
-  thermal_img_temp: 이상
-  noise_diag: 이상
-  fire_vul_type: 몰드
-  fire_spread_loc: 옥내
-  emerge_response_1s: 불가
-  redundancy: N+1,N+0
-  ato: 적용
-  online_og_chk: 적용
-  offline_safety_chk: 적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 미적용
-  high_insul_adt: 미적용
   double_insul: 적용
-  55k_install: 미적용
+  55k_install: 적용
   rip_install: 적용
   vacuum_set: 적용
   today: '2026-09-12'
@@ -586,95 +1114,95 @@
   age_minus: -1
   load_minus: 0
   temp_minus: 0
-  dielec_str_te_avg: 49.03333333333334
+  dielec_str_te_avg: 42.550000000000004
   dielec_str_te_diag: 적합
   dielec_str_te_minus: 0
   acid_measure_desc: 적합
   acid_measure_minus: 0
   moisture_desc: 정상
   moisture_minus: 0
-  part_discharge_minus: 0
+  part_discharge_minus: -20
   thermal_img_minus: -8
   noise_minus: -2
-  fire_minus: 0
+  fire_minus: -8
   fire_spread_minus: 0
   emerge_response_minus: -6
-  redundancy_minus: -36
+  redundancy_minus: -18
   ato_minus: 0
   online_og_minus: 0
-  offline_safety_minus: 0
+  offline_safety_minus: -25
   sec_minus: 0
   alarm_minus: 0
-  winding_minus: -16
-  prod_life_minus: -6
+  winding_minus: 0
+  prod_life_minus: 0
   connect_part_minus: 0
-  temp_inc_limit_minus: -9
-  test_reliability_minus: -8
+  temp_inc_limit_minus: 0
+  test_reliability_minus: 0
   bushing_minus: 0
   oltc_minus: 0
-  dof_minus: -75
-  dof: 25
-- id: 8
-  factory_code: H1
-  EF_code: EF1
-  transformer_name: TR5
-  voltage: 22900
-  ONAN_val: 35
-  ONAF_val: 37.5
-  operation_start_time: '2019-10-16'
+  dof_minus: -43
+  dof: 57
+- id: 14
+  factory_code: K1
+  EF_code: EF6
+  transformer_name: BANK6
+  voltage: 154000
+  ONAN_val: 25
+  ONAF_val: 43.75
+  operation_start_time: '2017-03-02'
   dga_diag_time: '2020-06-01'
   dga_h2: 0
   dga_c2h2: 0
-  dga_c2h4: 8
-  dga_c2h6: 394
-  dga_ch4: 18
-  dga_co: 213
-  dga_co2: 2763
-  dga_o2: 21935
-  dga_n2: 45616
-  dga_fluc: -17
-  load_percent: 97.6
-  coil_max_temp: 58
-  dielec_str_te_1: 47.6
-  dielec_str_te_2: 36.3
-  dielec_str_te_3: 51.7
-  dielec_str_te_4: 43.2
-  dielec_str_te_5: 59.4
-  dielec_str_te_6: 56.7
-  acid_measure_val: 0.03
-  moisture_rslt: 24.6
+  dga_c2h4: 78
+  dga_c2h6: 0
+  dga_ch4: 78
+  dga_co: 56
+  dga_co2: 1326
+  dga_o2: 17009
+  dga_n2: 49379
+  dga_fluc: 60
+  load_percent: 90.8
+  coil_max_temp: 44
+  dielec_str_te_1: 53.6
+  dielec_str_te_2: 50.6
+  dielec_str_te_3: 58.8
+  dielec_str_te_4: 33.0
+  dielec_str_te_5: 33.8
+  dielec_str_te_6: 44.9
+  acid_measure_val: 0.02
+  moisture_rslt: 18.0
   furan_diag_time: '2020-06-01'
   furan_5H2F: 0
   furan_2FOL: 0
-  furan_2FAL: 12
+  furan_2FAL: 9
   furan_2ACF: 0
   furan_5M2F: 0
-  oltc_96T_diag: 정상
-  oltc_rslt: 9000
-  oltc_type: Vaccum
+  oltc_96T_diag: 이상
+  oltc_rslt: 18000
+  oltc_type: Oil
   thermal_img_temp: 이상
   noise_diag: 이상
   fire_vul_type: 유입
   fire_spread_loc: 옥외
   emerge_response_1s: 가능
-  redundancy: N+N
-  ato: 미적용
-  online_og_chk: 적용
+  redundancy: N+1
+  ato: 적용
+  online_og_chk: 미적용
   offline_safety_chk: 적용
   sec_num: 4
   alarm_num: 5
   insul_1st_lvup: 적용
-  high_insul_adt: 미적용
-  double_insul: 미적용
+  high_insul_adt: 적용
+  double_insul: 적용
   55k_install: 미적용
-  rip_install: 미적용
-  vacuum_set: 미적용
+  rip_install: 적용
+  vacuum_set: 적용
   today: '2026-09-12'
-  operation_year: 6.9
-  age_minus: -6
+  operation_year: 9.5
+  age_minus: -9
   load_minus: -20
   temp_minus: 0
-  dielec_str_te_avg: 49.150000000000006
+  dielec_str_te_avg: 45.78333333333333
   dielec_str_te_diag: 적합
   dielec_str_te_minus: 0
   acid_measure_desc: 적합
@@ -687,50 +1215,138 @@
   fire_minus: -8
   fire_spread_minus: -12
   emerge_response_minus: 0
+  redundancy_minus: -18
+  ato_minus: 0
+  online_og_minus: -30
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: 0
+  prod_life_minus: 0
+  connect_part_minus: 0
+  temp_inc_limit_minus: -9
+  test_reliability_minus: 0
+  bushing_minus: 0
+  oltc_minus: 0
+  dof_minus: -57
+  dof: 43
+- id: 15
+  factory_code: H2
+  EF_code: EF5
+  transformer_name: BANK7
+  voltage: 22900
+  ONAN_val: 25
+  ONAF_val: 100
+  operation_start_time: '2018-04-26'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 25
+  dga_c2h6: 288
+  dga_ch4: 16
+  dga_co: 569
+  dga_co2: 1416
+  dga_o2: 16291
+  dga_n2: 40141
+  dga_fluc: -17
+  load_percent: 10.4
+  coil_max_temp: 44
+  dielec_str_te_1: 44.6
+  dielec_str_te_2: 52.1
+  dielec_str_te_3: 59.7
+  dielec_str_te_4: 44.4
+  dielec_str_te_5: 52.6
+  dielec_str_te_6: 31.5
+  acid_measure_val: 0.02
+  moisture_rslt: 34.9
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 3
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 정상
+  oltc_rslt: 0
+  oltc_type: Vaccum
+  thermal_img_temp: 정상
+  noise_diag: 정상
+  fire_vul_type: 유입
+  fire_spread_loc: 옥내
+  emerge_response_1s: 불가
+  redundancy: N+N
+  ato: 적용
+  online_og_chk: 적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 적용
+  high_insul_adt: 적용
+  double_insul: 미적용
+  55k_install: 적용
+  rip_install: 적용
+  vacuum_set: 적용
+  today: '2026-09-12'
+  operation_year: 8.4
+  age_minus: -8
+  load_minus: 0
+  temp_minus: 0
+  dielec_str_te_avg: 47.48333333333333
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: -20
+  thermal_img_minus: 0
+  noise_minus: 0
+  fire_minus: -8
+  fire_spread_minus: 0
+  emerge_response_minus: -6
   redundancy_minus: 0
-  ato_minus: -36
+  ato_minus: 0
   online_og_minus: 0
   offline_safety_minus: 0
   sec_minus: 0
   alarm_minus: 0
   winding_minus: 0
-  prod_life_minus: -6
+  prod_life_minus: 0
   connect_part_minus: -2
-  temp_inc_limit_minus: -9
+  temp_inc_limit_minus: 0
   test_reliability_minus: 0
-  bushing_minus: -8
+  bushing_minus: 0
   oltc_minus: 0
-  dof_minus: -69
-  dof: 31
-- id: 9
+  dof_minus: -2
+  dof: 98
+- id: 16
   factory_code: P1
-  EF_code: EF6
-  transformer_name: BANK4
+  EF_code: EF3
+  transformer_name: TR9
   voltage: 22900
-  ONAN_val: 35
+  ONAN_val: 80
   ONAF_val: 37.5
-  operation_start_time: '2019-08-10'
+  operation_start_time: '2016-07-09'
   dga_diag_time: '2020-06-01'
   dga_h2: 0
   dga_c2h2: 0
-  dga_c2h4: 57
-  dga_c2h6: 288
-  dga_ch4: 92
-  dga_co: 529
-  dga_co2: 2104
-  dga_o2: 18334
-  dga_n2: 30223
-  dga_fluc: 60
-  load_percent: 44.1
-  coil_max_temp: 59
-  dielec_str_te_1: 50.3
-  dielec_str_te_2: 49.6
-  dielec_str_te_3: 35.1
-  dielec_str_te_4: 36.1
-  dielec_str_te_5: 44.1
-  dielec_str_te_6: 58.1
-  acid_measure_val: 0.02
-  moisture_rslt: 31.9
+  dga_c2h4: 19
+  dga_c2h6: 0
+  dga_ch4: 83
+  dga_co: 493
+  dga_co2: 2676
+  dga_o2: 24749
+  dga_n2: 85744
+  dga_fluc: -17
+  load_percent: 3.3
+  coil_max_temp: 47
+  dielec_str_te_1: 36.6
+  dielec_str_te_2: 46.4
+  dielec_str_te_3: 40.0
+  dielec_str_te_4: 33.3
+  dielec_str_te_5: 55.4
+  dielec_str_te_6: 55.1
+  acid_measure_val: 0.03
+  moisture_rslt: 21.3
   furan_diag_time: '2020-06-01'
   furan_5H2F: 0
   furan_2FOL: 0
@@ -738,207 +1354,295 @@
   furan_2ACF: 0
   furan_5M2F: 0
   oltc_96T_diag: 이상
-  oltc_rslt: 18000
+  oltc_rslt: 6000
   oltc_type: Vaccum
-  thermal_img_temp: 정상
+  thermal_img_temp: 이상
   noise_diag: 정상
   fire_vul_type: 몰드
   fire_spread_loc: 옥내
-  emerge_response_1s: 불가
+  emerge_response_1s: 가능
+  redundancy: N+1
+  ato: 적용
+  online_og_chk: 미적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 적용
+  high_insul_adt: 미적용
+  double_insul: 적용
+  55k_install: 적용
+  rip_install: 적용
+  vacuum_set: 적용
+  today: '2026-09-12'
+  operation_year: 10.2
+  age_minus: -10
+  load_minus: 0
+  temp_minus: 0
+  dielec_str_te_avg: 44.46666666666667
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: 0
+  thermal_img_minus: -8
+  noise_minus: 0
+  fire_minus: 0
+  fire_spread_minus: 0
+  emerge_response_minus: 0
+  redundancy_minus: -18
+  ato_minus: 0
+  online_og_minus: -30
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: 0
+  prod_life_minus: -6
+  connect_part_minus: 0
+  temp_inc_limit_minus: 0
+  test_reliability_minus: -8
+  bushing_minus: 0
+  oltc_minus: 0
+  dof_minus: -62
+  dof: 38
+- id: 17
+  factory_code: P1
+  EF_code: EF5
+  transformer_name: TR10
+  voltage: 154000
+  ONAN_val: 30
+  ONAF_val: 100
+  operation_start_time: '2019-10-12'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 17
+  dga_c2h6: 394
+  dga_ch4: 17
+  dga_co: 519
+  dga_co2: 2734
+  dga_o2: 16693
+  dga_n2: 42705
+  dga_fluc: 1
+  load_percent: 55.1
+  coil_max_temp: 46
+  dielec_str_te_1: 53.1
+  dielec_str_te_2: 57.0
+  dielec_str_te_3: 56.9
+  dielec_str_te_4: 31.7
+  dielec_str_te_5: 52.4
+  dielec_str_te_6: 57.7
+  acid_measure_val: 0.02
+  moisture_rslt: 16.4
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 3
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 정상
+  oltc_rslt: 6000
+  oltc_type: Vaccum
+  thermal_img_temp: 이상
+  noise_diag: 정상
+  fire_vul_type: 유입
+  fire_spread_loc: 옥외
+  emerge_response_1s: 가능
   redundancy: N+N
   ato: 적용
   online_og_chk: 적용
   offline_safety_chk: 적용
   sec_num: 4
   alarm_num: 5
-  insul_1st_lvup: 미적용
-  high_insul_adt: 미적용
-  double_insul: 적용
+  insul_1st_lvup: 적용
+  high_insul_adt: 적용
+  double_insul: 미적용
   55k_install: 미적용
-  rip_install: 적용
-  vacuum_set: 미적용
+  rip_install: 미적용
+  vacuum_set: 적용
   today: '2026-09-12'
-  operation_year: 7.1
-  age_minus: -7
-  load_minus: 0
+  operation_year: 6.9
+  age_minus: -6
+  load_minus: -5
   temp_minus: 0
-  dielec_str_te_avg: 45.550000000000004
+  dielec_str_te_avg: 51.46666666666667
   dielec_str_te_diag: 적합
   dielec_str_te_minus: 0
   acid_measure_desc: 적합
   acid_measure_minus: 0
   moisture_desc: 정상
   moisture_minus: 0
-  part_discharge_minus: 0
-  thermal_img_minus: 0
+  part_discharge_minus: -20
+  thermal_img_minus: -8
   noise_minus: 0
-  fire_minus: 0
-  fire_spread_minus: 0
-  emerge_response_minus: -6
+  fire_minus: -8
+  fire_spread_minus: -12
+  emerge_response_minus: 0
   redundancy_minus: 0
   ato_minus: 0
   online_og_minus: 0
   offline_safety_minus: 0
   sec_minus: 0
   alarm_minus: 0
-  winding_minus: -16
-  prod_life_minus: -6
-  connect_part_minus: 0
+  winding_minus: 0
+  prod_life_minus: 0
+  connect_part_minus: -2
   temp_inc_limit_minus: -9
   test_reliability_minus: 0
-  bushing_minus: 0
+  bushing_minus: -8
   oltc_minus: 0
-  dof_minus: -39
-  dof: 61
-- id: 10
-  factory_code: H1
-  EF_code: EF3
-  transformer_name: BANK5
-  voltage: 22900
-  ONAN_val: 30
-  ONAF_val: 30
-  operation_start_time: '2016-06-23'
+  dof_minus: -19
+  dof: 81
+- id: 18
+  factory_code: P1
+  EF_code: EF5
+  transformer_name: TR11
+  voltage: 154000
+  ONAN_val: 80
+  ONAF_val: 100
+  operation_start_time: '2023-12-16'
   dga_diag_time: '2020-06-01'
   dga_h2: 0
   dga_c2h2: 0
-  dga_c2h4: 6
-  dga_c2h6: 288
-  dga_ch4: 54
-  dga_co: 538
-  dga_co2: 1642
-  dga_o2: 23536
-  dga_n2: 40139
-  dga_fluc: -17
-  load_percent: 23.9
-  coil_max_temp: 57
-  dielec_str_te_1: 38.9
-  dielec_str_te_2: 39.6
-  dielec_str_te_3: 36.0
-  dielec_str_te_4: 45.4
-  dielec_str_te_5: 48.9
-  dielec_str_te_6: 42.4
+  dga_c2h4: 40
+  dga_c2h6: 0
+  dga_ch4: 42
+  dga_co: 555
+  dga_co2: 1412
+  dga_o2: 23425
+  dga_n2: 86160
+  dga_fluc: 30
+  load_percent: 63.7
+  coil_max_temp: 43
+  dielec_str_te_1: 37.0
+  dielec_str_te_2: 56.3
+  dielec_str_te_3: 55.1
+  dielec_str_te_4: 52.8
+  dielec_str_te_5: 44.8
+  dielec_str_te_6: 31.1
   acid_measure_val: 0.02
-  moisture_rslt: 16.7
+  moisture_rslt: 21.8
   furan_diag_time: '2020-06-01'
   furan_5H2F: 0
   furan_2FOL: 0
-  furan_2FAL: 17
+  furan_2FAL: 6
   furan_2ACF: 0
   furan_5M2F: 0
-  oltc_96T_diag: 이상
-  oltc_rslt: 9000
+  oltc_96T_diag: 정상
+  oltc_rslt: 13000
   oltc_type: Oil
   thermal_img_temp: 이상
   noise_diag: 이상
-  fire_vul_type: 유입
-  fire_spread_loc: 옥내
+  fire_vul_type: 몰드
+  fire_spread_loc: 옥외
   emerge_response_1s: 불가
-  redundancy: N+1,N+0
-  ato: 미적용
+  redundancy: N+1
+  ato: 적용
   online_og_chk: 적용
-  offline_safety_chk: 미적용
+  offline_safety_chk: 적용
   sec_num: 4
   alarm_num: 5
-  insul_1st_lvup: 미적용
+  insul_1st_lvup: 적용
   high_insul_adt: 적용
-  double_insul: 미적용
+  double_insul: 적용
   55k_install: 적용
   rip_install: 적용
-  vacuum_set: 미적용
+  vacuum_set: 적용
   today: '2026-09-12'
-  operation_year: 10.2
-  age_minus: -10
-  load_minus: 0
+  operation_year: 2.7
+  age_minus: -2
+  load_minus: -10
   temp_minus: 0
-  dielec_str_te_avg: 41.86666666666667
+  dielec_str_te_avg: 46.18333333333334
   dielec_str_te_diag: 적합
   dielec_str_te_minus: 0
   acid_measure_desc: 적합
   acid_measure_minus: 0
   moisture_desc: 정상
   moisture_minus: 0
-  part_discharge_minus: 0
+  part_discharge_minus: -20
   thermal_img_minus: -8
   noise_minus: -2
-  fire_minus: -8
-  fire_spread_minus: 0
+  fire_minus: 0
+  fire_spread_minus: -12
   emerge_response_minus: -6
-  redundancy_minus: -36
-  ato_minus: -36
+  redundancy_minus: -18
+  ato_minus: 0
   online_og_minus: 0
-  offline_safety_minus: -25
+  offline_safety_minus: 0
   sec_minus: 0
   alarm_minus: 0
-  winding_minus: -16
+  winding_minus: 0
   prod_life_minus: 0
-  connect_part_minus: -2
+  connect_part_minus: 0
   temp_inc_limit_minus: 0
   test_reliability_minus: 0
   bushing_minus: 0
   oltc_minus: 0
-  dof_minus: -123
-  dof: -23
-- id: 11
-  factory_code: K1
-  EF_code: EF3
-  transformer_name: BANK6
+  dof_minus: -18
+  dof: 82
+- id: 19
+  factory_code: P1
+  EF_code: EF1
+  transformer_name: BANK8
   voltage: 22900
-  ONAN_val: 80
-  ONAF_val: 43.75
-  operation_start_time: '2020-04-08'
+  ONAN_val: 35
+  ONAF_val: 100
+  operation_start_time: '2016-06-20'
   dga_diag_time: '2020-06-01'
   dga_h2: 0
   dga_c2h2: 0
-  dga_c2h4: 66
-  dga_c2h6: 394
-  dga_ch4: 42
-  dga_co: 241
-  dga_co2: 2192
-  dga_o2: 12992
-  dga_n2: 55442
-  dga_fluc: 60
-  load_percent: 83.0
-  coil_max_temp: 56
-  dielec_str_te_1: 34.3
-  dielec_str_te_2: 48.1
-  dielec_str_te_3: 47.5
-  dielec_str_te_4: 39.6
-  dielec_str_te_5: 44.4
-  dielec_str_te_6: 55.6
+  dga_c2h4: 62
+  dga_c2h6: 288
+  dga_ch4: 67
+  dga_co: 108
+  dga_co2: 573
+  dga_o2: 27607
+  dga_n2: 84190
+  dga_fluc: 30
+  load_percent: 51.8
+  coil_max_temp: 48
+  dielec_str_te_1: 54.9
+  dielec_str_te_2: 43.8
+  dielec_str_te_3: 54.5
+  dielec_str_te_4: 48.6
+  dielec_str_te_5: 34.0
+  dielec_str_te_6: 37.5
   acid_measure_val: 0.02
-  moisture_rslt: 18.0
+  moisture_rslt: 16.5
   furan_diag_time: '2020-06-01'
   furan_5H2F: 0
   furan_2FOL: 0
-  furan_2FAL: 10
+  furan_2FAL: 14
   furan_2ACF: 0
   furan_5M2F: 0
   oltc_96T_diag: 정상
-  oltc_rslt: 9000
-  oltc_type: Vaccum
+  oltc_rslt: 18000
+  oltc_type: Oil
   thermal_img_temp: 이상
   noise_diag: 정상
-  fire_vul_type: 유입
+  fire_vul_type: 몰드
   fire_spread_loc: 옥내
-  emerge_response_1s: 불가
-  redundancy: N+1,N+0
+  emerge_response_1s: 가능
+  redundancy: N+0
   ato: 적용
-  online_og_chk: 미적용
+  online_og_chk: 적용
   offline_safety_chk: 적용
   sec_num: 4
   alarm_num: 5
-  insul_1st_lvup: 미적용
-  high_insul_adt: 미적용
+  insul_1st_lvup: 적용
+  high_insul_adt: 적용
   double_insul: 적용
-  55k_install: 미적용
-  rip_install: 미적용
+  55k_install: 적용
+  rip_install: 적용
   vacuum_set: 적용
   today: '2026-09-12'
-  operation_year: 6.4
-  age_minus: -6
-  load_minus: -20
+  operation_year: 10.2
+  age_minus: -10
+  load_minus: -5
   temp_minus: 0
-  dielec_str_te_avg: 44.916666666666664
+  dielec_str_te_avg: 45.54999999999999
   dielec_str_te_diag: 적합
   dielec_str_te_minus: 0
   acid_measure_desc: 적합
@@ -948,85 +1652,85 @@
   part_discharge_minus: 0
   thermal_img_minus: -8
   noise_minus: 0
-  fire_minus: -8
+  fire_minus: 0
   fire_spread_minus: 0
-  emerge_response_minus: -6
+  emerge_response_minus: 0
   redundancy_minus: -36
   ato_minus: 0
-  online_og_minus: -30
+  online_og_minus: 0
   offline_safety_minus: 0
   sec_minus: 0
   alarm_minus: 0
-  winding_minus: -16
-  prod_life_minus: -6
+  winding_minus: 0
+  prod_life_minus: 0
   connect_part_minus: 0
-  temp_inc_limit_minus: -9
-  test_reliability_minus: -8
-  bushing_minus: -8
+  temp_inc_limit_minus: 0
+  test_reliability_minus: 0
+  bushing_minus: 0
   oltc_minus: 0
-  dof_minus: -113
-  dof: -13
-- id: 12
+  dof_minus: -36
+  dof: 64
+- id: 20
   factory_code: H1
   EF_code: EF1
-  transformer_name: BANK7
-  voltage: 154000
-  ONAN_val: 35
-  ONAF_val: 37.5
-  operation_start_time: '2020-06-20'
+  transformer_name: TR12
+  voltage: 22900
+  ONAN_val: 30
+  ONAF_val: 43.75
+  operation_start_time: '2023-05-09'
   dga_diag_time: '2020-06-01'
   dga_h2: 0
   dga_c2h2: 0
-  dga_c2h4: 75
+  dga_c2h4: 85
   dga_c2h6: 0
-  dga_ch4: 100
-  dga_co: 441
-  dga_co2: 1772
-  dga_o2: 26710
-  dga_n2: 97970
-  dga_fluc: 1
-  load_percent: 72.2
-  coil_max_temp: 43
-  dielec_str_te_1: 41.0
-  dielec_str_te_2: 58.3
-  dielec_str_te_3: 39.2
-  dielec_str_te_4: 38.1
-  dielec_str_te_5: 57.0
-  dielec_str_te_6: 38.4
-  acid_measure_val: 0.03
-  moisture_rslt: 25.3
+  dga_ch4: 65
+  dga_co: 53
+  dga_co2: 2406
+  dga_o2: 15867
+  dga_n2: 96925
+  dga_fluc: 30
+  load_percent: 74.2
+  coil_max_temp: 45
+  dielec_str_te_1: 44.7
+  dielec_str_te_2: 36.0
+  dielec_str_te_3: 49.7
+  dielec_str_te_4: 48.5
+  dielec_str_te_5: 45.3
+  dielec_str_te_6: 32.8
+  acid_measure_val: 0.02
+  moisture_rslt: 30.0
   furan_diag_time: '2020-06-01'
   furan_5H2F: 0
   furan_2FOL: 0
-  furan_2FAL: 4
+  furan_2FAL: 12
   furan_2ACF: 0
   furan_5M2F: 0
-  oltc_96T_diag: 이상
-  oltc_rslt: 18000
+  oltc_96T_diag: 정상
+  oltc_rslt: 13000
   oltc_type: Vaccum
   thermal_img_temp: 이상
   noise_diag: 이상
   fire_vul_type: 유입
   fire_spread_loc: 옥외
   emerge_response_1s: 가능
-  redundancy: N+1,N+0
+  redundancy: N+N
   ato: 적용
   online_og_chk: 적용
-  offline_safety_chk: 미적용
+  offline_safety_chk: 적용
   sec_num: 4
   alarm_num: 5
-  insul_1st_lvup: 미적용
-  high_insul_adt: 미적용
-  double_insul: 미적용
-  55k_install: 적용
-  rip_install: 미적용
-  vacuum_set: 미적용
+  insul_1st_lvup: 적용
+  high_insul_adt: 적용
+  double_insul: 적용
+  55k_install: 미적용
+  rip_install: 적용
+  vacuum_set: 적용
   today: '2026-09-12'
-  operation_year: 6.2
-  age_minus: -6
+  operation_year: 3.3
+  age_minus: -3
   load_minus: -15
   temp_minus: 0
-  dielec_str_te_avg: 45.333333333333336
+  dielec_str_te_avg: 42.833333333333336
   dielec_str_te_diag: 적합
   dielec_str_te_minus: 0
   acid_measure_desc: 적합
@@ -1039,50 +1743,226 @@
   fire_minus: -8
   fire_spread_minus: -12
   emerge_response_minus: 0
+  redundancy_minus: 0
+  ato_minus: 0
+  online_og_minus: 0
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: 0
+  prod_life_minus: 0
+  connect_part_minus: 0
+  temp_inc_limit_minus: -9
+  test_reliability_minus: 0
+  bushing_minus: 0
+  oltc_minus: 0
+  dof_minus: -9
+  dof: 91
+- id: 21
+  factory_code: H2
+  EF_code: EF5
+  transformer_name: TR13
+  voltage: 22900
+  ONAN_val: 80
+  ONAF_val: 43.75
+  operation_start_time: '2022-04-24'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 43
+  dga_c2h6: 394
+  dga_ch4: 27
+  dga_co: 390
+  dga_co2: 2401
+  dga_o2: 21740
+  dga_n2: 71389
+  dga_fluc: -17
+  load_percent: 45.7
+  coil_max_temp: 45
+  dielec_str_te_1: 53.0
+  dielec_str_te_2: 38.7
+  dielec_str_te_3: 30.7
+  dielec_str_te_4: 46.5
+  dielec_str_te_5: 35.3
+  dielec_str_te_6: 49.2
+  acid_measure_val: 0.03
+  moisture_rslt: 32.3
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 8
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 이상
+  oltc_rslt: 0
+  oltc_type: Vaccum
+  thermal_img_temp: 정상
+  noise_diag: 정상
+  fire_vul_type: 유입
+  fire_spread_loc: 옥외
+  emerge_response_1s: 가능
+  redundancy: N+0
+  ato: 적용
+  online_og_chk: 적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 적용
+  high_insul_adt: 적용
+  double_insul: 적용
+  55k_install: 적용
+  rip_install: 미적용
+  vacuum_set: 적용
+  today: '2026-09-12'
+  operation_year: 4.4
+  age_minus: -4
+  load_minus: 0
+  temp_minus: 0
+  dielec_str_te_avg: 42.23333333333333
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: -20
+  thermal_img_minus: 0
+  noise_minus: 0
+  fire_minus: -8
+  fire_spread_minus: -12
+  emerge_response_minus: 0
   redundancy_minus: -36
   ato_minus: 0
   online_og_minus: 0
-  offline_safety_minus: -25
+  offline_safety_minus: 0
   sec_minus: 0
   alarm_minus: 0
-  winding_minus: -16
-  prod_life_minus: -6
-  connect_part_minus: -2
+  winding_minus: 0
+  prod_life_minus: 0
+  connect_part_minus: 0
   temp_inc_limit_minus: 0
   test_reliability_minus: -8
   bushing_minus: -8
   oltc_minus: 0
-  dof_minus: -109
-  dof: -9
-- id: 13
-  factory_code: H1
-  EF_code: EF2
-  transformer_name: TR6
+  dof_minus: -52
+  dof: 48
+- id: 22
+  factory_code: P1
+  EF_code: EF5
+  transformer_name: TR14
   voltage: 154000
   ONAN_val: 30
   ONAF_val: 30
-  operation_start_time: '2017-05-03'
+  operation_start_time: '2020-10-30'
   dga_diag_time: '2020-06-01'
   dga_h2: 0
   dga_c2h2: 0
-  dga_c2h4: 88
-  dga_c2h6: 394
-  dga_ch4: 81
-  dga_co: 360
-  dga_co2: 918
-  dga_o2: 21704
-  dga_n2: 49663
+  dga_c2h4: 28
+  dga_c2h6: 288
+  dga_ch4: 77
+  dga_co: 537
+  dga_co2: 1313
+  dga_o2: 14901
+  dga_n2: 55074
+  dga_fluc: -17
+  load_percent: 57.1
+  coil_max_temp: 54
+  dielec_str_te_1: 38.8
+  dielec_str_te_2: 55.9
+  dielec_str_te_3: 30.5
+  dielec_str_te_4: 40.4
+  dielec_str_te_5: 34.8
+  dielec_str_te_6: 50.9
+  acid_measure_val: 0.03
+  moisture_rslt: 32.2
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 2
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 이상
+  oltc_rslt: 18000
+  oltc_type: Oil
+  thermal_img_temp: 이상
+  noise_diag: 정상
+  fire_vul_type: 몰드
+  fire_spread_loc: 옥외
+  emerge_response_1s: 불가
+  redundancy: N+1
+  ato: 적용
+  online_og_chk: 적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 적용
+  high_insul_adt: 적용
+  double_insul: 적용
+  55k_install: 적용
+  rip_install: 미적용
+  vacuum_set: 적용
+  today: '2026-09-12'
+  operation_year: 5.9
+  age_minus: -5
+  load_minus: -5
+  temp_minus: 0
+  dielec_str_te_avg: 41.88333333333333
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: 0
+  thermal_img_minus: -8
+  noise_minus: 0
+  fire_minus: 0
+  fire_spread_minus: -12
+  emerge_response_minus: -6
+  redundancy_minus: -18
+  ato_minus: 0
+  online_og_minus: 0
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: 0
+  prod_life_minus: 0
+  connect_part_minus: 0
+  temp_inc_limit_minus: 0
+  test_reliability_minus: 0
+  bushing_minus: -8
+  oltc_minus: 0
+  dof_minus: -26
+  dof: 74
+- id: 23
+  factory_code: H2
+  EF_code: EF7
+  transformer_name: TR15
+  voltage: 22900
+  ONAN_val: 80
+  ONAF_val: 30
+  operation_start_time: '2016-09-22'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 38
+  dga_c2h6: 288
+  dga_ch4: 37
+  dga_co: 384
+  dga_co2: 1333
+  dga_o2: 20871
+  dga_n2: 49690
   dga_fluc: 30
-  load_percent: 14.5
-  coil_max_temp: 49
-  dielec_str_te_1: 41.9
-  dielec_str_te_2: 58.9
-  dielec_str_te_3: 34.4
-  dielec_str_te_4: 57.6
-  dielec_str_te_5: 34.0
-  dielec_str_te_6: 53.3
+  load_percent: 6.0
+  coil_max_temp: 42
+  dielec_str_te_1: 54.2
+  dielec_str_te_2: 54.5
+  dielec_str_te_3: 37.9
+  dielec_str_te_4: 46.6
+  dielec_str_te_5: 31.1
+  dielec_str_te_6: 49.4
   acid_measure_val: 0.02
-  moisture_rslt: 28.2
+  moisture_rslt: 23.6
   furan_diag_time: '2020-06-01'
   furan_5H2F: 0
   furan_2FOL: 0
@@ -1090,87 +1970,87 @@
   furan_2ACF: 0
   furan_5M2F: 0
   oltc_96T_diag: 이상
-  oltc_rslt: 13000
-  oltc_type: Oil
-  thermal_img_temp: 정상
-  noise_diag: 이상
-  fire_vul_type: 유입
-  fire_spread_loc: 옥외
-  emerge_response_1s: 가능
-  redundancy: N+N
+  oltc_rslt: 18000
+  oltc_type: Vaccum
+  thermal_img_temp: 이상
+  noise_diag: 정상
+  fire_vul_type: 몰드
+  fire_spread_loc: 옥내
+  emerge_response_1s: 불가
+  redundancy: N+1
   ato: 적용
   online_og_chk: 적용
   offline_safety_chk: 적용
   sec_num: 4
   alarm_num: 5
   insul_1st_lvup: 적용
-  high_insul_adt: 미적용
+  high_insul_adt: 적용
   double_insul: 적용
   55k_install: 적용
-  rip_install: 미적용
+  rip_install: 적용
   vacuum_set: 미적용
   today: '2026-09-12'
-  operation_year: 9.4
-  age_minus: -9
+  operation_year: 10.0
+  age_minus: -10
   load_minus: 0
   temp_minus: 0
-  dielec_str_te_avg: 46.68333333333333
+  dielec_str_te_avg: 45.61666666666667
   dielec_str_te_diag: 적합
   dielec_str_te_minus: 0
   acid_measure_desc: 적합
   acid_measure_minus: 0
   moisture_desc: 정상
   moisture_minus: 0
-  part_discharge_minus: 0
-  thermal_img_minus: 0
-  noise_minus: -2
-  fire_minus: -8
-  fire_spread_minus: -12
-  emerge_response_minus: 0
-  redundancy_minus: 0
+  part_discharge_minus: -20
+  thermal_img_minus: -8
+  noise_minus: 0
+  fire_minus: 0
+  fire_spread_minus: 0
+  emerge_response_minus: -6
+  redundancy_minus: -18
   ato_minus: 0
   online_og_minus: 0
   offline_safety_minus: 0
   sec_minus: 0
   alarm_minus: 0
   winding_minus: 0
-  prod_life_minus: -6
+  prod_life_minus: 0
   connect_part_minus: 0
   temp_inc_limit_minus: 0
-  test_reliability_minus: -8
-  bushing_minus: -8
+  test_reliability_minus: 0
+  bushing_minus: 0
   oltc_minus: 0
-  dof_minus: -30
-  dof: 70
-- id: 14
+  dof_minus: -26
+  dof: 74
+- id: 24
   factory_code: K1
   EF_code: EF7
-  transformer_name: TR7
+  transformer_name: TR16
   voltage: 22900
-  ONAN_val: 80
-  ONAF_val: 30
-  operation_start_time: '2019-04-18'
+  ONAN_val: 35
+  ONAF_val: 43.75
+  operation_start_time: '2020-04-12'
   dga_diag_time: '2020-06-01'
   dga_h2: 0
   dga_c2h2: 0
-  dga_c2h4: 34
+  dga_c2h4: 57
   dga_c2h6: 288
-  dga_ch4: 82
-  dga_co: 509
-  dga_co2: 2801
-  dga_o2: 11906
-  dga_n2: 61902
-  dga_fluc: 1
-  load_percent: 32.6
-  coil_max_temp: 54
-  dielec_str_te_1: 32.9
-  dielec_str_te_2: 40.8
-  dielec_str_te_3: 50.3
-  dielec_str_te_4: 33.1
-  dielec_str_te_5: 48.6
-  dielec_str_te_6: 41.7
+  dga_ch4: 62
+  dga_co: 476
+  dga_co2: 2569
+  dga_o2: 29099
+  dga_n2: 32780
+  dga_fluc: 30
+  load_percent: 50.2
+  coil_max_temp: 42
+  dielec_str_te_1: 44.5
+  dielec_str_te_2: 44.4
+  dielec_str_te_3: 54.7
+  dielec_str_te_4: 58.2
+  dielec_str_te_5: 47.5
+  dielec_str_te_6: 40.9
   acid_measure_val: 0.02
-  moisture_rslt: 35.0
+  moisture_rslt: 25.1
   furan_diag_time: '2020-06-01'
   furan_5H2F: 0
   furan_2FOL: 0
@@ -1179,716 +2059,12 @@
   furan_5M2F: 0
   oltc_96T_diag: 정상
   oltc_rslt: 13000
-  oltc_type: Oil
-  thermal_img_temp: 이상
-  noise_diag: 이상
+  oltc_type: Vaccum
+  thermal_img_temp: 정상
+  noise_diag: 정상
   fire_vul_type: 유입
-  fire_spread_loc: 옥외
-  emerge_response_1s: 불가
-  redundancy: N+1,N+0
-  ato: 미적용
-  online_og_chk: 적용
-  offline_safety_chk: 적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 적용
-  high_insul_adt: 적용
-  double_insul: 미적용
-  55k_install: 적용
-  rip_install: 미적용
-  vacuum_set: 미적용
-  today: '2026-09-12'
-  operation_year: 7.4
-  age_minus: -7
-  load_minus: 0
-  temp_minus: 0
-  dielec_str_te_avg: 41.23333333333333
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: -20
-  thermal_img_minus: -8
-  noise_minus: -2
-  fire_minus: -8
-  fire_spread_minus: -12
-  emerge_response_minus: -6
-  redundancy_minus: -36
-  ato_minus: -36
-  online_og_minus: 0
-  offline_safety_minus: 0
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: 0
-  prod_life_minus: 0
-  connect_part_minus: -2
-  temp_inc_limit_minus: 0
-  test_reliability_minus: 0
-  bushing_minus: -8
-  oltc_minus: 0
-  dof_minus: -90
-  dof: 10
-- id: 15
-  factory_code: H1
-  EF_code: EF6
-  transformer_name: BANK8
-  voltage: 154000
-  ONAN_val: 35
-  ONAF_val: 37.5
-  operation_start_time: '2020-02-19'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 8
-  dga_c2h6: 288
-  dga_ch4: 15
-  dga_co: 452
-  dga_co2: 551
-  dga_o2: 29054
-  dga_n2: 47497
-  dga_fluc: 60
-  load_percent: 7.2
-  coil_max_temp: 56
-  dielec_str_te_1: 44.5
-  dielec_str_te_2: 34.9
-  dielec_str_te_3: 33.6
-  dielec_str_te_4: 52.4
-  dielec_str_te_5: 54.0
-  dielec_str_te_6: 38.1
-  acid_measure_val: 0.03
-  moisture_rslt: 21.7
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 10
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 정상
-  oltc_rslt: 6000
-  oltc_type: Vaccum
-  thermal_img_temp: 정상
-  noise_diag: 이상
-  fire_vul_type: 몰드
   fire_spread_loc: 옥내
   emerge_response_1s: 가능
-  redundancy: N+1,N+0
-  ato: 미적용
-  online_og_chk: 적용
-  offline_safety_chk: 미적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 적용
-  high_insul_adt: 미적용
-  double_insul: 미적용
-  55k_install: 적용
-  rip_install: 미적용
-  vacuum_set: 적용
-  today: '2026-09-12'
-  operation_year: 6.6
-  age_minus: -6
-  load_minus: 0
-  temp_minus: 0
-  dielec_str_te_avg: 42.916666666666664
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: -20
-  thermal_img_minus: 0
-  noise_minus: -2
-  fire_minus: 0
-  fire_spread_minus: 0
-  emerge_response_minus: 0
-  redundancy_minus: -36
-  ato_minus: -36
-  online_og_minus: 0
-  offline_safety_minus: -25
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: 0
-  prod_life_minus: -6
-  connect_part_minus: -2
-  temp_inc_limit_minus: 0
-  test_reliability_minus: 0
-  bushing_minus: -8
-  oltc_minus: 0
-  dof_minus: -113
-  dof: -13
-- id: 16
-  factory_code: K1
-  EF_code: EF6
-  transformer_name: TR8
-  voltage: 22900
-  ONAN_val: 25
-  ONAF_val: 37.5
-  operation_start_time: '2023-07-09'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 51
-  dga_c2h6: 0
-  dga_ch4: 4
-  dga_co: 491
-  dga_co2: 1388
-  dga_o2: 19074
-  dga_n2: 40148
-  dga_fluc: -1
-  load_percent: 71.1
-  coil_max_temp: 53
-  dielec_str_te_1: 48.8
-  dielec_str_te_2: 38.4
-  dielec_str_te_3: 48.9
-  dielec_str_te_4: 53.9
-  dielec_str_te_5: 50.6
-  dielec_str_te_6: 39.4
-  acid_measure_val: 0.03
-  moisture_rslt: 28.0
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 12
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 정상
-  oltc_rslt: 6000
-  oltc_type: Vaccum
-  thermal_img_temp: 정상
-  noise_diag: 정상
-  fire_vul_type: 몰드
-  fire_spread_loc: 옥내
-  emerge_response_1s: 불가
-  redundancy: N+N
-  ato: 미적용
-  online_og_chk: 미적용
-  offline_safety_chk: 미적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 적용
-  high_insul_adt: 미적용
-  double_insul: 미적용
-  55k_install: 미적용
-  rip_install: 미적용
-  vacuum_set: 미적용
-  today: '2026-09-12'
-  operation_year: 3.2
-  age_minus: -3
-  load_minus: -15
-  temp_minus: 0
-  dielec_str_te_avg: 46.666666666666664
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: -20
-  thermal_img_minus: 0
-  noise_minus: 0
-  fire_minus: 0
-  fire_spread_minus: 0
-  emerge_response_minus: -6
-  redundancy_minus: 0
-  ato_minus: -36
-  online_og_minus: -30
-  offline_safety_minus: -25
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: 0
-  prod_life_minus: -6
-  connect_part_minus: -2
-  temp_inc_limit_minus: -9
-  test_reliability_minus: 0
-  bushing_minus: -8
-  oltc_minus: 0
-  dof_minus: -124
-  dof: -24
-- id: 17
-  factory_code: P1
-  EF_code: EF7
-  transformer_name: TR9
-  voltage: 22900
-  ONAN_val: 30
-  ONAF_val: 37.5
-  operation_start_time: '2021-04-15'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 54
-  dga_c2h6: 288
-  dga_ch4: 71
-  dga_co: 526
-  dga_co2: 739
-  dga_o2: 20098
-  dga_n2: 41075
-  dga_fluc: 30
-  load_percent: 78.0
-  coil_max_temp: 50
-  dielec_str_te_1: 31.8
-  dielec_str_te_2: 47.7
-  dielec_str_te_3: 55.7
-  dielec_str_te_4: 41.5
-  dielec_str_te_5: 51.5
-  dielec_str_te_6: 35.2
-  acid_measure_val: 0.02
-  moisture_rslt: 18.8
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 2
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 정상
-  oltc_rslt: 9000
-  oltc_type: Vaccum
-  thermal_img_temp: 이상
-  noise_diag: 이상
-  fire_vul_type: 몰드
-  fire_spread_loc: 옥내
-  emerge_response_1s: 가능
-  redundancy: N+N
-  ato: 미적용
-  online_og_chk: 적용
-  offline_safety_chk: 적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 미적용
-  high_insul_adt: 미적용
-  double_insul: 적용
-  55k_install: 적용
-  rip_install: 적용
-  vacuum_set: 적용
-  today: '2026-09-12'
-  operation_year: 5.4
-  age_minus: -5
-  load_minus: -15
-  temp_minus: 0
-  dielec_str_te_avg: 43.9
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: -20
-  thermal_img_minus: -8
-  noise_minus: -2
-  fire_minus: 0
-  fire_spread_minus: 0
-  emerge_response_minus: 0
-  redundancy_minus: 0
-  ato_minus: -36
-  online_og_minus: 0
-  offline_safety_minus: 0
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: -16
-  prod_life_minus: -6
-  connect_part_minus: 0
-  temp_inc_limit_minus: 0
-  test_reliability_minus: -8
-  bushing_minus: 0
-  oltc_minus: 0
-  dof_minus: -66
-  dof: 34
-- id: 18
-  factory_code: K1
-  EF_code: EF7
-  transformer_name: TR10
-  voltage: 22900
-  ONAN_val: 25
-  ONAF_val: 37.5
-  operation_start_time: '2024-04-08'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 74
-  dga_c2h6: 0
-  dga_ch4: 67
-  dga_co: 172
-  dga_co2: 1605
-  dga_o2: 15142
-  dga_n2: 82785
-  dga_fluc: 30
-  load_percent: 38.2
-  coil_max_temp: 52
-  dielec_str_te_1: 48.4
-  dielec_str_te_2: 51.0
-  dielec_str_te_3: 31.8
-  dielec_str_te_4: 45.6
-  dielec_str_te_5: 37.1
-  dielec_str_te_6: 52.3
-  acid_measure_val: 0.03
-  moisture_rslt: 16.4
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 11
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 정상
-  oltc_rslt: 9000
-  oltc_type: Vaccum
-  thermal_img_temp: 이상
-  noise_diag: 이상
-  fire_vul_type: 몰드
-  fire_spread_loc: 옥내
-  emerge_response_1s: 불가
-  redundancy: N+N
-  ato: 적용
-  online_og_chk: 적용
-  offline_safety_chk: 적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 적용
-  high_insul_adt: 적용
-  double_insul: 적용
-  55k_install: 적용
-  rip_install: 미적용
-  vacuum_set: 미적용
-  today: '2026-09-12'
-  operation_year: 2.4
-  age_minus: -2
-  load_minus: 0
-  temp_minus: 0
-  dielec_str_te_avg: 44.36666666666667
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: 0
-  thermal_img_minus: -8
-  noise_minus: -2
-  fire_minus: 0
-  fire_spread_minus: 0
-  emerge_response_minus: -6
-  redundancy_minus: 0
-  ato_minus: 0
-  online_og_minus: 0
-  offline_safety_minus: 0
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: 0
-  prod_life_minus: 0
-  connect_part_minus: 0
-  temp_inc_limit_minus: 0
-  test_reliability_minus: 0
-  bushing_minus: -8
-  oltc_minus: 0
-  dof_minus: -16
-  dof: 84
-- id: 19
-  factory_code: H1
-  EF_code: EF2
-  transformer_name: TR11
-  voltage: 154000
-  ONAN_val: 35
-  ONAF_val: 43.75
-  operation_start_time: '2015-08-30'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 44
-  dga_c2h6: 394
-  dga_ch4: 75
-  dga_co: 398
-  dga_co2: 1687
-  dga_o2: 15009
-  dga_n2: 34731
-  dga_fluc: 60
-  load_percent: 30.3
-  coil_max_temp: 50
-  dielec_str_te_1: 49.5
-  dielec_str_te_2: 34.2
-  dielec_str_te_3: 58.3
-  dielec_str_te_4: 39.7
-  dielec_str_te_5: 41.5
-  dielec_str_te_6: 43.9
-  acid_measure_val: 0.03
-  moisture_rslt: 29.1
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 0
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 이상
-  oltc_rslt: 0
-  oltc_type: Vaccum
-  thermal_img_temp: 이상
-  noise_diag: 이상
-  fire_vul_type: 몰드
-  fire_spread_loc: 옥내
-  emerge_response_1s: 가능
-  redundancy: N+N
-  ato: 미적용
-  online_og_chk: 미적용
-  offline_safety_chk: 미적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 적용
-  high_insul_adt: 미적용
-  double_insul: 적용
-  55k_install: 적용
-  rip_install: 미적용
-  vacuum_set: 적용
-  today: '2026-09-12'
-  operation_year: 11.0
-  age_minus: -11
-  load_minus: 0
-  temp_minus: 0
-  dielec_str_te_avg: 44.51666666666666
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: 0
-  thermal_img_minus: -8
-  noise_minus: -2
-  fire_minus: 0
-  fire_spread_minus: 0
-  emerge_response_minus: 0
-  redundancy_minus: 0
-  ato_minus: -36
-  online_og_minus: -30
-  offline_safety_minus: -25
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: 0
-  prod_life_minus: -6
-  connect_part_minus: 0
-  temp_inc_limit_minus: 0
-  test_reliability_minus: 0
-  bushing_minus: -8
-  oltc_minus: 0
-  dof_minus: -105
-  dof: -5
-- id: 20
-  factory_code: H1
-  EF_code: EF4
-  transformer_name: TR12
-  voltage: 154000
-  ONAN_val: 80
-  ONAF_val: 43.75
-  operation_start_time: '2023-06-06'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 17
-  dga_c2h6: 394
-  dga_ch4: 89
-  dga_co: 516
-  dga_co2: 2517
-  dga_o2: 20127
-  dga_n2: 44633
-  dga_fluc: 30
-  load_percent: 79.4
-  coil_max_temp: 48
-  dielec_str_te_1: 32.5
-  dielec_str_te_2: 38.7
-  dielec_str_te_3: 31.7
-  dielec_str_te_4: 41.3
-  dielec_str_te_5: 44.6
-  dielec_str_te_6: 52.6
-  acid_measure_val: 0.03
-  moisture_rslt: 29.8
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 11
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 정상
-  oltc_rslt: 18000
-  oltc_type: Vaccum
-  thermal_img_temp: 이상
-  noise_diag: 이상
-  fire_vul_type: 유입
-  fire_spread_loc: 옥외
-  emerge_response_1s: 불가
-  redundancy: N+1,N+0
-  ato: 미적용
-  online_og_chk: 미적용
-  offline_safety_chk: 적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 미적용
-  high_insul_adt: 미적용
-  double_insul: 미적용
-  55k_install: 미적용
-  rip_install: 적용
-  vacuum_set: 미적용
-  today: '2026-09-12'
-  operation_year: 3.3
-  age_minus: -3
-  load_minus: -15
-  temp_minus: 0
-  dielec_str_te_avg: 40.23333333333333
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: -20
-  thermal_img_minus: -8
-  noise_minus: -2
-  fire_minus: -8
-  fire_spread_minus: -12
-  emerge_response_minus: -6
-  redundancy_minus: -36
-  ato_minus: -36
-  online_og_minus: -30
-  offline_safety_minus: 0
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: -16
-  prod_life_minus: -6
-  connect_part_minus: -2
-  temp_inc_limit_minus: -9
-  test_reliability_minus: 0
-  bushing_minus: 0
-  oltc_minus: 0
-  dof_minus: -143
-  dof: -43
-- id: 21
-  factory_code: H1
-  EF_code: EF3
-  transformer_name: BANK9
-  voltage: 22900
-  ONAN_val: 35
-  ONAF_val: 37.5
-  operation_start_time: '2021-06-19'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 97
-  dga_c2h6: 0
-  dga_ch4: 56
-  dga_co: 301
-  dga_co2: 2440
-  dga_o2: 20531
-  dga_n2: 61948
-  dga_fluc: -17
-  load_percent: 52.7
-  coil_max_temp: 56
-  dielec_str_te_1: 39.1
-  dielec_str_te_2: 50.8
-  dielec_str_te_3: 32.1
-  dielec_str_te_4: 45.1
-  dielec_str_te_5: 41.1
-  dielec_str_te_6: 39.8
-  acid_measure_val: 0.02
-  moisture_rslt: 17.3
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 13
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 정상
-  oltc_rslt: 18000
-  oltc_type: Oil
-  thermal_img_temp: 정상
-  noise_diag: 이상
-  fire_vul_type: 몰드
-  fire_spread_loc: 옥외
-  emerge_response_1s: 불가
-  redundancy: N+N
-  ato: 미적용
-  online_og_chk: 미적용
-  offline_safety_chk: 적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 미적용
-  high_insul_adt: 미적용
-  double_insul: 미적용
-  55k_install: 적용
-  rip_install: 미적용
-  vacuum_set: 미적용
-  today: '2026-09-12'
-  operation_year: 5.2
-  age_minus: -5
-  load_minus: -5
-  temp_minus: 0
-  dielec_str_te_avg: 41.333333333333336
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: -20
-  thermal_img_minus: 0
-  noise_minus: -2
-  fire_minus: 0
-  fire_spread_minus: -12
-  emerge_response_minus: -6
-  redundancy_minus: 0
-  ato_minus: -36
-  online_og_minus: -30
-  offline_safety_minus: 0
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: -16
-  prod_life_minus: -6
-  connect_part_minus: -2
-  temp_inc_limit_minus: 0
-  test_reliability_minus: 0
-  bushing_minus: -8
-  oltc_minus: 0
-  dof_minus: -106
-  dof: -6
-- id: 22
-  factory_code: K1
-  EF_code: EF3
-  transformer_name: TR13
-  voltage: 154000
-  ONAN_val: 30
-  ONAF_val: 37.5
-  operation_start_time: '2023-04-30'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 35
-  dga_c2h6: 0
-  dga_ch4: 2
-  dga_co: 549
-  dga_co2: 2656
-  dga_o2: 25533
-  dga_n2: 84125
-  dga_fluc: 30
-  load_percent: 49.1
-  coil_max_temp: 46
-  dielec_str_te_1: 36.6
-  dielec_str_te_2: 39.0
-  dielec_str_te_3: 37.2
-  dielec_str_te_4: 40.9
-  dielec_str_te_5: 51.1
-  dielec_str_te_6: 48.8
-  acid_measure_val: 0.03
-  moisture_rslt: 31.9
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 10
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 정상
-  oltc_rslt: 18000
-  oltc_type: Vaccum
-  thermal_img_temp: 정상
-  noise_diag: 이상
-  fire_vul_type: 몰드
-  fire_spread_loc: 옥내
-  emerge_response_1s: 불가
   redundancy: N+N
   ato: 적용
   online_og_chk: 적용
@@ -1896,453 +2072,13 @@
   sec_num: 4
   alarm_num: 5
   insul_1st_lvup: 미적용
-  high_insul_adt: 적용
+  high_insul_adt: 미적용
   double_insul: 적용
   55k_install: 적용
-  rip_install: 미적용
-  vacuum_set: 미적용
-  today: '2026-09-12'
-  operation_year: 3.4
-  age_minus: -3
-  load_minus: 0
-  temp_minus: 0
-  dielec_str_te_avg: 42.26666666666666
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: -20
-  thermal_img_minus: 0
-  noise_minus: -2
-  fire_minus: 0
-  fire_spread_minus: 0
-  emerge_response_minus: -6
-  redundancy_minus: 0
-  ato_minus: 0
-  online_og_minus: 0
-  offline_safety_minus: 0
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: -16
-  prod_life_minus: 0
-  connect_part_minus: 0
-  temp_inc_limit_minus: 0
-  test_reliability_minus: -8
-  bushing_minus: -8
-  oltc_minus: 0
-  dof_minus: -40
-  dof: 60
-- id: 23
-  factory_code: H2
-  EF_code: EF1
-  transformer_name: TR14
-  voltage: 154000
-  ONAN_val: 80
-  ONAF_val: 43.75
-  operation_start_time: '2022-09-24'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 71
-  dga_c2h6: 0
-  dga_ch4: 79
-  dga_co: 187
-  dga_co2: 1203
-  dga_o2: 13755
-  dga_n2: 85075
-  dga_fluc: 30
-  load_percent: 24.1
-  coil_max_temp: 46
-  dielec_str_te_1: 47.5
-  dielec_str_te_2: 49.0
-  dielec_str_te_3: 46.4
-  dielec_str_te_4: 59.1
-  dielec_str_te_5: 43.8
-  dielec_str_te_6: 39.3
-  acid_measure_val: 0.03
-  moisture_rslt: 34.2
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 3
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 이상
-  oltc_rslt: 13000
-  oltc_type: Oil
-  thermal_img_temp: 정상
-  noise_diag: 이상
-  fire_vul_type: 몰드
-  fire_spread_loc: 옥외
-  emerge_response_1s: 가능
-  redundancy: N+N
-  ato: 적용
-  online_og_chk: 적용
-  offline_safety_chk: 미적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 적용
-  high_insul_adt: 미적용
-  double_insul: 미적용
-  55k_install: 미적용
   rip_install: 적용
   vacuum_set: 적용
   today: '2026-09-12'
-  operation_year: 4.0
-  age_minus: -4
-  load_minus: 0
-  temp_minus: 0
-  dielec_str_te_avg: 47.51666666666667
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: -20
-  thermal_img_minus: 0
-  noise_minus: -2
-  fire_minus: 0
-  fire_spread_minus: -12
-  emerge_response_minus: 0
-  redundancy_minus: 0
-  ato_minus: 0
-  online_og_minus: 0
-  offline_safety_minus: -25
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: 0
-  prod_life_minus: -6
-  connect_part_minus: -2
-  temp_inc_limit_minus: -9
-  test_reliability_minus: 0
-  bushing_minus: 0
-  oltc_minus: 0
-  dof_minus: -42
-  dof: 58
-- id: 24
-  factory_code: P1
-  EF_code: EF5
-  transformer_name: BANK10
-  voltage: 22900
-  ONAN_val: 80
-  ONAF_val: 30
-  operation_start_time: '2020-03-14'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 62
-  dga_c2h6: 288
-  dga_ch4: 31
-  dga_co: 526
-  dga_co2: 2161
-  dga_o2: 26361
-  dga_n2: 89377
-  dga_fluc: 30
-  load_percent: 77.8
-  coil_max_temp: 55
-  dielec_str_te_1: 43.9
-  dielec_str_te_2: 52.6
-  dielec_str_te_3: 34.5
-  dielec_str_te_4: 55.8
-  dielec_str_te_5: 53.4
-  dielec_str_te_6: 35.1
-  acid_measure_val: 0.03
-  moisture_rslt: 22.1
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 6
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 정상
-  oltc_rslt: 13000
-  oltc_type: Vaccum
-  thermal_img_temp: 정상
-  noise_diag: 이상
-  fire_vul_type: 몰드
-  fire_spread_loc: 옥내
-  emerge_response_1s: 가능
-  redundancy: N+1,N+0
-  ato: 미적용
-  online_og_chk: 미적용
-  offline_safety_chk: 적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 적용
-  high_insul_adt: 적용
-  double_insul: 미적용
-  55k_install: 미적용
-  rip_install: 적용
-  vacuum_set: 미적용
-  today: '2026-09-12'
-  operation_year: 6.5
-  age_minus: -6
-  load_minus: -15
-  temp_minus: 0
-  dielec_str_te_avg: 45.88333333333333
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: 0
-  thermal_img_minus: 0
-  noise_minus: -2
-  fire_minus: 0
-  fire_spread_minus: 0
-  emerge_response_minus: 0
-  redundancy_minus: -36
-  ato_minus: -36
-  online_og_minus: -30
-  offline_safety_minus: 0
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: 0
-  prod_life_minus: 0
-  connect_part_minus: -2
-  temp_inc_limit_minus: -9
-  test_reliability_minus: 0
-  bushing_minus: 0
-  oltc_minus: 0
-  dof_minus: -121
-  dof: -21
-- id: 25
-  factory_code: H1
-  EF_code: EF2
-  transformer_name: BANK11
-  voltage: 22900
-  ONAN_val: 35
-  ONAF_val: 43.75
-  operation_start_time: '2016-11-22'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 12
-  dga_c2h6: 394
-  dga_ch4: 28
-  dga_co: 113
-  dga_co2: 1335
-  dga_o2: 11716
-  dga_n2: 74174
-  dga_fluc: 60
-  load_percent: 19.7
-  coil_max_temp: 45
-  dielec_str_te_1: 48.0
-  dielec_str_te_2: 53.2
-  dielec_str_te_3: 57.5
-  dielec_str_te_4: 39.2
-  dielec_str_te_5: 41.9
-  dielec_str_te_6: 31.3
-  acid_measure_val: 0.02
-  moisture_rslt: 34.3
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 13
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 이상
-  oltc_rslt: 9000
-  oltc_type: Vaccum
-  thermal_img_temp: 정상
-  noise_diag: 이상
-  fire_vul_type: 몰드
-  fire_spread_loc: 옥내
-  emerge_response_1s: 불가
-  redundancy: N+N
-  ato: 미적용
-  online_og_chk: 적용
-  offline_safety_chk: 미적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 적용
-  high_insul_adt: 미적용
-  double_insul: 미적용
-  55k_install: 적용
-  rip_install: 적용
-  vacuum_set: 미적용
-  today: '2026-09-12'
-  operation_year: 9.8
-  age_minus: -9
-  load_minus: 0
-  temp_minus: 0
-  dielec_str_te_avg: 45.18333333333333
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: 0
-  thermal_img_minus: 0
-  noise_minus: -2
-  fire_minus: 0
-  fire_spread_minus: 0
-  emerge_response_minus: -6
-  redundancy_minus: 0
-  ato_minus: -36
-  online_og_minus: 0
-  offline_safety_minus: -25
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: 0
-  prod_life_minus: -6
-  connect_part_minus: -2
-  temp_inc_limit_minus: 0
-  test_reliability_minus: 0
-  bushing_minus: 0
-  oltc_minus: 0
-  dof_minus: -77
-  dof: 23
-- id: 26
-  factory_code: P1
-  EF_code: EF4
-  transformer_name: TR15
-  voltage: 22900
-  ONAN_val: 25
-  ONAF_val: 43.75
-  operation_start_time: '2018-01-26'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 93
-  dga_c2h6: 0
-  dga_ch4: 80
-  dga_co: 355
-  dga_co2: 1152
-  dga_o2: 15385
-  dga_n2: 75791
-  dga_fluc: -1
-  load_percent: 29.5
-  coil_max_temp: 53
-  dielec_str_te_1: 40.9
-  dielec_str_te_2: 46.3
-  dielec_str_te_3: 34.0
-  dielec_str_te_4: 30.4
-  dielec_str_te_5: 43.8
-  dielec_str_te_6: 41.4
-  acid_measure_val: 0.03
-  moisture_rslt: 25.8
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 6
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 이상
-  oltc_rslt: 9000
-  oltc_type: Oil
-  thermal_img_temp: 이상
-  noise_diag: 정상
-  fire_vul_type: 몰드
-  fire_spread_loc: 옥외
-  emerge_response_1s: 가능
-  redundancy: N+1,N+0
-  ato: 미적용
-  online_og_chk: 미적용
-  offline_safety_chk: 적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 미적용
-  high_insul_adt: 적용
-  double_insul: 적용
-  55k_install: 미적용
-  rip_install: 미적용
-  vacuum_set: 적용
-  today: '2026-09-12'
-  operation_year: 8.6
-  age_minus: -8
-  load_minus: 0
-  temp_minus: 0
-  dielec_str_te_avg: 39.46666666666666
-  dielec_str_te_diag: 적합
-  dielec_str_te_minus: 0
-  acid_measure_desc: 적합
-  acid_measure_minus: 0
-  moisture_desc: 정상
-  moisture_minus: 0
-  part_discharge_minus: 0
-  thermal_img_minus: -8
-  noise_minus: 0
-  fire_minus: 0
-  fire_spread_minus: -12
-  emerge_response_minus: 0
-  redundancy_minus: -36
-  ato_minus: -36
-  online_og_minus: -30
-  offline_safety_minus: 0
-  sec_minus: 0
-  alarm_minus: 0
-  winding_minus: -16
-  prod_life_minus: 0
-  connect_part_minus: 0
-  temp_inc_limit_minus: -9
-  test_reliability_minus: -8
-  bushing_minus: -8
-  oltc_minus: 0
-  dof_minus: -143
-  dof: -43
-- id: 27
-  factory_code: P1
-  EF_code: EF7
-  transformer_name: BANK12
-  voltage: 154000
-  ONAN_val: 80
-  ONAF_val: 37.5
-  operation_start_time: '2020-01-30'
-  dga_diag_time: '2020-06-01'
-  dga_h2: 0
-  dga_c2h2: 0
-  dga_c2h4: 16
-  dga_c2h6: 0
-  dga_ch4: 61
-  dga_co: 186
-  dga_co2: 2627
-  dga_o2: 10030
-  dga_n2: 47646
-  dga_fluc: -1
-  load_percent: 15.7
-  coil_max_temp: 55
-  dielec_str_te_1: 54.4
-  dielec_str_te_2: 49.1
-  dielec_str_te_3: 44.0
-  dielec_str_te_4: 42.9
-  dielec_str_te_5: 42.4
-  dielec_str_te_6: 57.4
-  acid_measure_val: 0.02
-  moisture_rslt: 27.4
-  furan_diag_time: '2020-06-01'
-  furan_5H2F: 0
-  furan_2FOL: 0
-  furan_2FAL: 0
-  furan_2ACF: 0
-  furan_5M2F: 0
-  oltc_96T_diag: 이상
-  oltc_rslt: 13000
-  oltc_type: Oil
-  thermal_img_temp: 정상
-  noise_diag: 정상
-  fire_vul_type: 몰드
-  fire_spread_loc: 옥내
-  emerge_response_1s: 가능
-  redundancy: N+1,N+0
-  ato: 미적용
-  online_og_chk: 미적용
-  offline_safety_chk: 적용
-  sec_num: 4
-  alarm_num: 5
-  insul_1st_lvup: 적용
-  high_insul_adt: 미적용
-  double_insul: 미적용
-  55k_install: 적용
-  rip_install: 미적용
-  vacuum_set: 미적용
-  today: '2026-09-12'
-  operation_year: 6.6
+  operation_year: 6.4
   age_minus: -6
   load_minus: 0
   temp_minus: 0
@@ -2353,88 +2089,88 @@
   acid_measure_minus: 0
   moisture_desc: 정상
   moisture_minus: 0
-  part_discharge_minus: -20
+  part_discharge_minus: 0
   thermal_img_minus: 0
   noise_minus: 0
-  fire_minus: 0
+  fire_minus: -8
   fire_spread_minus: 0
   emerge_response_minus: 0
-  redundancy_minus: -36
-  ato_minus: -36
-  online_og_minus: -30
+  redundancy_minus: 0
+  ato_minus: 0
+  online_og_minus: 0
   offline_safety_minus: 0
   sec_minus: 0
   alarm_minus: 0
-  winding_minus: 0
+  winding_minus: -16
   prod_life_minus: -6
-  connect_part_minus: -2
+  connect_part_minus: 0
   temp_inc_limit_minus: 0
   test_reliability_minus: 0
-  bushing_minus: -8
+  bushing_minus: 0
   oltc_minus: 0
-  dof_minus: -126
-  dof: -26
-- id: 28
-  factory_code: K1
-  EF_code: EF1
-  transformer_name: BANK13
-  voltage: 154000
+  dof_minus: -22
+  dof: 78
+- id: 25
+  factory_code: H2
+  EF_code: EF6
+  transformer_name: TR17
+  voltage: 22900
   ONAN_val: 25
   ONAF_val: 30
-  operation_start_time: '2022-09-20'
+  operation_start_time: '2021-12-14'
   dga_diag_time: '2020-06-01'
   dga_h2: 0
   dga_c2h2: 0
-  dga_c2h4: 23
-  dga_c2h6: 288
-  dga_ch4: 9
-  dga_co: 564
-  dga_co2: 2327
-  dga_o2: 11761
-  dga_n2: 65968
-  dga_fluc: 30
-  load_percent: 37.0
-  coil_max_temp: 54
-  dielec_str_te_1: 36.5
-  dielec_str_te_2: 50.3
-  dielec_str_te_3: 47.4
-  dielec_str_te_4: 40.2
-  dielec_str_te_5: 34.0
-  dielec_str_te_6: 43.2
-  acid_measure_val: 0.02
-  moisture_rslt: 23.7
+  dga_c2h4: 59
+  dga_c2h6: 394
+  dga_ch4: 100
+  dga_co: 402
+  dga_co2: 2263
+  dga_o2: 20090
+  dga_n2: 82320
+  dga_fluc: -17
+  load_percent: 8.7
+  coil_max_temp: 55
+  dielec_str_te_1: 34.8
+  dielec_str_te_2: 44.3
+  dielec_str_te_3: 50.1
+  dielec_str_te_4: 43.9
+  dielec_str_te_5: 38.8
+  dielec_str_te_6: 34.4
+  acid_measure_val: 0.03
+  moisture_rslt: 15.1
   furan_diag_time: '2020-06-01'
   furan_5H2F: 0
   furan_2FOL: 0
-  furan_2FAL: 18
+  furan_2FAL: 11
   furan_2ACF: 0
   furan_5M2F: 0
   oltc_96T_diag: 이상
-  oltc_rslt: 13000
+  oltc_rslt: 0
   oltc_type: Vaccum
-  thermal_img_temp: 이상
+  thermal_img_temp: 정상
   noise_diag: 이상
   fire_vul_type: 몰드
   fire_spread_loc: 옥외
   emerge_response_1s: 불가
-  redundancy: N+1,N+0
-  ato: 미적용
+  redundancy: N+0
+  ato: 적용
   online_og_chk: 적용
-  offline_safety_chk: 미적용
+  offline_safety_chk: 적용
   sec_num: 4
   alarm_num: 5
-  insul_1st_lvup: 미적용
+  insul_1st_lvup: 적용
   high_insul_adt: 적용
-  double_insul: 미적용
+  double_insul: 적용
   55k_install: 적용
   rip_install: 적용
-  vacuum_set: 미적용
+  vacuum_set: 적용
   today: '2026-09-12'
-  operation_year: 4.0
+  operation_year: 4.7
   age_minus: -4
   load_minus: 0
   temp_minus: 0
-  dielec_str_te_avg: 41.93333333333333
+  dielec_str_te_avg: 41.05
   dielec_str_te_diag: 적합
   dielec_str_te_minus: 0
   acid_measure_desc: 적합
@@ -2442,87 +2178,87 @@
   moisture_desc: 정상
   moisture_minus: 0
   part_discharge_minus: -20
-  thermal_img_minus: -8
+  thermal_img_minus: 0
   noise_minus: -2
   fire_minus: 0
   fire_spread_minus: -12
   emerge_response_minus: -6
   redundancy_minus: -36
-  ato_minus: -36
+  ato_minus: 0
   online_og_minus: 0
-  offline_safety_minus: -25
+  offline_safety_minus: 0
   sec_minus: 0
   alarm_minus: 0
-  winding_minus: -16
+  winding_minus: 0
   prod_life_minus: 0
-  connect_part_minus: -2
+  connect_part_minus: 0
   temp_inc_limit_minus: 0
-  test_reliability_minus: -8
+  test_reliability_minus: 0
   bushing_minus: 0
   oltc_minus: 0
-  dof_minus: -131
-  dof: -31
-- id: 29
-  factory_code: H2
-  EF_code: EF7
-  transformer_name: BANK14
+  dof_minus: -36
+  dof: 64
+- id: 26
+  factory_code: H1
+  EF_code: EF1
+  transformer_name: BANK9
   voltage: 154000
-  ONAN_val: 25
-  ONAF_val: 37.5
-  operation_start_time: '2019-10-28'
+  ONAN_val: 30
+  ONAF_val: 100
+  operation_start_time: '2024-03-12'
   dga_diag_time: '2020-06-01'
   dga_h2: 0
   dga_c2h2: 0
-  dga_c2h4: 81
+  dga_c2h4: 10
   dga_c2h6: 288
-  dga_ch4: 8
-  dga_co: 290
-  dga_co2: 1592
-  dga_o2: 28304
-  dga_n2: 70125
-  dga_fluc: 60
-  load_percent: 58.6
-  coil_max_temp: 47
-  dielec_str_te_1: 48.6
-  dielec_str_te_2: 32.0
-  dielec_str_te_3: 46.4
-  dielec_str_te_4: 34.3
-  dielec_str_te_5: 33.7
-  dielec_str_te_6: 31.1
+  dga_ch4: 1
+  dga_co: 109
+  dga_co2: 1847
+  dga_o2: 26605
+  dga_n2: 84968
+  dga_fluc: -1
+  load_percent: 50.6
+  coil_max_temp: 55
+  dielec_str_te_1: 44.3
+  dielec_str_te_2: 39.7
+  dielec_str_te_3: 52.4
+  dielec_str_te_4: 45.3
+  dielec_str_te_5: 33.4
+  dielec_str_te_6: 43.0
   acid_measure_val: 0.03
-  moisture_rslt: 26.8
+  moisture_rslt: 15.8
   furan_diag_time: '2020-06-01'
   furan_5H2F: 0
   furan_2FOL: 0
-  furan_2FAL: 4
+  furan_2FAL: 3
   furan_2ACF: 0
   furan_5M2F: 0
   oltc_96T_diag: 정상
-  oltc_rslt: 9000
+  oltc_rslt: 18000
   oltc_type: Vaccum
   thermal_img_temp: 이상
   noise_diag: 이상
-  fire_vul_type: 몰드
+  fire_vul_type: 유입
   fire_spread_loc: 옥내
-  emerge_response_1s: 불가
-  redundancy: N+1,N+0
+  emerge_response_1s: 가능
+  redundancy: N+N
   ato: 적용
   online_og_chk: 적용
   offline_safety_chk: 적용
   sec_num: 4
   alarm_num: 5
-  insul_1st_lvup: 미적용
+  insul_1st_lvup: 적용
   high_insul_adt: 적용
   double_insul: 미적용
-  55k_install: 적용
+  55k_install: 미적용
   rip_install: 적용
   vacuum_set: 미적용
   today: '2026-09-12'
-  operation_year: 6.9
-  age_minus: -6
-  load_minus: -5
+  operation_year: 2.5
+  age_minus: -2
+  load_minus: 0
   temp_minus: 0
-  dielec_str_te_avg: 37.68333333333333
+  dielec_str_te_avg: 43.01666666666667
   dielec_str_te_diag: 적합
   dielec_str_te_minus: 0
   acid_measure_desc: 적합
@@ -2532,85 +2268,173 @@
   part_discharge_minus: 0
   thermal_img_minus: -8
   noise_minus: -2
-  fire_minus: 0
+  fire_minus: -8
   fire_spread_minus: 0
-  emerge_response_minus: -6
-  redundancy_minus: -36
+  emerge_response_minus: 0
+  redundancy_minus: 0
   ato_minus: 0
   online_og_minus: 0
   offline_safety_minus: 0
   sec_minus: 0
   alarm_minus: 0
-  winding_minus: -16
+  winding_minus: 0
   prod_life_minus: 0
   connect_part_minus: -2
+  temp_inc_limit_minus: -9
+  test_reliability_minus: 0
+  bushing_minus: 0
+  oltc_minus: 0
+  dof_minus: -19
+  dof: 81
+- id: 27
+  factory_code: K1
+  EF_code: EF6
+  transformer_name: BANK10
+  voltage: 22900
+  ONAN_val: 25
+  ONAF_val: 43.75
+  operation_start_time: '2016-03-10'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 40
+  dga_c2h6: 288
+  dga_ch4: 11
+  dga_co: 458
+  dga_co2: 2310
+  dga_o2: 21297
+  dga_n2: 97408
+  dga_fluc: -17
+  load_percent: 68.5
+  coil_max_temp: 55
+  dielec_str_te_1: 51.4
+  dielec_str_te_2: 41.4
+  dielec_str_te_3: 42.1
+  dielec_str_te_4: 51.4
+  dielec_str_te_5: 50.4
+  dielec_str_te_6: 47.6
+  acid_measure_val: 0.02
+  moisture_rslt: 31.4
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 3
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 정상
+  oltc_rslt: 18000
+  oltc_type: Vaccum
+  thermal_img_temp: 정상
+  noise_diag: 정상
+  fire_vul_type: 유입
+  fire_spread_loc: 옥외
+  emerge_response_1s: 불가
+  redundancy: N+0
+  ato: 적용
+  online_og_chk: 미적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 미적용
+  high_insul_adt: 적용
+  double_insul: 적용
+  55k_install: 적용
+  rip_install: 적용
+  vacuum_set: 적용
+  today: '2026-09-12'
+  operation_year: 10.5
+  age_minus: -10
+  load_minus: -10
+  temp_minus: 0
+  dielec_str_te_avg: 47.38333333333333
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: -20
+  thermal_img_minus: 0
+  noise_minus: 0
+  fire_minus: -8
+  fire_spread_minus: -12
+  emerge_response_minus: -6
+  redundancy_minus: -36
+  ato_minus: 0
+  online_og_minus: -30
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: -16
+  prod_life_minus: 0
+  connect_part_minus: 0
   temp_inc_limit_minus: 0
   test_reliability_minus: 0
   bushing_minus: 0
   oltc_minus: 0
-  dof_minus: -62
-  dof: 38
-- id: 30
-  factory_code: H2
-  EF_code: EF4
-  transformer_name: TR16
+  dof_minus: -82
+  dof: 18
+- id: 28
+  factory_code: H1
+  EF_code: EF5
+  transformer_name: BANK11
   voltage: 154000
-  ONAN_val: 30
-  ONAF_val: 30
-  operation_start_time: '2017-06-07'
+  ONAN_val: 25
+  ONAF_val: 100
+  operation_start_time: '2017-01-13'
   dga_diag_time: '2020-06-01'
   dga_h2: 0
   dga_c2h2: 0
   dga_c2h4: 64
-  dga_c2h6: 288
-  dga_ch4: 74
-  dga_co: 609
-  dga_co2: 2590
-  dga_o2: 15208
-  dga_n2: 37064
-  dga_fluc: 30
-  load_percent: 39.9
-  coil_max_temp: 50
+  dga_c2h6: 0
+  dga_ch4: 54
+  dga_co: 138
+  dga_co2: 2637
+  dga_o2: 13538
+  dga_n2: 31648
+  dga_fluc: -17
+  load_percent: 93.9
+  coil_max_temp: 56
   dielec_str_te_1: 59.9
-  dielec_str_te_2: 41.7
-  dielec_str_te_3: 44.6
-  dielec_str_te_4: 31.7
-  dielec_str_te_5: 40.9
-  dielec_str_te_6: 30.6
+  dielec_str_te_2: 40.8
+  dielec_str_te_3: 45.6
+  dielec_str_te_4: 53.5
+  dielec_str_te_5: 51.7
+  dielec_str_te_6: 55.8
   acid_measure_val: 0.02
-  moisture_rslt: 29.1
+  moisture_rslt: 22.2
   furan_diag_time: '2020-06-01'
   furan_5H2F: 0
   furan_2FOL: 0
-  furan_2FAL: 8
+  furan_2FAL: 15
   furan_2ACF: 0
   furan_5M2F: 0
-  oltc_96T_diag: 이상
-  oltc_rslt: 13000
+  oltc_96T_diag: 정상
+  oltc_rslt: 0
   oltc_type: Vaccum
   thermal_img_temp: 이상
   noise_diag: 이상
   fire_vul_type: 유입
-  fire_spread_loc: 옥내
+  fire_spread_loc: 옥외
   emerge_response_1s: 가능
-  redundancy: N+N
-  ato: 미적용
+  redundancy: N+1
+  ato: 적용
   online_og_chk: 적용
   offline_safety_chk: 적용
   sec_num: 4
   alarm_num: 5
   insul_1st_lvup: 미적용
-  high_insul_adt: 미적용
-  double_insul: 미적용
-  55k_install: 미적용
-  rip_install: 미적용
-  vacuum_set: 미적용
+  high_insul_adt: 적용
+  double_insul: 적용
+  55k_install: 적용
+  rip_install: 적용
+  vacuum_set: 적용
   today: '2026-09-12'
-  operation_year: 9.3
+  operation_year: 9.7
   age_minus: -9
-  load_minus: 0
+  load_minus: -20
   temp_minus: 0
-  dielec_str_te_avg: 41.56666666666666
+  dielec_str_te_avg: 51.21666666666667
   dielec_str_te_diag: 적합
   dielec_str_te_minus: 0
   acid_measure_desc: 적합
@@ -2621,20 +2445,196 @@
   thermal_img_minus: -8
   noise_minus: -2
   fire_minus: -8
-  fire_spread_minus: 0
+  fire_spread_minus: -12
   emerge_response_minus: 0
-  redundancy_minus: 0
-  ato_minus: -36
+  redundancy_minus: -18
+  ato_minus: 0
   online_og_minus: 0
   offline_safety_minus: 0
   sec_minus: 0
   alarm_minus: 0
   winding_minus: -16
-  prod_life_minus: -6
+  prod_life_minus: 0
+  connect_part_minus: 0
+  temp_inc_limit_minus: 0
+  test_reliability_minus: 0
+  bushing_minus: 0
+  oltc_minus: 0
+  dof_minus: -34
+  dof: 66
+- id: 29
+  factory_code: H2
+  EF_code: EF1
+  transformer_name: BANK12
+  voltage: 154000
+  ONAN_val: 35
+  ONAF_val: 100
+  operation_start_time: '2022-05-28'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 78
+  dga_c2h6: 0
+  dga_ch4: 36
+  dga_co: 87
+  dga_co2: 668
+  dga_o2: 15096
+  dga_n2: 42154
+  dga_fluc: -1
+  load_percent: 72.1
+  coil_max_temp: 48
+  dielec_str_te_1: 54.5
+  dielec_str_te_2: 59.5
+  dielec_str_te_3: 34.5
+  dielec_str_te_4: 41.5
+  dielec_str_te_5: 49.6
+  dielec_str_te_6: 40.2
+  acid_measure_val: 0.03
+  moisture_rslt: 15.3
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 3
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 정상
+  oltc_rslt: 13000
+  oltc_type: Oil
+  thermal_img_temp: 정상
+  noise_diag: 이상
+  fire_vul_type: 유입
+  fire_spread_loc: 옥외
+  emerge_response_1s: 가능
+  redundancy: N+N
+  ato: 미적용
+  online_og_chk: 적용
+  offline_safety_chk: 미적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 적용
+  high_insul_adt: 적용
+  double_insul: 미적용
+  55k_install: 적용
+  rip_install: 적용
+  vacuum_set: 미적용
+  today: '2026-09-12'
+  operation_year: 4.3
+  age_minus: -4
+  load_minus: -15
+  temp_minus: 0
+  dielec_str_te_avg: 46.63333333333333
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: 0
+  thermal_img_minus: 0
+  noise_minus: -2
+  fire_minus: -8
+  fire_spread_minus: -12
+  emerge_response_minus: 0
+  redundancy_minus: 0
+  ato_minus: -36
+  online_og_minus: 0
+  offline_safety_minus: -25
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: 0
+  prod_life_minus: 0
+  connect_part_minus: -2
+  temp_inc_limit_minus: 0
+  test_reliability_minus: 0
+  bushing_minus: 0
+  oltc_minus: 0
+  dof_minus: -71
+  dof: 29
+- id: 30
+  factory_code: H1
+  EF_code: EF5
+  transformer_name: TR18
+  voltage: 22900
+  ONAN_val: 80
+  ONAF_val: 37.5
+  operation_start_time: '2022-12-25'
+  dga_diag_time: '2020-06-01'
+  dga_h2: 0
+  dga_c2h2: 0
+  dga_c2h4: 2
+  dga_c2h6: 0
+  dga_ch4: 52
+  dga_co: 283
+  dga_co2: 900
+  dga_o2: 17100
+  dga_n2: 99337
+  dga_fluc: -17
+  load_percent: 12.5
+  coil_max_temp: 57
+  dielec_str_te_1: 47.9
+  dielec_str_te_2: 36.2
+  dielec_str_te_3: 45.7
+  dielec_str_te_4: 58.2
+  dielec_str_te_5: 38.2
+  dielec_str_te_6: 48.0
+  acid_measure_val: 0.02
+  moisture_rslt: 23.9
+  furan_diag_time: '2020-06-01'
+  furan_5H2F: 0
+  furan_2FOL: 0
+  furan_2FAL: 11
+  furan_2ACF: 0
+  furan_5M2F: 0
+  oltc_96T_diag: 정상
+  oltc_rslt: 6000
+  oltc_type: Oil
+  thermal_img_temp: 정상
+  noise_diag: 정상
+  fire_vul_type: 몰드
+  fire_spread_loc: 옥외
+  emerge_response_1s: 가능
+  redundancy: N+1
+  ato: 적용
+  online_og_chk: 적용
+  offline_safety_chk: 적용
+  sec_num: 4
+  alarm_num: 5
+  insul_1st_lvup: 적용
+  high_insul_adt: 적용
+  double_insul: 미적용
+  55k_install: 미적용
+  rip_install: 적용
+  vacuum_set: 적용
+  today: '2026-09-12'
+  operation_year: 3.7
+  age_minus: -3
+  load_minus: 0
+  temp_minus: 0
+  dielec_str_te_avg: 45.699999999999996
+  dielec_str_te_diag: 적합
+  dielec_str_te_minus: 0
+  acid_measure_desc: 적합
+  acid_measure_minus: 0
+  moisture_desc: 정상
+  moisture_minus: 0
+  part_discharge_minus: 0
+  thermal_img_minus: 0
+  noise_minus: 0
+  fire_minus: 0
+  fire_spread_minus: -12
+  emerge_response_minus: 0
+  redundancy_minus: -18
+  ato_minus: 0
+  online_og_minus: 0
+  offline_safety_minus: 0
+  sec_minus: 0
+  alarm_minus: 0
+  winding_minus: 0
+  prod_life_minus: 0
   connect_part_minus: -2
   temp_inc_limit_minus: -9
-  test_reliability_minus: -8
-  bushing_minus: -8
+  test_reliability_minus: 0
+  bushing_minus: 0
   oltc_minus: 0
-  dof_minus: -93
-  dof: 7
+  dof_minus: -29
+  dof: 71

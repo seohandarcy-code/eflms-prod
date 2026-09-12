@@ -27,6 +27,16 @@ def _gen_transformer_name():
     return f"{prefix}{next(_tr_name_counters[prefix])}"
 
 
+def _gen_applied(applied_ratio=0.8):
+    """설계기준 적용/미적용 목업 값. 현실적으로 대부분 적용된 상태를 기본으로 한다(적용 80% : 미적용 20%)."""
+    return random.choices(["적용", "미적용"], weights=[applied_ratio, 1 - applied_ratio])[0]
+
+
+def _gen_redundancy():
+    """예비화 등급. N+N(완전이중화) 50% / N+1(부분이중화) 30% / N+0(미이중화) 20%."""
+    return random.choices(["N+N", "N+1", "N+0"], weights=[0.5, 0.3, 0.2])[0]
+
+
 INPUT_COLUMNS = [
     {"name": "factory_code", "dtype": "str", "generator": lambda: random.choice(["H1", "H2", "K1", "P1"])},
     {"name": "EF_code", "dtype": "str", "generator": lambda: EF_CODE},
@@ -76,19 +86,19 @@ INPUT_COLUMNS = [
     {"name": "fire_vul_type", "dtype": "str", "generator": lambda: random.choice(["유입", "몰드"])},
     {"name": "fire_spread_loc", "dtype": "str", "generator": lambda: random.choice(["옥내", "옥외"])},
     {"name": "emerge_response_1s", "dtype": "str", "generator": lambda: random.choice(["가능", "불가"])},
-    {"name": "redundancy", "dtype": "str", "generator": lambda: random.choice(["N+N", "N+1,N+0"])},
-    {"name": "ato", "dtype": "str", "generator": lambda: random.choice(["적용", "미적용"])},
-    {"name": "online_og_chk", "dtype": "str", "generator": lambda: random.choice(["적용", "미적용"])},
-    {"name": "offline_safety_chk", "dtype": "str", "generator": lambda: random.choice(["적용", "미적용"])},
+    {"name": "redundancy", "dtype": "str", "generator": _gen_redundancy},
+    {"name": "ato", "dtype": "str", "generator": _gen_applied},
+    {"name": "online_og_chk", "dtype": "str", "generator": _gen_applied},
+    {"name": "offline_safety_chk", "dtype": "str", "generator": _gen_applied},
     {"name": "sec_num", "dtype": "int", "generator": lambda: random.choice([4])},
     {"name": "alarm_num", "dtype": "int", "generator": lambda: random.choice([5])},
-    {"name": "insul_1st_lvup", "dtype": "str", "generator": lambda: random.choice(["적용", "미적용"])},
-    {"name": "high_insul_adt", "dtype": "str", "generator": lambda: random.choice(["적용", "미적용"])},
-    {"name": "double_insul", "dtype": "str", "generator": lambda: random.choice(["적용", "미적용"])},
-    {"name": "55k_install", "dtype": "str", "generator": lambda: random.choice(["적용", "미적용"])},
-    {"name": "sfra_test", "dtype": "str", "generator": lambda: random.choice(["적용", "미적용"])},
-    {"name": "rip_install", "dtype": "str", "generator": lambda: random.choice(["적용", "미적용"])},
-    {"name": "vacuum_set", "dtype": "str", "generator": lambda: random.choice(["적용", "미적용"])},
+    {"name": "insul_1st_lvup", "dtype": "str", "generator": _gen_applied},
+    {"name": "high_insul_adt", "dtype": "str", "generator": _gen_applied},
+    {"name": "double_insul", "dtype": "str", "generator": _gen_applied},
+    {"name": "55k_install", "dtype": "str", "generator": _gen_applied},
+    {"name": "sfra_test", "dtype": "str", "generator": _gen_applied},
+    {"name": "rip_install", "dtype": "str", "generator": _gen_applied},
+    {"name": "vacuum_set", "dtype": "str", "generator": _gen_applied},
 ]
 
 
