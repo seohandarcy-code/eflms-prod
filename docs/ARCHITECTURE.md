@@ -56,3 +56,23 @@ mock 생성기(ref_data 로직 이식)     ─┐
 
 - Vue 3 + Vite + Pinia(상태관리) + Element Plus(UI 컴포넌트).
 - 화면 구성은 [design/Main.dc.html](../design/Main.dc.html)에 확정된 Direction A(관제실형 테이블 + PoF/CoF/DoF 3축 분포도 + 카드형 설비 목록)를 기준으로 한다.
+
+## API 문서화
+
+- FastAPI가 자동 생성하는 OpenAPI 스펙을 프론트-백엔드 계약으로 사용한다. 별도의 API 문서를 손으로 관리하지 않는다.
+- 필요 시 `openapi-typescript`로 Vue 쪽 요청/응답 타입을 OpenAPI 스펙에서 자동 생성하는 방안을 Stage C 착수 시점에 결정한다(도입 여부만 미정, 스펙 자체는 항상 존재).
+
+## CORS 정책
+
+- 지금(로컬 개발)은 `CORS_ORIGINS`에 `http://localhost:5173`(Vite dev server)만 허용한다.
+- 사내 devops 플랫폼에 배포될 때는 실제 도메인으로 `CORS_ORIGINS` 값만 교체한다(콤마로 여러 오리진 구분 가능) — 코드 변경 없이 env만으로 대응.
+
+## 로깅 & 헬스체크
+
+- `/healthz` 엔드포인트를 스캐폴딩 단계부터 만들어 둔다 — 사내 devops 플랫폼이 배포 상태를 점검할 때 보통 요구하는 최소 요건이다.
+- 로그는 구조화(JSON) 형식으로 남겨서, 나중에 사내 로그 수집 시스템과 연동하기 쉽게 한다.
+
+## 테스트 전략
+
+- 백엔드: pytest. 프론트: vitest.
+- 1단계(Stage C 초기)는 최소한의 스모크 테스트로 시작한다 — 주요 API가 200을 응답하는지, 시드 스크립트가 에러 없이 끝나는지 정도. 기능이 늘어나면 점진적으로 확대한다.

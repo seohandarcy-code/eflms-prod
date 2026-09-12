@@ -25,7 +25,7 @@
   - [DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md) — 입력/계산 컬럼 정의 및 테이블 매핑
   - [ROADMAP.md](docs/ROADMAP.md) — 단계별 계획
   - [SECURITY_ENV.md](docs/SECURITY_ENV.md) — env 변수 목록 (일반/시크릿 구분)
-- (추후) `backend/`, `frontend/` — Stage C에서 생성 예정
+- (추후) `backend/`, `frontend/` — Stage C에서 생성 예정. 생성 시점에 각 폴더 전용 `backend/CLAUDE.md`, `frontend/CLAUDE.md`도 함께 작성한다(컨벤션, 실행 방법 등 해당 폴더에 국한된 내용).
 
 ## 작업 방식
 
@@ -36,4 +36,14 @@
 
 - 커스텀 서브에이전트는 아직 불필요. 화면/UI 작업은 `design` 스킬, 차트·시각화는 `dataviz` 스킬을 사용한다.
 - 반복적인 다단계 작업(예: 시드 재실행 + 검증)이 Stage C 구현 중 실제로 생기면, 그때 전용 스킬이나 `/loop` 활용을 다시 검토한다.
-- 코드 변경 후에는 `/code-review`로 점검하는 것을 기본으로 한다.
+- **`run` 스킬**: Stage C에서 `backend/`(uvicorn)와 `frontend/`(vite dev server) 폴더가 생기면, 둘을 함께 기동하는 방법을 프로젝트 전용 `run` 스킬로 정의해서 매번 "서버 켜줘" 할 때 반복 설명이 필요 없게 한다.
+- 코드 변경 후에는 `/code-review`로 점검하는 것을 기본으로 하며, 이 프로젝트에서 특히 아래 규칙을 지킨다(리뷰 시 우선 확인):
+  - 시크릿을 코드에 하드코딩하지 않는다 — 항상 `.env`를 통해서만 주입한다.
+  - 라우터/화면 코드에서 DB에 직접 쿼리하지 않는다 — 반드시 repository/service 계층을 경유한다.
+  - `ref_data/`는 참고자료다. 직접 수정하지 않는다.
+  - 새 설비유형(EF2~)을 추가할 때 기존 EF1 코드나 공통 테이블(`equipment_type`/`equipment`/`score_snapshot`)을 변경하지 않는다 — 새 모듈/테이블만 추가한다.
+- **루프/스케줄(`/loop`, `/schedule`) 활용 계획**: 지금은 실행할 코드/배포가 없어 적용 대상이 없다. Stage C 이후 실제로 쓸 곳:
+  1. 사내 입력파일 정기 임포트 — `import_service`를 고정 주기(예: 일 1회)로 실행하는 스케줄 에이전트(`/schedule`), 결과(갱신 건수·미등록 컬럼 리포트)를 요약해서 알림
+  2. 점검필요 설비 변경 감지 — `score_snapshot`을 주기적으로 확인해 새로 점검필요 상태가 된 설비를 알리는 스케줄 에이전트
+  3. PR 유지보수 — git 원격 저장소와 CI가 생긴 뒤, 진행 중인 PR의 CI/리뷰 코멘트를 계속 관리하는 `/loop` (babysit-pr 패턴)
+  4. 개발 중 반복 검증 — 특정 기능을 구현하는 동안 빌드/테스트를 짧은 주기로 반복 확인하는 용도로 임시 `/loop` 사용(작업 끝나면 중단)

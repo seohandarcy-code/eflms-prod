@@ -8,7 +8,7 @@
 |---|---|---|
 | `APP_ENV` | `development` | 실행 환경 구분 |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./eflms.db` | 운영 전환 시 `postgresql+asyncpg://...`로 값만 교체 |
-| `CORS_ORIGINS` | `http://localhost:5173` | 프론트 개발 서버 |
+| `CORS_ORIGINS` | `http://localhost:5173` | 프론트 개발 서버. 콤마(`,`)로 여러 오리진 구분 가능. 배포 시에는 실제 사내 도메인 목록으로 값만 교체(코드 변경 없음) |
 | `AUTH_MODE` | `none` | `none` → `local` → `sso` 순으로 전환 예정 |
 
 ## 시크릿 (이름만 예약, 값은 아직 없음 — 발급/생성은 추후 단계)

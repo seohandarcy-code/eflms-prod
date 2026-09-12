@@ -9,6 +9,7 @@
   - PoF·CoF·DoF 3축 분포도 + 점검필요 판정(각 축 중 하나라도 기준 미달: PoF<20 또는 CoF<30 또는 DoF<20) + 점검필요 순위/사유 리스트
   - 설비 목록 카드 + 클릭 시 인라인 상세 확장
 - 인증 없음(자리만 확보), env는 최소 세트(`DATABASE_URL` 등)
+- 체크리스트: `backend/`, `frontend/` 폴더 생성 시 `backend/CLAUDE.md`, `frontend/CLAUDE.md`, `/healthz` 엔드포인트, 최소 스모크 테스트(pytest/vitest)를 함께 만든다
 
 ## Phase 2 — 운영 데이터 연동
 
