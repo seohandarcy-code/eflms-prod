@@ -2,14 +2,13 @@
 
 ## Phase 1 — 현재: mock 데이터 기반 대시보드 (EF1 한정)
 
-- SQLite에 `ref_data` 목업 로직으로 만든 EF1(변압기) 데이터만 시드
-- FastAPI 조회 API (설비 목록/상세/집계)
-- Vue 대시보드: [design/Main.dc.html](../design/Main.dc.html)에 확정된 화면
-  - KPI(전체 설비 / 최근 데이터 갱신)
-  - PoF·CoF·DoF 3축 분포도 + 점검필요 판정(각 축 중 하나라도 기준 미달: PoF<20 또는 CoF<30 또는 DoF<20) + 점검필요 순위/사유 리스트
-  - 설비 목록 카드 + 클릭 시 인라인 상세 확장
+- [x] C-1 스캐폴딩 (backend/frontend, `/healthz`, 각 `CLAUDE.md`)
+- [x] C-2 DB 모델 + 초기 Alembic 마이그레이션
+- [x] C-3 EF1 계산기 이식(`ef1_transformer.py`) + 공용 적재 매퍼(`ingest.py`) + 시드 스크립트(`seed.py`)
+- [x] C-4 최소 API (`/api/equipment`, `/api/equipment/{id}`, `/api/summary`)
+- [x] C-5 Vue 대시보드 구현 (Direction A: KPI, PoF·CoF·DoF 3축 분포도, 점검필요 순위/사유, 카드형 목록+인라인 상세확장) — 실제 API 연동, **브라우저 육안 확인은 아직 안 함**(이 세션에 브라우저 도구 없음)
+- [ ] C-6 스모크 테스트(pytest/vitest) + 실제 브라우저 확인
 - 인증 없음(자리만 확보), env는 최소 세트(`DATABASE_URL` 등)
-- 체크리스트(C-1 완료분): `backend/CLAUDE.md` ✅, `frontend/CLAUDE.md` ✅, `/healthz` ✅ — 스모크 테스트(pytest/vitest)는 C-6에서 작성
 
 ## Phase 2 — 운영 데이터 연동
 
