@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getTopReasons } from "./scoreBreakdown";
+import { getReasonsByAxis } from "./scoreBreakdown";
 import type { ScoreDetail } from "../types/equipment";
 
 function makeScoreDetail(overrides: Partial<ScoreDetail> = {}): ScoreDetail {
@@ -57,27 +57,42 @@ function makeScoreDetail(overrides: Partial<ScoreDetail> = {}): ScoreDetail {
   };
 }
 
-describe("getTopReasons", () => {
-  it("returns the largest deductions first and excludes zero-value fields", () => {
-    const detail = makeScoreDetail({ redundancy_minus: -36, fire_minus: -8, dga_minus: -12 });
-    const reasons = getTopReasons(detail, 3);
+describe("getReasonsByAxis", () => {
+  it("sorts each axis's reasons by largest deduction first and excludes zero-value fields", () => {
+    const detail = makeScoreDetail({ dga_minus: -12, load_minus: -5, temp_minus: 0 });
+    const { pof } = getReasonsByAxis(detail);
 
-    expect(reasons.map((r) => r.value)).toEqual([-36, -12, -8]);
-    expect(reasons[0].label).toBe("예비화");
-    expect(reasons.every((r) => r.value < 0)).toBe(true);
+    expect(pof.map((r) => r.value)).toEqual([-12, -5]);
+    expect(pof[0].label).toBe("DGA(유중가스)");
   });
 
-  it("returns an empty list when nothing was deducted", () => {
-    expect(getTopReasons(makeScoreDetail(), 3)).toEqual([]);
+  it("routes fields to the correct axis (pof/cof/dof never mix)", () => {
+    const detail = makeScoreDetail({
+      dga_minus: -12, // pof
+      fire_minus: -8, // cof
+      redundancy_minus: -36, // dof
+    });
+    const { pof, cof, dof } = getReasonsByAxis(detail);
+
+    expect(pof.map((r) => r.label)).toEqual(["DGA(유중가스)"]);
+    expect(cof.map((r) => r.label)).toEqual(["화재취약성"]);
+    expect(dof.map((r) => r.label)).toEqual(["예비화"]);
   });
 
-  it("respects the limit parameter", () => {
+  it("returns empty arrays for axes with nothing deducted", () => {
+    const { pof, cof, dof } = getReasonsByAxis(makeScoreDetail());
+    expect(pof).toEqual([]);
+    expect(cof).toEqual([]);
+    expect(dof).toEqual([]);
+  });
+
+  it("includes every nonzero reason for an axis, not just the top few", () => {
     const detail = makeScoreDetail({
       redundancy_minus: -36,
       ato_minus: -36,
       online_og_minus: -30,
-      fire_minus: -8,
+      offline_safety_minus: -25,
     });
-    expect(getTopReasons(detail, 2)).toHaveLength(2);
+    expect(getReasonsByAxis(detail).dof).toHaveLength(4);
   });
 });

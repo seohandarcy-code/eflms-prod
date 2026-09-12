@@ -4,16 +4,19 @@ import { useEquipmentStore } from "../stores/equipment";
 import RiskScatterChart from "../components/RiskScatterChart.vue";
 import EquipmentCard from "../components/EquipmentCard.vue";
 import EquipmentDetailPanel from "../components/EquipmentDetailPanel.vue";
-import { getTopReasons } from "../utils/scoreBreakdown";
+import { getReasonsByAxis } from "../utils/scoreBreakdown";
+import type { ReasonsByAxis } from "../utils/scoreBreakdown";
 
 const store = useEquipmentStore();
 const selectedId = ref<number | null>(null);
 const factories = ["H1", "H2", "K1", "P1"];
 
+const EMPTY_REASONS: ReasonsByAxis = { pof: [], cof: [], dof: [] };
+
 const detailReasons = computed(() =>
   store.needsInspectionList.map((item) => ({
     item,
-    reasons: store.detailCache[item.equipment_id] ? getTopReasons(store.detailCache[item.equipment_id].score_detail, 3) : [],
+    reasons: store.detailCache[item.equipment_id] ? getReasonsByAxis(store.detailCache[item.equipment_id].score_detail) : EMPTY_REASONS,
   })),
 );
 
@@ -102,14 +105,29 @@ function formatDateTime(value: string | null): string {
                       <span class="reason-score">{{ entry.item.total_score.toFixed(1) }}</span>
                     </div>
                     <div class="reason-meta">{{ entry.item.factory_code }} · {{ entry.item.voltage.toLocaleString() }}V</div>
-                    <div class="reason-scores">
-                      <span>PoF <b>{{ entry.item.pof }}</b></span>
-                      <span>CoF <b>{{ entry.item.cof }}</b></span>
-                      <span>DoF <b>{{ entry.item.dof }}</b></span>
-                    </div>
-                    <div class="reason-sub">주요 감점 사유</div>
-                    <div v-for="(reason, i) in entry.reasons" :key="reason.label" class="reason-item">
-                      {{ i + 1 }}. {{ reason.label }} <span class="neg">{{ reason.value }}</span>
+
+                    <div class="axis-grid">
+                      <div class="axis-col">
+                        <div class="axis-head" :class="{ fail: entry.item.pof < 20 }">PoF <b>{{ entry.item.pof }}</b></div>
+                        <div v-for="reason in entry.reasons.pof" :key="reason.label" class="axis-reason">
+                          {{ reason.label }} <span class="neg">{{ reason.value }}</span>
+                        </div>
+                        <div v-if="entry.reasons.pof.length === 0" class="axis-empty">감점 없음</div>
+                      </div>
+                      <div class="axis-col">
+                        <div class="axis-head" :class="{ fail: entry.item.cof < 30 }">CoF <b>{{ entry.item.cof }}</b></div>
+                        <div v-for="reason in entry.reasons.cof" :key="reason.label" class="axis-reason">
+                          {{ reason.label }} <span class="neg">{{ reason.value }}</span>
+                        </div>
+                        <div v-if="entry.reasons.cof.length === 0" class="axis-empty">감점 없음</div>
+                      </div>
+                      <div class="axis-col">
+                        <div class="axis-head" :class="{ fail: entry.item.dof < 20 }">DoF <b>{{ entry.item.dof }}</b></div>
+                        <div v-for="reason in entry.reasons.dof" :key="reason.label" class="axis-reason">
+                          {{ reason.label }} <span class="neg">{{ reason.value }}</span>
+                        </div>
+                        <div v-if="entry.reasons.dof.length === 0" class="axis-empty">감점 없음</div>
+                      </div>
                     </div>
                   </div>
                   <div v-if="detailReasons.length === 0" class="muted">점검필요 설비가 없습니다</div>
@@ -301,7 +319,7 @@ function formatDateTime(value: string | null): string {
 }
 .risk-body {
   display: grid;
-  grid-template-columns: minmax(0, 2.2fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(0, 1.5fr) minmax(380px, 1.3fr);
   height: 540px;
 }
 .chart-col {
@@ -358,29 +376,44 @@ function formatDateTime(value: string | null): string {
   font-weight: 700;
   color: #c4392b;
 }
-.reason-scores {
-  display: flex;
-  gap: 12px;
-  font-size: 11px;
-  color: #8891a0;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  margin-bottom: 6px;
-}
-.reason-scores b {
-  color: #1a2230;
-  font-weight: 600;
-}
 .reason-meta {
   font-size: 11px;
   color: #8891a0;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
-.reason-sub {
-  font-size: 12px;
+.axis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 10px;
+}
+.axis-col {
+  min-width: 0;
+  border-left: 1px solid #f0cfc9;
+  padding-left: 8px;
+}
+.axis-col:first-child {
+  border-left: none;
+  padding-left: 0;
+}
+.axis-head {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
   color: #4a5361;
+  margin-bottom: 4px;
 }
-.reason-item {
-  font-size: 12px;
+.axis-head.fail {
+  color: #c4392b;
+}
+.axis-reason {
+  font-size: 10.5px;
+  color: #4a5361;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+.axis-empty {
+  font-size: 10.5px;
+  color: #b4bac4;
 }
 .neg {
   font-family: "IBM Plex Mono", ui-monospace, monospace;

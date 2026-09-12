@@ -1,6 +1,6 @@
 import type { ScoreDetail } from "../types/equipment";
 
-const MINUS_FIELD_LABELS: Partial<Record<keyof ScoreDetail, string>> = {
+const POF_FIELD_LABELS: Partial<Record<keyof ScoreDetail, string>> = {
   age_minus: "경과연수",
   dga_minus: "DGA(유중가스)",
   load_minus: "부하율",
@@ -14,6 +14,9 @@ const MINUS_FIELD_LABELS: Partial<Record<keyof ScoreDetail, string>> = {
   oltc_minus: "OLTC 동작진단",
   thermal_img_minus: "열화상",
   noise_minus: "이상소음",
+};
+
+const COF_FIELD_LABELS: Partial<Record<keyof ScoreDetail, string>> = {
   first_voltage_minus: "1차전압",
   productivity_minus: "생산성 영향(용량×부하율)",
   fire_minus: "화재취약성",
@@ -21,6 +24,9 @@ const MINUS_FIELD_LABELS: Partial<Record<keyof ScoreDetail, string>> = {
   emerge_response_minus: "비상대응시간",
   rep_cost_minus: "교체비용",
   rep_time_minus: "교체기간",
+};
+
+const DOF_FIELD_LABELS: Partial<Record<keyof ScoreDetail, string>> = {
   redundancy_minus: "예비화",
   ato_minus: "계통자동전환",
   online_og_minus: "온라인 유중가스",
@@ -41,14 +47,28 @@ export interface ScoreReason {
   value: number;
 }
 
-/** 감점 절댓값이 큰 순서(내림차순)로 상위 N개 사유를 반환한다. 0인 항목은 제외. */
-export function getTopReasons(detail: ScoreDetail, limit = 3): ScoreReason[] {
+export interface ReasonsByAxis {
+  pof: ScoreReason[];
+  cof: ScoreReason[];
+  dof: ScoreReason[];
+}
+
+function collectReasons(detail: ScoreDetail, fields: Partial<Record<keyof ScoreDetail, string>>): ScoreReason[] {
   const reasons: ScoreReason[] = [];
-  for (const [field, label] of Object.entries(MINUS_FIELD_LABELS)) {
+  for (const [field, label] of Object.entries(fields)) {
     const value = detail[field as keyof ScoreDetail] as number;
     if (typeof value === "number" && value < 0) {
       reasons.push({ label, value });
     }
   }
-  return reasons.sort((a, b) => a.value - b.value).slice(0, limit);
+  return reasons.sort((a, b) => a.value - b.value);
+}
+
+/** PoF/CoF/DoF 축별로 감점 사유 전부(0인 항목 제외)를 감점 큰 순으로 반환한다. */
+export function getReasonsByAxis(detail: ScoreDetail): ReasonsByAxis {
+  return {
+    pof: collectReasons(detail, POF_FIELD_LABELS),
+    cof: collectReasons(detail, COF_FIELD_LABELS),
+    dof: collectReasons(detail, DOF_FIELD_LABELS),
+  };
 }
