@@ -21,6 +21,10 @@ onMounted(async () => {
   await store.load();
   // 점검필요 순위 리스트의 감점 사유를 보여주기 위해 상세를 미리 불러온다.
   await Promise.all(store.needsInspectionList.map((item) => store.loadDetail(item.equipment_id)));
+  // 기본값: 종합점수가 가장 낮은(가장 시급한) 설비를 자동 선택
+  if (selectedId.value === null && store.equipmentList.length > 0) {
+    selectedId.value = store.equipmentList[0].equipment_id;
+  }
 });
 
 function selectCard(equipmentId: number) {
@@ -80,7 +84,7 @@ function formatDateTime(value: string | null): string {
             </div>
             <div class="risk-body">
               <div class="chart-col">
-                <RiskScatterChart :equipment-list="store.equipmentList" />
+                <RiskScatterChart :equipment-list="store.equipmentList" :selected-id="selectedId" @select="selectCard" />
               </div>
               <div class="reason-col">
                 <div class="reason-title">점검필요 순위 · 종합점수 낮은순</div>
@@ -110,22 +114,23 @@ function formatDateTime(value: string | null): string {
 
           <div class="list-header">
             <div class="list-title">설비 목록</div>
-            <div class="list-hint">전체 {{ store.equipmentList.length }}건 · 정렬: 종합점수 낮은순 · 카드를 클릭하면 상세정보가 펼쳐집니다</div>
+            <div class="list-hint">전체 {{ store.equipmentList.length }}건 · 정렬: 종합점수 낮은순 · 카드를 클릭하면(또는 위 3D 그래프의 점을 클릭하면) 아래 상세정보가 갱신됩니다</div>
           </div>
+
+          <EquipmentDetailPanel v-if="selectedId !== null" :equipment-id="selectedId" />
 
           <div class="card-grid">
             <EquipmentCard
               v-for="item in store.equipmentList"
               :key="item.equipment_id"
               :summary="item"
+              :active="selectedId === item.equipment_id"
               @select="selectCard"
             />
           </div>
         </template>
       </main>
     </div>
-
-    <EquipmentDetailPanel v-if="selectedId !== null" :equipment-id="selectedId" @close="selectedId = null" />
   </div>
 </template>
 

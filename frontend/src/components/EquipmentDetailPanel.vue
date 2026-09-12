@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { ref, watch } from "vue";
 import { useEquipmentStore } from "../stores/equipment";
 import type { EquipmentDetail } from "../types/equipment";
 
 const props = defineProps<{ equipmentId: number }>();
-const emit = defineEmits<{ close: [] }>();
 
 const store = useEquipmentStore();
 const detail = ref<EquipmentDetail | null>(store.detailCache[props.equipmentId] ?? null);
@@ -32,36 +31,26 @@ function clampWidth(value: number): number {
 function formatMonth(isoDate: string): string {
   return isoDate.slice(0, 7);
 }
-
-function handleKeydown(event: KeyboardEvent) {
-  if (event.key === "Escape") emit("close");
-}
-
-onMounted(() => window.addEventListener("keydown", handleKeydown));
-onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
 </script>
 
 <template>
-  <div class="backdrop" @click="emit('close')">
-    <aside class="panel" @click.stop>
-      <div v-if="loading || !detail" class="loading">불러오는 중...</div>
-      <template v-else>
-        <div class="panel-head">
-          <div>
-            <div class="name">{{ detail.transformer_name }}</div>
-            <span class="chip" :style="{ background: detail.needs_inspection ? '#FBE7E4' : '#E4F3EA', color: detail.needs_inspection ? '#C4392B' : '#1B8A5A' }">
-              {{ detail.needs_inspection ? "점검필요" : "정상" }}
-            </span>
-          </div>
-          <button class="close-btn" type="button" @click="emit('close')" aria-label="닫기">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6 L18 18 M18 6 L6 18"/></svg>
-          </button>
+  <div class="panel">
+    <div v-if="loading || !detail" class="loading">불러오는 중...</div>
+    <template v-else>
+      <div class="eyebrow">선택된 설비</div>
+      <div class="panel-head">
+        <div class="name-row">
+          <span class="name">{{ detail.transformer_name }}</span>
+          <span class="chip" :style="{ background: detail.needs_inspection ? '#FBE7E4' : '#E4F3EA', color: detail.needs_inspection ? '#C4392B' : '#1B8A5A' }">
+            {{ detail.needs_inspection ? "점검필요" : "정상" }}
+          </span>
         </div>
-
         <div class="meta">
           {{ detail.factory_code }} · {{ detail.voltage.toLocaleString() }}V · ONAN {{ detail.onan_val }}MVA · 가동 {{ formatMonth(detail.operation_start_time) }}
         </div>
+      </div>
 
+      <div class="body">
         <div class="score-bars">
           <span>PoF</span>
           <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.pof) + '%', background: detail.score.pof < 20 ? '#C4392B' : '#3E8E8E' }" /></div>
@@ -73,8 +62,6 @@ onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
           <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.dof) + '%', background: detail.score.dof < 20 ? '#C4392B' : '#3E8E8E' }" /></div>
           <span class="bar-value mono">{{ detail.score.dof }}</span>
         </div>
-
-        <div class="divider"></div>
 
         <div class="detail-grid">
           <div class="detail-col">
@@ -98,58 +85,48 @@ onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
             <div class="muted">온라인 유중가스 {{ detail.design.online_og_chk }} · 안전공사 정밀점검 {{ detail.design.offline_safety_chk }}</div>
           </div>
         </div>
-      </template>
-    </aside>
+      </div>
+    </template>
   </div>
 </template>
 
 <style scoped>
-.backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 20, 30, 0.32);
-  z-index: 50;
-  display: flex;
-  justify-content: flex-end;
-  animation: fade-in 0.15s ease-out;
-}
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-}
 .panel {
-  width: 420px;
-  max-width: 92vw;
-  height: 100%;
   background: #fff;
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
-  padding: 24px;
-  overflow-y: auto;
-  animation: slide-in 0.2s ease-out;
+  border: 1px solid #c4392b;
+  box-shadow: 0 0 0 2px rgba(196, 57, 43, 0.12);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
   font-family: "IBM Plex Sans", system-ui, sans-serif;
   color: #1a2230;
 }
-@keyframes slide-in {
-  from {
-    transform: translateX(24px);
-    opacity: 0;
-  }
-}
 .loading {
   color: #8891a0;
-  padding-top: 40px;
-  text-align: center;
+  padding: 16px 0;
+}
+.eyebrow {
+  font: 600 11px "IBM Plex Sans";
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #c4392b;
+  margin-bottom: 8px;
 }
 .panel-head {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .name {
   font-size: 18px;
   font-weight: 700;
-  margin-bottom: 6px;
 }
 .chip {
   display: inline-flex;
@@ -158,26 +135,20 @@ onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
   font-size: 12px;
   font-weight: 600;
 }
-.close-btn {
-  border: none;
-  background: none;
-  color: #8891a0;
-  cursor: pointer;
-  padding: 4px;
-  line-height: 0;
-}
-.close-btn:hover {
-  color: #1a2230;
-}
 .meta {
   font-size: 12px;
   color: #8891a0;
-  margin: 10px 0 16px;
+}
+.body {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
 }
 .score-bars {
   display: grid;
-  grid-template-columns: 40px 1fr 34px;
-  gap: 6px 10px;
+  grid-template-columns: 34px 1fr 34px;
+  gap: 8px 10px;
   align-items: center;
   font-size: 12px;
   color: #8891a0;
@@ -196,14 +167,9 @@ onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
   color: #4a5361;
   text-align: right;
 }
-.divider {
-  height: 1px;
-  background: #eef0f3;
-  margin: 18px 0;
-}
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
   font-size: 12.5px;
 }

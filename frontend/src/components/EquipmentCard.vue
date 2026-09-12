@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import type { EquipmentSummary } from "../types/equipment";
 
-const props = defineProps<{ summary: EquipmentSummary }>();
+const props = defineProps<{ summary: EquipmentSummary; active?: boolean }>();
 const emit = defineEmits<{ select: [equipmentId: number] }>();
 
 function clampWidth(value: number): number {
@@ -13,7 +13,7 @@ const statusColor = computed(() => (props.summary.needs_inspection ? "#C4392B" :
 </script>
 
 <template>
-  <div class="equipment-card" @click="emit('select', summary.equipment_id)">
+  <div class="equipment-card" :class="{ active }" @click="emit('select', summary.equipment_id)">
     <div class="card-head">
       <div>
         <span class="name">{{ summary.transformer_name }}</span>
@@ -56,6 +56,10 @@ const statusColor = computed(() => (props.summary.needs_inspection ? "#C4392B" :
   border-radius: 8px;
   padding: 16px;
   cursor: pointer;
+}
+.equipment-card.active {
+  border-color: #c4392b;
+  box-shadow: 0 0 0 2px rgba(196, 57, 43, 0.15);
 }
 .equipment-card:hover {
   border-color: #c7ccd3;
