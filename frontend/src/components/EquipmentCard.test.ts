@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { mount } from "@vue/test-utils";
-import { createPinia, setActivePinia } from "pinia";
 import EquipmentCard from "./EquipmentCard.vue";
 import type { EquipmentSummary } from "../types/equipment";
 
@@ -18,27 +17,23 @@ const summary: EquipmentSummary = {
   last_diag_date: "2026-01-01",
 };
 
-beforeEach(() => {
-  setActivePinia(createPinia());
-});
-
 describe("EquipmentCard", () => {
-  it("renders the transformer name and status when collapsed", () => {
-    const wrapper = mount(EquipmentCard, { props: { summary, expanded: false } });
+  it("renders the transformer name and status", () => {
+    const wrapper = mount(EquipmentCard, { props: { summary } });
     expect(wrapper.text()).toContain("TR1");
     expect(wrapper.text()).toContain("정상");
   });
 
   it("shows a 점검필요 chip when the equipment needs inspection", () => {
     const wrapper = mount(EquipmentCard, {
-      props: { summary: { ...summary, needs_inspection: true }, expanded: false },
+      props: { summary: { ...summary, needs_inspection: true } },
     });
     expect(wrapper.text()).toContain("점검필요");
   });
 
-  it("emits toggle with the equipment id when clicked", async () => {
-    const wrapper = mount(EquipmentCard, { props: { summary, expanded: false } });
+  it("emits select with the equipment id when clicked", async () => {
+    const wrapper = mount(EquipmentCard, { props: { summary } });
     await wrapper.trigger("click");
-    expect(wrapper.emitted("toggle")?.[0]).toEqual([1]);
+    expect(wrapper.emitted("select")?.[0]).toEqual([1]);
   });
 });

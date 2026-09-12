@@ -3,10 +3,11 @@ import { computed, onMounted, ref } from "vue";
 import { useEquipmentStore } from "../stores/equipment";
 import RiskScatterChart from "../components/RiskScatterChart.vue";
 import EquipmentCard from "../components/EquipmentCard.vue";
+import EquipmentDetailPanel from "../components/EquipmentDetailPanel.vue";
 import { getTopReasons } from "../utils/scoreBreakdown";
 
 const store = useEquipmentStore();
-const expandedId = ref<number | null>(null);
+const selectedId = ref<number | null>(null);
 const factories = ["H1", "H2", "K1", "P1"];
 
 const detailReasons = computed(() =>
@@ -22,8 +23,8 @@ onMounted(async () => {
   await Promise.all(store.needsInspectionList.map((item) => store.loadDetail(item.equipment_id)));
 });
 
-function toggleCard(equipmentId: number) {
-  expandedId.value = expandedId.value === equipmentId ? null : equipmentId;
+function selectCard(equipmentId: number) {
+  selectedId.value = equipmentId;
 }
 
 function formatDateTime(value: string | null): string {
@@ -117,13 +118,14 @@ function formatDateTime(value: string | null): string {
               v-for="item in store.equipmentList"
               :key="item.equipment_id"
               :summary="item"
-              :expanded="expandedId === item.equipment_id"
-              @toggle="toggleCard"
+              @select="selectCard"
             />
           </div>
         </template>
       </main>
     </div>
+
+    <EquipmentDetailPanel v-if="selectedId !== null" :equipment-id="selectedId" @close="selectedId = null" />
   </div>
 </template>
 
@@ -289,6 +291,7 @@ function formatDateTime(value: string | null): string {
 .risk-body {
   display: grid;
   grid-template-columns: minmax(0, 2.2fr) minmax(280px, 1fr);
+  height: 540px;
 }
 .chart-col {
   padding: 18px 10px 8px 18px;
@@ -298,6 +301,7 @@ function formatDateTime(value: string | null): string {
   padding: 18px 22px;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   min-width: 0;
 }
 .reason-title {
@@ -313,7 +317,8 @@ function formatDateTime(value: string | null): string {
   margin-bottom: 10px;
 }
 .reason-scroll {
-  max-height: 300px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding-right: 6px;
 }

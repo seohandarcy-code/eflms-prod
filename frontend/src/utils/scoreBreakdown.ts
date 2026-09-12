@@ -52,34 +52,3 @@ export function getTopReasons(detail: ScoreDetail, limit = 3): ScoreReason[] {
   }
   return reasons.sort((a, b) => a.value - b.value).slice(0, limit);
 }
-
-export interface ProjectedPoint {
-  x: number;
-  y: number;
-}
-
-const ORIGIN = { x: 280, y: 190 };
-const SCALE = 1.3;
-const COS30 = Math.cos(Math.PI / 6);
-const SIN30 = 0.5;
-
-function clampAxis(value: number): number {
-  return Math.max(0, Math.min(100, value));
-}
-
-/** 등각(isometric) 3축(PoF/CoF/DoF) 투영. viewBox "0 0 560 300" 기준. 축 범위 밖 값은 표시용으로 0~100에 잘라낸다. */
-export function projectScorePoint(pof: number, cof: number, dof: number): ProjectedPoint {
-  const p = clampAxis(pof);
-  const c = clampAxis(cof);
-  const d = clampAxis(dof);
-  return {
-    x: ORIGIN.x + (p - c) * COS30 * SCALE,
-    y: ORIGIN.y + (p + c) * SIN30 * SCALE - d * SCALE,
-  };
-}
-
-export function axisEndPoint(axis: "pof" | "cof" | "dof", value = 100): ProjectedPoint {
-  if (axis === "pof") return projectScorePoint(value, 0, 0);
-  if (axis === "cof") return projectScorePoint(0, value, 0);
-  return projectScorePoint(0, 0, value);
-}

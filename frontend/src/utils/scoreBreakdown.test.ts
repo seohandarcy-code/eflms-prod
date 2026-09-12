@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getTopReasons, projectScorePoint } from "./scoreBreakdown";
+import { getTopReasons } from "./scoreBreakdown";
 import type { ScoreDetail } from "../types/equipment";
 
 function makeScoreDetail(overrides: Partial<ScoreDetail> = {}): ScoreDetail {
@@ -79,23 +79,5 @@ describe("getTopReasons", () => {
       fire_minus: -8,
     });
     expect(getTopReasons(detail, 2)).toHaveLength(2);
-  });
-});
-
-describe("projectScorePoint", () => {
-  it("places (0, 0, 0) at the isometric origin", () => {
-    expect(projectScorePoint(0, 0, 0)).toEqual({ x: 280, y: 190 });
-  });
-
-  it("moves up (smaller y) as dof increases", () => {
-    const low = projectScorePoint(50, 50, 0);
-    const high = projectScorePoint(50, 50, 100);
-    expect(high.y).toBeLessThan(low.y);
-  });
-
-  it("clamps out-of-range values instead of projecting off-scale", () => {
-    const clamped = projectScorePoint(-40, 150, 20);
-    const atBounds = projectScorePoint(0, 100, 20);
-    expect(clamped).toEqual(atBounds);
   });
 });
