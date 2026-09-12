@@ -1199,7 +1199,7 @@ CALCULATED_COLUMNS = [
         "dtype": "float",
         # 엑셀 수식 예시: =IF(진행률=100,"완료",IF(상태="보류","보류","진행중"))
         # progress_rate(위에서 계산됨)를 참조하는 예시
-        "formula": lambda row: 0.5*row["pof_minus"] + 0.3*row["cof_minus"] + 0.2*row["dof_minus"],
+        "formula": lambda row: 0.5*row["pof"] + 0.3*row["cof"] + 0.2*row["dof"],
     },
 ]
 
