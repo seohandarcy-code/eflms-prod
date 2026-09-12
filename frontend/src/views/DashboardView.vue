@@ -90,7 +90,13 @@ function formatDateTime(value: string | null): string {
                 <div class="reason-title">점검필요 순위 · 종합점수 낮은순</div>
                 <div class="reason-hint">항목이 많아지면 이 영역 안에서만 스크롤됩니다</div>
                 <div class="reason-scroll">
-                  <div v-for="entry in detailReasons" :key="entry.item.equipment_id" class="reason-card">
+                  <div
+                    v-for="entry in detailReasons"
+                    :key="entry.item.equipment_id"
+                    class="reason-card"
+                    :class="{ active: selectedId === entry.item.equipment_id }"
+                    @click="selectCard(entry.item.equipment_id)"
+                  >
                     <div class="reason-row">
                       <span class="reason-name">{{ entry.item.transformer_name }}</span>
                       <span class="reason-score">{{ entry.item.total_score.toFixed(1) }}</span>
@@ -332,6 +338,13 @@ function formatDateTime(value: string | null): string {
   border-radius: 8px;
   padding: 12px 14px;
   margin-bottom: 10px;
+  cursor: pointer;
+}
+.reason-card.active {
+  border-color: #c4392b;
+  border-width: 2px;
+  padding: 11px 13px;
+  background: #fff8f7;
 }
 .reason-row {
   display: flex;

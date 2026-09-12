@@ -16,9 +16,16 @@ watch(
     if (detail.value) return;
     loading.value = true;
     try {
-      detail.value = await store.loadDetail(id);
+      const fetched = await store.loadDetail(id);
+      // 응답이 도착했을 때 사용자가 이미 다른 설비를 선택했다면(더 빠른 최신 요청이 이미 반영된
+      // 상태라면) 뒤늦게 도착한 이 응답으로 화면을 덮어쓰지 않는다.
+      if (props.equipmentId === id) {
+        detail.value = fetched;
+      }
     } finally {
-      loading.value = false;
+      if (props.equipmentId === id) {
+        loading.value = false;
+      }
     }
   },
   { immediate: true },
