@@ -1,0 +1,218 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  * { box-sizing: border-box; }
+  a { color: #3B5BA9; text-decoration: none; }
+  a:hover { color: #2C4685; }
+  .num { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .pill { border: 1px solid #E7E2D8; background: #FFFFFF; color: #52493B; font: 500 13px 'Public Sans', sans-serif; padding: 6px 14px; border-radius: 999px; cursor: default; }
+  .pill.active { background: #262320; border-color: #262320; color: #fff; }
+  .seg { font: 600 12.5px 'Public Sans'; padding: 6px 14px; color: #746C60; }
+  .seg.active { background: #fff; color: #262320; border-radius: 6px; box-shadow: 0 1px 2px rgba(38,35,32,.08); }
+</style>
+</helmet>
+
+<div style="width:1440px;min-height:960px;background:#F6F4EF;font-family:'Public Sans',system-ui,sans-serif;color:#262320;">
+
+  <!-- header -->
+  <div style="height:76px;background:#FFFFFF;border-bottom:1px solid #E7E2D8;display:flex;align-items:center;justify-content:space-between;padding:0 32px;">
+    <div>
+      <div style="font-size:17px;font-weight:700;">설비 자산 현황</div>
+      <div style="font-size:12px;color:#746C60;margin-top:2px;">EFLMS · 전기설비 수명관리 시스템 &middot; 변압기(EF1)</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div style="display:flex;gap:8px;">
+        <button class="pill active">전체</button>
+        <button class="pill">H1</button>
+        <button class="pill">H2</button>
+        <button class="pill">K1</button>
+        <button class="pill">P1</button>
+      </div>
+      <div style="display:flex;background:#F1EDE4;border-radius:8px;padding:3px;">
+        <div class="seg active">카드형</div>
+        <div class="seg">표형</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:28px 32px 44px;">
+
+    <!-- KPI row -->
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:30px;">
+      <div style="background:#fff;border:1px solid #E7E2D8;border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B5BA9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>
+        <div><div class="num" style="font-size:24px;font-weight:600;">24<span style="font-size:12.5px;color:#746C60;font-family:'Public Sans';"> 대</span></div><div style="font-size:11.5px;color:#746C60;">전체 설비</div></div>
+      </div>
+      <div style="background:#fff;border:1px solid #E7E2D8;border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B5BA9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19 L9 12 L13 15 L20 6"/></svg>
+        <div><div class="num" style="font-size:24px;font-weight:600;">86.4</div><div style="font-size:11.5px;color:#746C60;">평균 종합점수</div></div>
+      </div>
+      <div style="background:#fff;border:1px solid #F0D9D3;border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B23A3A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 L21 20 H3 Z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r="0.6" fill="#B23A3A"/></svg>
+        <div><div class="num" style="font-size:24px;font-weight:600;color:#B23A3A;">3<span style="font-size:12.5px;color:#B23A3A;font-family:'Public Sans';"> 대</span></div><div style="font-size:11.5px;color:#96382F;">위험 설비</div></div>
+      </div>
+      <div style="background:#fff;border:1px solid #E7E2D8;border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:14px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B5BA9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>
+        <div><div class="num" style="font-size:19px;font-weight:600;">2026-09-10</div><div style="font-size:11.5px;color:#746C60;">최근 데이터 갱신</div></div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;">
+      <div style="font-size:15px;font-weight:700;">설비 카드</div>
+      <div style="font-size:12px;color:#746C60;">전체 24건 중 8건 표시 &middot; 정렬: 종합점수 낮은순</div>
+    </div>
+
+    <!-- card grid -->
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;">
+
+      <!-- BANK4 63.0 critical -->
+      <div style="background:#fff;border:1px solid #E7E2D8;border-radius:12px;padding:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div><div style="font-weight:700;font-size:14.5px;">BANK4</div><div style="font-size:11.5px;color:#746C60;">H2 &middot; 154,000V</div></div>
+          <span class="chip" style="background:#FBE9E7;color:#B23A3A;">위험</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <svg width="72" height="72" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="none" stroke="#EFE9DE" stroke-width="8"/><circle cx="40" cy="40" r="30" fill="none" stroke="#B23A3A" stroke-width="8" stroke-linecap="round" stroke-dasharray="118.7 69.8" transform="rotate(-90 40 40)"/><text x="40" y="44" text-anchor="middle" font-family="IBM Plex Mono" font-size="15" font-weight="600" fill="#262320">63.0</text></svg>
+          <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>PoF</span><span class="num">58</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>CoF</span><span class="num">66</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>DoF</span><span class="num">70</span></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#8F8879;margin-top:12px;">최근진단 2026-09-05</div>
+      </div>
+
+      <!-- BANK2 70.0 critical -->
+      <div style="background:#fff;border:1px solid #E7E2D8;border-radius:12px;padding:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div><div style="font-weight:700;font-size:14.5px;">BANK2</div><div style="font-size:11.5px;color:#746C60;">K1 &middot; 154,000V</div></div>
+          <span class="chip" style="background:#FBE9E7;color:#B23A3A;">위험</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <svg width="72" height="72" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="none" stroke="#EFE9DE" stroke-width="8"/><circle cx="40" cy="40" r="30" fill="none" stroke="#B23A3A" stroke-width="8" stroke-linecap="round" stroke-dasharray="131.9 56.6" transform="rotate(-90 40 40)"/><text x="40" y="44" text-anchor="middle" font-family="IBM Plex Mono" font-size="15" font-weight="600" fill="#262320">70.0</text></svg>
+          <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>PoF</span><span class="num">64</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>CoF</span><span class="num">72</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>DoF</span><span class="num">80</span></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#8F8879;margin-top:12px;">최근진단 2026-09-01</div>
+      </div>
+
+      <!-- BANK3 78.6 warn -->
+      <div style="background:#fff;border:1px solid #E7E2D8;border-radius:12px;padding:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div><div style="font-weight:700;font-size:14.5px;">BANK3</div><div style="font-size:11.5px;color:#746C60;">P1 &middot; 154,000V</div></div>
+          <span class="chip" style="background:#FBF0DC;color:#92600E;">주의</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <svg width="72" height="72" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="none" stroke="#EFE9DE" stroke-width="8"/><circle cx="40" cy="40" r="30" fill="none" stroke="#C08A2E" stroke-width="8" stroke-linecap="round" stroke-dasharray="148.2 40.3" transform="rotate(-90 40 40)"/><text x="40" y="44" text-anchor="middle" font-family="IBM Plex Mono" font-size="15" font-weight="600" fill="#262320">78.6</text></svg>
+          <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>PoF</span><span class="num">78</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>CoF</span><span class="num">82</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>DoF</span><span class="num">76</span></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#8F8879;margin-top:12px;">최근진단 2026-08-09</div>
+      </div>
+
+      <!-- BANK1 89.2 warn -->
+      <div style="background:#fff;border:1px solid #E7E2D8;border-radius:12px;padding:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div><div style="font-weight:700;font-size:14.5px;">BANK1</div><div style="font-size:11.5px;color:#746C60;">H1 &middot; 22,900V</div></div>
+          <span class="chip" style="background:#FBF0DC;color:#92600E;">주의</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <svg width="72" height="72" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="none" stroke="#EFE9DE" stroke-width="8"/><circle cx="40" cy="40" r="30" fill="none" stroke="#C08A2E" stroke-width="8" stroke-linecap="round" stroke-dasharray="168.1 20.4" transform="rotate(-90 40 40)"/><text x="40" y="44" text-anchor="middle" font-family="IBM Plex Mono" font-size="15" font-weight="600" fill="#262320">89.2</text></svg>
+          <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>PoF</span><span class="num">88</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>CoF</span><span class="num">90</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>DoF</span><span class="num">92</span></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#8F8879;margin-top:12px;">최근진단 2026-08-14</div>
+      </div>
+
+      <!-- TR3 90.2 good -->
+      <div style="background:#fff;border:1px solid #E7E2D8;border-radius:12px;padding:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div><div style="font-weight:700;font-size:14.5px;">TR3</div><div style="font-size:11.5px;color:#746C60;">K1 &middot; 22,900V</div></div>
+          <span class="chip" style="background:#E7F2EB;color:#2F8F5B;">정상</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <svg width="72" height="72" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="none" stroke="#EFE9DE" stroke-width="8"/><circle cx="40" cy="40" r="30" fill="none" stroke="#2F8F5B" stroke-width="8" stroke-linecap="round" stroke-dasharray="170.0 18.5" transform="rotate(-90 40 40)"/><text x="40" y="44" text-anchor="middle" font-family="IBM Plex Mono" font-size="15" font-weight="600" fill="#262320">90.2</text></svg>
+          <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>PoF</span><span class="num">92</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>CoF</span><span class="num">88</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>DoF</span><span class="num">90</span></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#8F8879;margin-top:12px;">최근진단 2026-08-20</div>
+      </div>
+
+      <!-- TR4 94.6 good -->
+      <div style="background:#fff;border:1px solid #E7E2D8;border-radius:12px;padding:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div><div style="font-weight:700;font-size:14.5px;">TR4</div><div style="font-size:11.5px;color:#746C60;">P1 &middot; 22,900V</div></div>
+          <span class="chip" style="background:#E7F2EB;color:#2F8F5B;">정상</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <svg width="72" height="72" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="none" stroke="#EFE9DE" stroke-width="8"/><circle cx="40" cy="40" r="30" fill="none" stroke="#2F8F5B" stroke-width="8" stroke-linecap="round" stroke-dasharray="178.3 10.2" transform="rotate(-90 40 40)"/><text x="40" y="44" text-anchor="middle" font-family="IBM Plex Mono" font-size="15" font-weight="600" fill="#262320">94.6</text></svg>
+          <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>PoF</span><span class="num">94</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>CoF</span><span class="num">96</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>DoF</span><span class="num">94</span></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#8F8879;margin-top:12px;">최근진단 2026-07-15</div>
+      </div>
+
+      <!-- TR1 95.6 good -->
+      <div style="background:#fff;border:1px solid #E7E2D8;border-radius:12px;padding:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div><div style="font-weight:700;font-size:14.5px;">TR1</div><div style="font-size:11.5px;color:#746C60;">H1 &middot; 154,000V</div></div>
+          <span class="chip" style="background:#E7F2EB;color:#2F8F5B;">정상</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <svg width="72" height="72" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="none" stroke="#EFE9DE" stroke-width="8"/><circle cx="40" cy="40" r="30" fill="none" stroke="#2F8F5B" stroke-width="8" stroke-linecap="round" stroke-dasharray="180.2 8.3" transform="rotate(-90 40 40)"/><text x="40" y="44" text-anchor="middle" font-family="IBM Plex Mono" font-size="15" font-weight="600" fill="#262320">95.6</text></svg>
+          <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>PoF</span><span class="num">96</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>CoF</span><span class="num">94</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>DoF</span><span class="num">98</span></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#8F8879;margin-top:12px;">최근진단 2026-08-02</div>
+      </div>
+
+      <!-- TR2 98.4 good -->
+      <div style="background:#fff;border:1px solid #E7E2D8;border-radius:12px;padding:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div><div style="font-weight:700;font-size:14.5px;">TR2</div><div style="font-size:11.5px;color:#746C60;">H2 &middot; 22,900V</div></div>
+          <span class="chip" style="background:#E7F2EB;color:#2F8F5B;">정상</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <svg width="72" height="72" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="none" stroke="#EFE9DE" stroke-width="8"/><circle cx="40" cy="40" r="30" fill="none" stroke="#2F8F5B" stroke-width="8" stroke-linecap="round" stroke-dasharray="185.6 2.9" transform="rotate(-90 40 40)"/><text x="40" y="44" text-anchor="middle" font-family="IBM Plex Mono" font-size="15" font-weight="600" fill="#262320">98.4</text></svg>
+          <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>PoF</span><span class="num">100</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>CoF</span><span class="num">96</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#746C60;"><span>DoF</span><span class="num">100</span></div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#8F8879;margin-top:12px;">최근진단 2026-07-28</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

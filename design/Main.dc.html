@@ -1,0 +1,309 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  * { box-sizing: border-box; }
+  a { color: #0F8A8A; text-decoration: none; }
+  a:hover { color: #0B6B6B; }
+  .num { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .filtbtn { border: 1px solid #E2E5EA; background: #fff; color: #4A5361; font: 500 13px 'IBM Plex Sans', sans-serif; padding: 6px 14px; border-radius: 6px; cursor: default; }
+  .filtbtn.active { background: #1A2230; border-color: #1A2230; color: #fff; }
+  .cbrow { display: flex; align-items: center; gap: 9px; font: 400 13px 'IBM Plex Sans', sans-serif; color: #4A5361; padding: 5px 0; }
+  .bar-track { height: 5px; background: #EEF0F3; border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; }
+  .card { background: #fff; border: 1px solid #E2E5EA; border-radius: 8px; padding: 16px; }
+</style>
+</helmet>
+
+<div style="width:1440px;min-height:1600px;background:#F4F5F7;font-family:'IBM Plex Sans',system-ui,sans-serif;color:#1A2230;display:flex;flex-direction:column;">
+
+  <!-- header -->
+  <div style="height:64px;flex:0 0 auto;background:#FFFFFF;border-bottom:1px solid #E2E5EA;display:flex;align-items:center;justify-content:space-between;padding:0 32px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0F8A8A" stroke-width="1.6" stroke-linejoin="round"><path d="M12 2 L21 7 V17 L12 22 L3 17 V7 Z"/><path d="M13 8 L9.5 13 H12.5 L11 17 L15 11.5 H12 Z" fill="#0F8A8A" stroke="none"/></svg>
+      <div>
+        <div style="font-size:15px;font-weight:700;line-height:1.1;">EFLMS 자산 건전성 대시보드</div>
+        <div style="font-size:11.5px;color:#8891A0;line-height:1.2;">전기설비 수명관리 시스템 · 변압기(EF1)</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <button class="filtbtn active">전체 사업장</button>
+      <button class="filtbtn">H1</button>
+      <button class="filtbtn">H2</button>
+      <button class="filtbtn">K1</button>
+      <button class="filtbtn">P1</button>
+      <div style="width:1px;height:20px;background:#E2E5EA;margin:0 4px;"></div>
+      <span style="font-size:12px;color:#8891A0;border:1px solid #E2E5EA;border-radius:6px;padding:5px 10px;">EF1 · 변압기</span>
+    </div>
+  </div>
+
+  <div style="display:flex;flex:1;">
+
+    <!-- left filter rail -->
+    <div style="width:224px;flex:0 0 auto;background:#FFFFFF;border-right:1px solid #E2E5EA;padding:24px 20px;">
+      <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.04em;text-transform:uppercase;color:#8891A0;margin-bottom:10px;">사업장</div>
+      <div class="cbrow"><input type="checkbox" checked> 전체 <span class="num" style="margin-left:auto;color:#8891A0;">24</span></div>
+      <div class="cbrow"><input type="checkbox" checked> H1 기술1팀 <span class="num" style="margin-left:auto;color:#8891A0;">7</span></div>
+      <div class="cbrow"><input type="checkbox" checked> H2 기술2팀 <span class="num" style="margin-left:auto;color:#8891A0;">6</span></div>
+      <div class="cbrow"><input type="checkbox" checked> K1 <span class="num" style="margin-left:auto;color:#8891A0;">5</span></div>
+      <div class="cbrow"><input type="checkbox" checked> P1 <span class="num" style="margin-left:auto;color:#8891A0;">6</span></div>
+
+      <div style="height:1px;background:#EEF0F3;margin:18px 0;"></div>
+
+      <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.04em;text-transform:uppercase;color:#8891A0;margin-bottom:10px;">점검 상태</div>
+      <div class="cbrow"><input type="checkbox" checked><span style="width:7px;height:7px;border-radius:50%;background:#1B8A5A;display:inline-block;"></span> 정상 <span class="num" style="margin-left:auto;color:#8891A0;">22</span></div>
+      <div class="cbrow"><input type="checkbox" checked><span style="width:7px;height:7px;border-radius:50%;background:#C4392B;display:inline-block;"></span> 점검필요 <span class="num" style="margin-left:auto;color:#8891A0;">2</span></div>
+      <div style="font-size:11px;color:#B4BAC4;margin-top:4px;">기준: PoF&lt;20 또는 CoF&lt;30 또는 DoF&lt;20</div>
+
+      <div style="height:1px;background:#EEF0F3;margin:18px 0;"></div>
+
+      <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.04em;text-transform:uppercase;color:#8891A0;margin-bottom:10px;">설비유형</div>
+      <div class="cbrow" style="opacity:.9;"><input type="checkbox" checked disabled> EF1 · 변압기</div>
+      <div style="font-size:11.5px;color:#B4BAC4;padding-left:22px;margin-top:2px;">EF2~EF22 설비유형 추가 예정</div>
+    </div>
+
+    <!-- main -->
+    <div style="flex:1;padding:28px 32px 40px;overflow:auto;">
+
+      <!-- KPI row (2 tiles) -->
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:24px;">
+        <div class="card">
+          <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.04em;text-transform:uppercase;color:#8891A0;">전체 설비</div>
+          <div class="num" style="font-size:28px;font-weight:600;margin-top:6px;">24<span style="font-size:14px;color:#8891A0;font-weight:500;"> 대</span></div>
+          <div style="font-size:11.5px;color:#8891A0;margin-top:4px;">EF1 · 변압기 기준</div>
+        </div>
+        <div class="card">
+          <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.04em;text-transform:uppercase;color:#8891A0;">최근 데이터 갱신</div>
+          <div class="num" style="font-size:22px;font-weight:600;margin-top:8px;">2026-09-10</div>
+          <div style="font-size:11.5px;color:#8891A0;margin-top:4px;">DGA · Furan 정기점검 반영</div>
+        </div>
+      </div>
+
+      <!-- risk panel: KPI -> chart -> reason list, one connected flow -->
+      <div style="background:#fff;border:1px solid #F0CFC9;border-radius:10px;overflow:hidden;margin-bottom:28px;">
+        <div style="display:flex;align-items:baseline;gap:14px;padding:18px 22px;background:#FCF1EF;border-bottom:1px solid #F0CFC9;">
+          <div class="num" style="font-size:30px;font-weight:700;color:#C4392B;">2<span style="font-size:14px;font-family:'IBM Plex Sans';font-weight:600;"> 건 점검필요</span></div>
+          <div style="font-size:12px;color:#96382F;">PoF·CoF·DoF 3축 분포 · 기준 미달 설비를 빨간색으로 표시</div>
+        </div>
+        <div style="display:flex;">
+          <!-- isometric 3-axis scatter -->
+          <div style="flex:1;padding:18px 10px 8px 18px;border-right:1px solid #EEF0F3;">
+            <svg width="100%" height="300" viewBox="0 0 560 300">
+              <!-- axes -->
+              <line x1="280" y1="190" x2="392.6" y2="255" stroke="#C7CCD3" stroke-width="1.4"/>
+              <line x1="280" y1="190" x2="167.4" y2="255" stroke="#C7CCD3" stroke-width="1.4"/>
+              <line x1="280" y1="190" x2="280" y2="60" stroke="#C7CCD3" stroke-width="1.4"/>
+              <!-- threshold ticks -->
+              <circle cx="302.5" cy="203" r="2.6" fill="#C4392B"/>
+              <text x="308" y="207" font-family="IBM Plex Mono" font-size="10" fill="#B23124">20</text>
+              <circle cx="246.2" cy="209.5" r="2.6" fill="#C4392B"/>
+              <text x="215" y="213" font-family="IBM Plex Mono" font-size="10" fill="#B23124">30</text>
+              <circle cx="280" cy="164" r="2.6" fill="#C4392B"/>
+              <text x="286" y="167" font-family="IBM Plex Mono" font-size="10" fill="#B23124">20</text>
+              <!-- axis labels -->
+              <text x="396" y="262" font-family="IBM Plex Sans" font-size="12" font-weight="600" fill="#5B6472">PoF</text>
+              <text x="140" y="262" font-family="IBM Plex Sans" font-size="12" font-weight="600" fill="#5B6472">CoF</text>
+              <text x="266" y="52" font-family="IBM Plex Sans" font-size="12" font-weight="600" fill="#5B6472">DoF</text>
+              <!-- healthy points -->
+              <circle cx="284.5" cy="187.4" r="5" fill="#3E8E8E"/>
+              <circle cx="282.3" cy="186.1" r="5" fill="#3E8E8E"/>
+              <circle cx="277.7" cy="191.3" r="5" fill="#3E8E8E"/>
+              <circle cx="284.5" cy="190.0" r="5" fill="#3E8E8E"/>
+              <circle cx="277.7" cy="186.1" r="5" fill="#3E8E8E"/>
+              <circle cx="275.5" cy="195.2" r="5" fill="#3E8E8E"/>
+              <!-- flagged points -->
+              <circle cx="340.8" cy="165.3" r="7.5" fill="#C4392B" stroke="#fff" stroke-width="1.5"/>
+              <text x="349" y="163" font-family="IBM Plex Sans" font-size="11" font-weight="600" fill="#B23124">BANK2 (CoF 22)</text>
+              <circle cx="284.5" cy="249.8" r="7.5" fill="#C4392B" stroke="#fff" stroke-width="1.5"/>
+              <text x="292" y="253" font-family="IBM Plex Sans" font-size="11" font-weight="600" fill="#B23124">BANK4 (DoF 14)</text>
+            </svg>
+            <div style="font-size:11px;color:#8891A0;padding:0 8px 6px;">● 정상 6대&nbsp;&nbsp;● 점검필요 2대 &middot; 붉은 점 = 기준 미달 축 보유 설비</div>
+          </div>
+
+          <!-- reason list -->
+          <div style="width:340px;flex:0 0 auto;padding:18px 22px;display:flex;flex-direction:column;">
+            <div style="font:600 11px 'IBM Plex Sans';letter-spacing:.04em;text-transform:uppercase;color:#8891A0;margin-bottom:4px;">점검필요 순위 · 종합점수 낮은순</div>
+            <div style="font-size:10.5px;color:#B4BAC4;margin-bottom:10px;">항목이 많아지면 이 영역 안에서만 스크롤됩니다</div>
+
+            <div style="max-height:300px;overflow-y:auto;padding-right:6px;">
+              <div style="border:1px solid #F0CFC9;border-radius:8px;padding:12px 14px;margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;"><span style="font-weight:700;">BANK4</span><span class="num" style="font-weight:700;color:#C4392B;">44.7</span></div>
+                <div style="font-size:11px;color:#8891A0;margin-bottom:6px;">H2 · 154,000V</div>
+                <div style="font-size:12px;color:#4A5361;">주요 감점 사유</div>
+                <div style="font-size:12px;color:#1A2230;">1. 예비화(N+1) <span class="num" style="color:#C4392B;">−36</span></div>
+                <div style="font-size:12px;color:#1A2230;">2. 계통자동전환 미적용 <span class="num" style="color:#C4392B;">−36</span></div>
+                <div style="font-size:12px;color:#1A2230;">3. 온라인 유중가스 미적용 <span class="num" style="color:#C4392B;">−30</span></div>
+              </div>
+
+              <div style="border:1px solid #F0CFC9;border-radius:8px;padding:12px 14px;">
+                <div style="display:flex;justify-content:space-between;"><span style="font-weight:700;">BANK2</span><span class="num" style="font-weight:700;color:#C4392B;">55.3</span></div>
+                <div style="font-size:11px;color:#8891A0;margin-bottom:6px;">K1 · 154,000V</div>
+                <div style="font-size:12px;color:#4A5361;">주요 감점 사유</div>
+                <div style="font-size:12px;color:#1A2230;">1. 생산성 영향(용량×부하율) <span class="num" style="color:#C4392B;">−36</span></div>
+                <div style="font-size:12px;color:#1A2230;">2. 1차전압 감점(154kV) <span class="num" style="color:#C4392B;">−24</span></div>
+                <div style="font-size:12px;color:#1A2230;">3. 화재확산장소(옥외) <span class="num" style="color:#C4392B;">−12</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- equipment list header -->
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:15px;font-weight:700;">설비 목록</div>
+        <div style="font-size:12px;color:#8891A0;">전체 24건 중 8건 표시 · 정렬: 종합점수 낮은순 · 카드를 클릭하면 상세정보가 펼쳐집니다</div>
+      </div>
+
+      <!-- expanded card (BANK4) - full width, shows inline-expand interaction -->
+      <div class="card" style="border-color:#C4392B;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="font-weight:700;font-size:16px;">BANK4</div>
+            <span class="chip" style="background:#FBE7E4;color:#B23124;"><span style="width:6px;height:6px;border-radius:50%;background:#C4392B;"></span>점검필요</span>
+            <span style="font-size:12px;color:#8891A0;">H2 · 154,000V · ONAN 30MVA · 가동 2016-04</span>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8891A0" stroke-width="2"><path d="M6 15 L12 9 L18 15"/></svg>
+        </div>
+
+        <div style="display:grid;grid-template-columns:120px 1fr;gap:6px 14px;margin-top:14px;">
+          <div style="font-size:12px;color:#8891A0;">PoF</div><div class="bar-track"><div class="bar-fill" style="width:62%;background:#3E8E8E;"></div></div>
+          <div style="font-size:12px;color:#8891A0;">CoF</div><div class="bar-track"><div class="bar-fill" style="width:58%;background:#3E8E8E;"></div></div>
+          <div style="font-size:12px;color:#8891A0;">DoF <span class="num" style="color:#C4392B;">(14)</span></div><div class="bar-track"><div class="bar-fill" style="width:14%;background:#C4392B;"></div></div>
+        </div>
+
+        <div style="height:1px;background:#EEF0F3;margin:16px 0;"></div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;font-size:12.5px;">
+          <div>
+            <div style="font-weight:600;color:#4A5361;margin-bottom:6px;">DGA (유중가스)</div>
+            <div class="num" style="color:#1A2230;">TCG 612ppm</div>
+            <div style="color:#8891A0;">판정: 추적관리2</div>
+          </div>
+          <div>
+            <div style="font-weight:600;color:#4A5361;margin-bottom:6px;">부하 · 온도</div>
+            <div class="num" style="color:#1A2230;">부하율 78%</div>
+            <div style="color:#8891A0;">권선 최고온도 61℃</div>
+          </div>
+          <div>
+            <div style="font-weight:600;color:#4A5361;margin-bottom:6px;">절연 · 유중시험</div>
+            <div class="num" style="color:#1A2230;">절연내력 평균 41.2kV</div>
+            <div style="color:#8891A0;">산가도 요주의</div>
+          </div>
+          <div>
+            <div style="font-weight:600;color:#4A5361;margin-bottom:6px;">설계속성</div>
+            <div style="color:#1A2230;">예비화 N+1 · 미적용 3건</div>
+            <div style="color:#8891A0;">계통자동전환 · 유중가스 온라인</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- collapsed card grid -->
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;">
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div><div style="font-weight:700;">BANK2</div><div style="font-size:11px;color:#8891A0;">K1 · 154,000V</div></div>
+            <span class="chip" style="background:#FBE7E4;color:#B23124;">점검필요</span>
+          </div>
+          <div style="display:grid;grid-template-columns:34px 1fr;gap:4px 8px;">
+            <div style="font-size:10.5px;color:#8891A0;">PoF</div><div class="bar-track"><div class="bar-fill" style="width:76%;background:#3E8E8E;"></div></div>
+            <div style="font-size:10.5px;color:#8891A0;">CoF</div><div class="bar-track"><div class="bar-fill" style="width:22%;background:#C4392B;"></div></div>
+            <div style="font-size:10.5px;color:#8891A0;">DoF</div><div class="bar-track"><div class="bar-fill" style="width:68%;background:#3E8E8E;"></div></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:10px;"><span class="num" style="font-weight:700;color:#C4392B;">55.3</span><span style="font-size:11px;color:#8891A0;">2026-09-01</span></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div><div style="font-weight:700;">BANK3</div><div style="font-size:11px;color:#8891A0;">P1 · 154,000V</div></div>
+            <span class="chip" style="background:#E4F3EA;color:#1B8A5A;">정상</span>
+          </div>
+          <div style="display:grid;grid-template-columns:34px 1fr;gap:4px 8px;">
+            <div style="font-size:10.5px;color:#8891A0;">PoF</div><div class="bar-track"><div class="bar-fill" style="width:78%;background:#3E8E8E;"></div></div>
+            <div style="font-size:10.5px;color:#8891A0;">CoF</div><div class="bar-track"><div class="bar-fill" style="width:82%;background:#3E8E8E;"></div></div>
+            <div style="font-size:10.5px;color:#8891A0;">DoF</div><div class="bar-track"><div class="bar-fill" style="width:76%;background:#3E8E8E;"></div></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:10px;"><span class="num" style="font-weight:700;">78.6</span><span style="font-size:11px;color:#8891A0;">2026-08-09</span></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div><div style="font-weight:700;">BANK1</div><div style="font-size:11px;color:#8891A0;">H1 · 22,900V</div></div>
+            <span class="chip" style="background:#E4F3EA;color:#1B8A5A;">정상</span>
+          </div>
+          <div style="display:grid;grid-template-columns:34px 1fr;gap:4px 8px;">
+            <div style="font-size:10.5px;color:#8891A0;">PoF</div><div class="bar-track"><div class="bar-fill" style="width:88%;background:#3E8E8E;"></div></div>
+            <div style="font-size:10.5px;color:#8891A0;">CoF</div><div class="bar-track"><div class="bar-fill" style="width:90%;background:#3E8E8E;"></div></div>
+            <div style="font-size:10.5px;color:#8891A0;">DoF</div><div class="bar-track"><div class="bar-fill" style="width:92%;background:#3E8E8E;"></div></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:10px;"><span class="num" style="font-weight:700;">89.2</span><span style="font-size:11px;color:#8891A0;">2026-08-14</span></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div><div style="font-weight:700;">TR3</div><div style="font-size:11px;color:#8891A0;">K1 · 22,900V</div></div>
+            <span class="chip" style="background:#E4F3EA;color:#1B8A5A;">정상</span>
+          </div>
+          <div style="display:grid;grid-template-columns:34px 1fr;gap:4px 8px;">
+            <div style="font-size:10.5px;color:#8891A0;">PoF</div><div class="bar-track"><div class="bar-fill" style="width:92%;background:#3E8E8E;"></div></div>
+            <div style="font-size:10.5px;color:#8891A0;">CoF</div><div class="bar-track"><div class="bar-fill" style="width:88%;background:#3E8E8E;"></div></div>
+            <div style="font-size:10.5px;color:#8891A0;">DoF</div><div class="bar-track"><div class="bar-fill" style="width:90%;background:#3E8E8E;"></div></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:10px;"><span class="num" style="font-weight:700;">90.2</span><span style="font-size:11px;color:#8891A0;">2026-08-20</span></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div><div style="font-weight:700;">TR4</div><div style="font-size:11px;color:#8891A0;">P1 · 22,900V</div></div>
+            <span class="chip" style="background:#E4F3EA;color:#1B8A5A;">정상</span>
+          </div>
+          <div style="display:grid;grid-template-columns:34px 1fr;gap:4px 8px;">
+            <div style="font-size:10.5px;color:#8891A0;">PoF</div><div class="bar-track"><div class="bar-fill" style="width:94%;background:#3E8E8E;"></div></div>
+            <div style="font-size:10.5px;color:#8891A0;">CoF</div><div class="bar-track"><div class="bar-fill" style="width:96%;background:#3E8E8E;"></div></div>
+            <div style="font-size:10.5px;color:#8891A0;">DoF</div><div class="bar-track"><div class="bar-fill" style="width:94%;background:#3E8E8E;"></div></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:10px;"><span class="num" style="font-weight:700;">94.6</span><span style="font-size:11px;color:#8891A0;">2026-07-15</span></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div><div style="font-weight:700;">TR1</div><div style="font-size:11px;color:#8891A0;">H1 · 154,000V</div></div>
+            <span class="chip" style="background:#E4F3EA;color:#1B8A5A;">정상</span>
+          </div>
+          <div style="display:grid;grid-template-columns:34px 1fr;gap:4px 8px;">
+            <div style="font-size:10.5px;color:#8891A0;">PoF</div><div class="bar-track"><div class="bar-fill" style="width:96%;background:#3E8E8E;"></div></div>
+            <div style="font-size:10.5px;color:#8891A0;">CoF</div><div class="bar-track"><div class="bar-fill" style="width:94%;background:#3E8E8E;"></div></div>
+            <div style="font-size:10.5px;color:#8891A0;">DoF</div><div class="bar-track"><div class="bar-fill" style="width:98%;background:#3E8E8E;"></div></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:10px;"><span class="num" style="font-weight:700;">95.6</span><span style="font-size:11px;color:#8891A0;">2026-08-02</span></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+            <div><div style="font-weight:700;">TR2</div><div style="font-size:11px;color:#8891A0;">H2 · 22,900V</div></div>
+            <span class="chip" style="background:#E4F3EA;color:#1B8A5A;">정상</span>
+          </div>
+          <div style="display:grid;grid-template-columns:34px 1fr;gap:4px 8px;">
+            <div style="font-size:10.5px;color:#8891A0;">PoF</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:#3E8E8E;"></div></div>
+            <div style="font-size:10.5px;color:#8891A0;">CoF</div><div class="bar-track"><div class="bar-fill" style="width:96%;background:#3E8E8E;"></div></div>
+            <div style="font-size:10.5px;color:#8891A0;">DoF</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:#3E8E8E;"></div></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:10px;"><span class="num" style="font-weight:700;">98.4</span><span style="font-size:11px;color:#8891A0;">2026-07-28</span></div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
