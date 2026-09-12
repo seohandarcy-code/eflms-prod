@@ -7,7 +7,7 @@
 - [x] C-3 EF1 계산기 이식(`ef1_transformer.py`) + 공용 적재 매퍼(`ingest.py`) + 시드 스크립트(`seed.py`)
 - [x] C-4 최소 API (`/api/equipment`, `/api/equipment/{id}`, `/api/summary`)
 - [x] C-5 Vue 대시보드 구현 (Direction A: KPI, PoF·CoF·DoF 3축 분포도, 점검필요 순위/사유, 카드형 목록+인라인 상세확장) — 실제 API 연동, **브라우저 육안 확인은 아직 안 함**(이 세션에 브라우저 도구 없음)
-- [ ] C-6 스모크 테스트(pytest/vitest) + 실제 브라우저 확인
+- [x] C-6 스모크 테스트(pytest 5개, vitest 9개, 전부 통과) + 실제 브라우저 확인(Claude in Chrome) — 확인 중 KPI가 사업장 필터를 무시하던 버그 발견 후 수정
 - 인증 없음(자리만 확보), env는 최소 세트(`DATABASE_URL` 등)
 
 ## Phase 2 — 운영 데이터 연동
