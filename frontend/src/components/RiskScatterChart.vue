@@ -26,7 +26,7 @@ const flaggedCount = computed(() => props.equipmentList.filter((item) => item.ne
 
 <template>
   <div>
-    <svg width="100%" height="300" viewBox="0 0 560 300">
+    <svg style="width: 100%; height: auto; max-height: 480px; display: block" viewBox="0 0 560 300">
       <line :x1="origin.x" :y1="origin.y" :x2="pofAxis.x" :y2="pofAxis.y" stroke="#C7CCD3" stroke-width="1.4" />
       <line :x1="origin.x" :y1="origin.y" :x2="cofAxis.x" :y2="cofAxis.y" stroke="#C7CCD3" stroke-width="1.4" />
       <line :x1="origin.x" :y1="origin.y" :x2="dofAxis.x" :y2="dofAxis.y" stroke="#C7CCD3" stroke-width="1.4" />
@@ -50,18 +50,9 @@ const flaggedCount = computed(() => props.equipmentList.filter((item) => item.ne
           :fill="p.item.needs_inspection ? '#C4392B' : '#3E8E8E'"
           :stroke="p.item.needs_inspection ? '#fff' : 'none'"
           stroke-width="1.5"
-        />
-        <text
-          v-if="p.item.needs_inspection"
-          :x="p.x + 8"
-          :y="p.y - 4"
-          font-family="IBM Plex Sans"
-          font-size="11"
-          font-weight="600"
-          fill="#B23124"
         >
-          {{ p.item.transformer_name }}
-        </text>
+          <title>{{ p.item.transformer_name }} · PoF {{ p.item.pof }} · CoF {{ p.item.cof }} · DoF {{ p.item.dof }}</title>
+        </circle>
       </g>
     </svg>
     <div style="font-size: 11px; color: #8891a0; padding: 0 8px 6px">

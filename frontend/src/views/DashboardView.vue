@@ -91,6 +91,11 @@ function formatDateTime(value: string | null): string {
                       <span class="reason-score">{{ entry.item.total_score.toFixed(1) }}</span>
                     </div>
                     <div class="reason-meta">{{ entry.item.factory_code }} · {{ entry.item.voltage.toLocaleString() }}V</div>
+                    <div class="reason-scores">
+                      <span>PoF <b>{{ entry.item.pof }}</b></span>
+                      <span>CoF <b>{{ entry.item.cof }}</b></span>
+                      <span>DoF <b>{{ entry.item.dof }}</b></span>
+                    </div>
                     <div class="reason-sub">주요 감점 사유</div>
                     <div v-for="(reason, i) in entry.reasons" :key="reason.label" class="reason-item">
                       {{ i + 1 }}. {{ reason.label }} <span class="neg">{{ reason.value }}</span>
@@ -282,19 +287,18 @@ function formatDateTime(value: string | null): string {
   color: #96382f;
 }
 .risk-body {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(280px, 1fr);
 }
 .chart-col {
-  flex: 1;
   padding: 18px 10px 8px 18px;
   border-right: 1px solid #eef0f3;
 }
 .reason-col {
-  width: 340px;
-  flex: 0 0 auto;
   padding: 18px 22px;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 .reason-title {
   font: 600 11px "IBM Plex Sans";
@@ -331,6 +335,18 @@ function formatDateTime(value: string | null): string {
   font-weight: 700;
   color: #c4392b;
 }
+.reason-scores {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: #8891a0;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  margin-bottom: 6px;
+}
+.reason-scores b {
+  color: #1a2230;
+  font-weight: 600;
+}
 .reason-meta {
   font-size: 11px;
   color: #8891a0;
@@ -363,7 +379,7 @@ function formatDateTime(value: string | null): string {
 }
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 16px;
 }
 .muted {

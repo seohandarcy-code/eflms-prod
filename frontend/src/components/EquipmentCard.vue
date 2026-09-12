@@ -2,7 +2,6 @@
 import { computed, ref, watch } from "vue";
 import type { EquipmentSummary } from "../types/equipment";
 import { useEquipmentStore } from "../stores/equipment";
-import { getTopReasons } from "../utils/scoreBreakdown";
 
 const props = defineProps<{ summary: EquipmentSummary; expanded: boolean }>();
 const emit = defineEmits<{ toggle: [equipmentId: number] }>();
@@ -29,8 +28,11 @@ function clampWidth(value: number): number {
   return Math.max(0, Math.min(100, value));
 }
 
+function formatMonth(isoDate: string): string {
+  return isoDate.slice(0, 7);
+}
+
 const statusColor = computed(() => (props.summary.needs_inspection ? "#C4392B" : "#1B8A5A"));
-const reasons = computed(() => (detail.value ? getTopReasons(detail.value.score_detail, 3) : []));
 </script>
 
 <template>
@@ -43,7 +45,7 @@ const reasons = computed(() => (detail.value ? getTopReasons(detail.value.score_
     <div class="card-head">
       <div>
         <span class="name">{{ summary.transformer_name }}</span>
-        <span class="meta">{{ summary.factory_code }} · {{ summary.voltage.toLocaleString() }}V</span>
+        <span v-if="!expanded" class="meta">{{ summary.factory_code }} · {{ summary.voltage.toLocaleString() }}V</span>
       </div>
       <span class="chip" :style="{ background: summary.needs_inspection ? '#FBE7E4' : '#E4F3EA', color: statusColor }">
         <span class="dot" :style="{ background: statusColor }"></span>
@@ -55,14 +57,17 @@ const reasons = computed(() => (detail.value ? getTopReasons(detail.value.score_
       <div class="bar-row">
         <span>PoF</span>
         <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.pof) + '%', background: summary.pof < 20 ? '#C4392B' : '#3E8E8E' }" /></div>
+        <span class="bar-value mono">{{ summary.pof }}</span>
       </div>
       <div class="bar-row">
         <span>CoF</span>
         <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.cof) + '%', background: summary.cof < 30 ? '#C4392B' : '#3E8E8E' }" /></div>
+        <span class="bar-value mono">{{ summary.cof }}</span>
       </div>
       <div class="bar-row">
         <span>DoF</span>
         <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.dof) + '%', background: summary.dof < 20 ? '#C4392B' : '#3E8E8E' }" /></div>
+        <span class="bar-value mono">{{ summary.dof }}</span>
       </div>
       <div class="foot">
         <span class="score">{{ summary.total_score.toFixed(1) }}</span>
@@ -73,6 +78,24 @@ const reasons = computed(() => (detail.value ? getTopReasons(detail.value.score_
     <div v-else class="detail">
       <div v-if="loading || !detail">불러오는 중...</div>
       <template v-else>
+        <div class="expanded-meta">
+          {{ detail.factory_code }} · {{ detail.voltage.toLocaleString() }}V · ONAN {{ detail.onan_val }}MVA · 가동 {{ formatMonth(detail.operation_start_time) }}
+        </div>
+
+        <div class="score-bars">
+          <span>PoF</span>
+          <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.pof) + '%', background: detail.score.pof < 20 ? '#C4392B' : '#3E8E8E' }" /></div>
+          <span class="bar-value mono">{{ detail.score.pof }}</span>
+          <span>CoF</span>
+          <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.cof) + '%', background: detail.score.cof < 30 ? '#C4392B' : '#3E8E8E' }" /></div>
+          <span class="bar-value mono">{{ detail.score.cof }}</span>
+          <span>DoF</span>
+          <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.dof) + '%', background: detail.score.dof < 20 ? '#C4392B' : '#3E8E8E' }" /></div>
+          <span class="bar-value mono">{{ detail.score.dof }}</span>
+        </div>
+
+        <div class="divider"></div>
+
         <div class="detail-grid">
           <div class="detail-col">
             <div class="detail-title">DGA (유중가스)</div>
@@ -90,11 +113,9 @@ const reasons = computed(() => (detail.value ? getTopReasons(detail.value.score_
             <div class="muted">산가도 {{ detail.score_detail.acid_measure_desc }}</div>
           </div>
           <div class="detail-col">
-            <div class="detail-title">주요 감점 사유</div>
-            <div v-for="(reason, i) in reasons" :key="reason.label" class="reason">
-              {{ i + 1 }}. {{ reason.label }} <span class="mono neg">{{ reason.value }}</span>
-            </div>
-            <div v-if="reasons.length === 0" class="muted">감점 항목 없음</div>
+            <div class="detail-title">설계속성</div>
+            <div class="muted">예비화 {{ detail.design.redundancy }} · 계통자동전환 {{ detail.design.ato }}</div>
+            <div class="muted">온라인 유중가스 {{ detail.design.online_og_chk }} · 안전공사 정밀점검 {{ detail.design.offline_safety_chk }}</div>
           </div>
         </div>
       </template>
@@ -147,7 +168,7 @@ const reasons = computed(() => (detail.value ? getTopReasons(detail.value.score_
 }
 .bar-row {
   display: grid;
-  grid-template-columns: 34px 1fr;
+  grid-template-columns: 34px 1fr 30px;
   gap: 8px;
   align-items: center;
   font-size: 10.5px;
@@ -161,6 +182,29 @@ const reasons = computed(() => (detail.value ? getTopReasons(detail.value.score_
 }
 .bar-fill {
   height: 100%;
+}
+.bar-value {
+  font-size: 11px;
+  color: #4a5361;
+  text-align: right;
+}
+.expanded-meta {
+  font-size: 12px;
+  color: #8891a0;
+  margin-bottom: 14px;
+}
+.score-bars {
+  display: grid;
+  grid-template-columns: 120px 1fr 34px;
+  gap: 6px 14px;
+  align-items: center;
+  font-size: 12px;
+  color: #8891a0;
+}
+.divider {
+  height: 1px;
+  background: #eef0f3;
+  margin: 16px 0;
 }
 .foot {
   display: flex;
@@ -190,11 +234,5 @@ const reasons = computed(() => (detail.value ? getTopReasons(detail.value.score_
 }
 .muted {
   color: #8891a0;
-}
-.reason {
-  margin-bottom: 2px;
-}
-.neg {
-  color: #c4392b;
 }
 </style>
