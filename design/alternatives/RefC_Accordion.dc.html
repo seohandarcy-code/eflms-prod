@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'IBM Plex Sans',system-ui,sans-serif; }
+  .card { background:#fff; border:1px solid #E2E5EA; border-radius:8px; padding:12px; }
+  .mono { font-family:'IBM Plex Mono',ui-monospace,monospace; }
+  .bar { height:5px; background:#EEF0F3; border-radius:3px; overflow:hidden; margin-top:4px; }
+  .fill { height:100%; background:#3E8E8E; }
+</style>
+</helmet>
+
+<div style="width:760px;height:560px;background:#F4F5F7;color:#1A2230;padding:24px;">
+  <div style="font-size:14px;font-weight:700;">2-B. 아코디언 — 자기 칸(컬럼 폭)만 세로로 확장</div>
+  <div style="font-size:11.5px;color:#C4392B;font-weight:600;margin-top:2px;margin-bottom:16px;">⚠ 실제 구현 아님 · 개념 참고 이미지</div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+    <div class="card">
+      <div style="font-weight:700;font-size:13px;">BANK10</div>
+      <div style="font-size:10.5px;color:#8891A0;">H1 · 22,900V</div>
+      <div class="bar"><div class="fill" style="width:52%"></div></div>
+      <div class="bar"><div class="fill" style="width:24%;background:#C4392B"></div></div>
+      <div class="bar"><div class="fill" style="width:0%"></div></div>
+    </div>
+
+    <div class="card" style="border-color:#C4392B;grid-row: span 2;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-weight:700;font-size:13px;">BANK19</div>
+        <span style="font-size:10px;background:#FBE7E4;color:#B23124;border-radius:999px;padding:2px 8px;">점검필요</span>
+      </div>
+      <div style="font-size:10.5px;color:#8891A0;margin-bottom:8px;">H2 · 154,000V</div>
+
+      <div style="font-size:11px;color:#8891A0;">PoF <b class="mono" style="color:#1A2230;">67</b></div>
+      <div class="bar"><div class="fill" style="width:67%"></div></div>
+      <div style="font-size:11px;color:#8891A0;margin-top:6px;">CoF <b class="mono" style="color:#1A2230;">28</b></div>
+      <div class="bar"><div class="fill" style="width:28%;background:#C4392B"></div></div>
+      <div style="font-size:11px;color:#8891A0;margin-top:6px;">DoF <b class="mono" style="color:#1A2230;">-40</b></div>
+      <div class="bar"><div class="fill" style="width:0%"></div></div>
+
+      <div style="height:1px;background:#EEF0F3;margin:10px 0;"></div>
+
+      <div style="font-size:11px;font-weight:600;color:#4A5361;">DGA(유중가스)</div>
+      <div style="font-size:11px;" class="mono">TCG 480ppm</div>
+      <div style="font-size:10.5px;color:#8891A0;margin-bottom:8px;">판정: 추적관리2</div>
+
+      <div style="font-size:11px;font-weight:600;color:#4A5361;">부하·온도</div>
+      <div style="font-size:11px;" class="mono">부하율 62% · 57℃</div>
+
+      <div style="font-size:11px;font-weight:600;color:#4A5361;margin-top:8px;">설계속성</div>
+      <div style="font-size:10.5px;color:#8891A0;">계통자동전환 미적용</div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700;font-size:13px;">BANK2</div>
+      <div style="font-size:10.5px;color:#8891A0;">K1 · 154,000V</div>
+      <div class="bar"><div class="fill" style="width:45%"></div></div>
+      <div class="bar"><div class="fill" style="width:38%;background:#C4392B"></div></div>
+      <div class="bar"><div class="fill" style="width:1%"></div></div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700;font-size:13px;">TR1</div>
+      <div style="font-size:10.5px;color:#8891A0;">K1 · 22,900V</div>
+      <div class="bar"><div class="fill" style="width:80%"></div></div>
+      <div class="bar"><div class="fill" style="width:66%"></div></div>
+      <div class="bar"><div class="fill" style="width:0%;background:#C4392B"></div></div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700;font-size:13px;">BANK9</div>
+      <div style="font-size:10.5px;color:#8891A0;">H2 · 22,900V</div>
+      <div class="bar"><div class="fill" style="width:62%"></div></div>
+      <div class="bar"><div class="fill" style="width:56%"></div></div>
+      <div class="bar"><div class="fill" style="width:0%;background:#C4392B"></div></div>
+    </div>
+    <div class="card">
+      <div style="font-weight:700;font-size:13px;">TR10</div>
+      <div style="font-size:10.5px;color:#8891A0;">K1 · 154,000V</div>
+      <div class="bar"><div class="fill" style="width:88%"></div></div>
+      <div class="bar"><div class="fill" style="width:44%"></div></div>
+      <div class="bar"><div class="fill" style="width:0%;background:#C4392B"></div></div>
+    </div>
+    <div class="card">
+      <div style="font-weight:700;font-size:13px;">BANK4</div>
+      <div style="font-size:10.5px;color:#8891A0;">H1 · 22,900V</div>
+      <div class="bar"><div class="fill" style="width:81%"></div></div>
+      <div class="bar"><div class="fill" style="width:66%"></div></div>
+      <div class="bar"><div class="fill" style="width:0%;background:#C4392B"></div></div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px;font-size:11px;color:#8891A0;">특징: 클릭한 카드만 세로로 길어짐(폭은 그대로) → 상세 항목은 가로 4단이 아니라 세로로 쌓임</div>
+</div>
+</x-dc>
+</body>
+</html>

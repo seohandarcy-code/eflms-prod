@@ -1,0 +1,13 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 760, "h": 560, "title": "1-A ThreeJS" },
+    { "file": "RefB_CSS3D.dc.html", "x": 840, "y": 0, "w": 760, "h": 560, "title": "1-B CSS 3D" },
+    { "file": "RefC_Accordion.dc.html", "x": 0, "y": 640, "w": 760, "h": 560, "title": "2-B Accordion" },
+    { "file": "RefD_MasterDetail.dc.html", "x": 840, "y": 640, "w": 760, "h": 560, "title": "2-C Master-Detail" }
+  ],
+  "annotations": [
+    { "id": "note-1", "x": 0, "y": -70, "w": 760, "text": "1번(3D 회전 그래프) 비채택안 — 참고용 이미지" },
+    { "id": "note-2", "x": 0, "y": 570, "w": 760, "text": "2번(카드 펼침) 비채택안 — 참고용 이미지" }
+  ],
+  "launch": { "view": "canvas" }
+}
