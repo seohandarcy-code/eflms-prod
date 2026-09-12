@@ -42,7 +42,7 @@ const statusColor = computed(() => (props.summary.needs_inspection ? "#C4392B" :
         <span class="bar-value mono">{{ summary.dof }}</span>
       </div>
       <div class="foot">
-        <span class="score">{{ summary.total_score.toFixed(1) }}</span>
+        <span class="score">종합점수 {{ summary.total_score.toFixed(1) }}</span>
         <span class="date">{{ summary.last_diag_date }}</span>
       </div>
     </div>

@@ -44,8 +44,8 @@ function formatDateTime(value: string | null): string {
   <div class="dashboard">
     <header class="topbar">
       <div class="brand">
-        <div class="title">EFLMS 자산 건전성 대시보드</div>
-        <div class="subtitle">전기설비 수명관리 시스템 · 변압기(EF1)</div>
+        <div class="title">전기설비 수명관리 시스템</div>
+        <div class="subtitle">각 설비의 PoF, CoF, DoF 지수를 평가하여 점검 설비 우선 순위를 도출합니다.</div>
       </div>
       <div class="filters">
         <button class="filtbtn" :class="{ active: store.factoryFilter === null }" @click="store.setFactoryFilter(null)">전체 사업장</button>
@@ -102,7 +102,7 @@ function formatDateTime(value: string | null): string {
                   >
                     <div class="reason-row">
                       <span class="reason-name">{{ entry.item.transformer_name }}</span>
-                      <span class="reason-score">{{ entry.item.total_score.toFixed(1) }}</span>
+                      <span class="reason-score">종합점수 {{ entry.item.total_score.toFixed(1) }}</span>
                     </div>
                     <div class="reason-meta">{{ entry.item.factory_code }} · {{ entry.item.voltage.toLocaleString() }}V</div>
 

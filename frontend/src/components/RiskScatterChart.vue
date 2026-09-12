@@ -11,6 +11,64 @@ const plotEl = ref<HTMLDivElement | null>(null);
 const hovering = ref(false);
 let gd: PlotlyHTMLElement | null = null;
 
+// 정상 범위(점검불필요 기준: PoF>=20, CoF>=30, DoF>=20)에 해당하는 직육면체
+const NORMAL_RANGE = { xMin: 20, xMax: 100, yMin: 30, yMax: 100, zMin: 20, zMax: 100 };
+
+function buildNormalRangeBox(): Data {
+  const { xMin, xMax, yMin, yMax, zMin, zMax } = NORMAL_RANGE;
+  return {
+    type: "mesh3d",
+    x: [xMin, xMax, xMax, xMin, xMin, xMax, xMax, xMin],
+    y: [yMin, yMin, yMax, yMax, yMin, yMin, yMax, yMax],
+    z: [zMin, zMin, zMin, zMin, zMax, zMax, zMax, zMax],
+    i: [0, 0, 4, 4, 0, 0, 3, 3, 0, 0, 1, 1],
+    j: [1, 2, 5, 6, 1, 5, 2, 6, 3, 7, 2, 6],
+    k: [2, 3, 6, 7, 5, 4, 6, 7, 7, 4, 6, 5],
+    opacity: 0.1,
+    color: "#1B8A5A",
+    flatshading: true,
+    hoverinfo: "skip",
+    showlegend: false,
+  } as unknown as Data;
+}
+
+function buildNormalRangeEdges(): Data {
+  const { xMin, xMax, yMin, yMax, zMin, zMax } = NORMAL_RANGE;
+  const corners = [
+    [xMin, yMin, zMin],
+    [xMax, yMin, zMin],
+    [xMax, yMax, zMin],
+    [xMin, yMax, zMin],
+    [xMin, yMin, zMax],
+    [xMax, yMin, zMax],
+    [xMax, yMax, zMax],
+    [xMin, yMax, zMax],
+  ];
+  const edges: [number, number][] = [
+    [0, 1], [1, 2], [2, 3], [3, 0],
+    [4, 5], [5, 6], [6, 7], [7, 4],
+    [0, 4], [1, 5], [2, 6], [3, 7],
+  ];
+  const x: (number | null)[] = [];
+  const y: (number | null)[] = [];
+  const z: (number | null)[] = [];
+  for (const [a, b] of edges) {
+    x.push(corners[a][0], corners[b][0], null);
+    y.push(corners[a][1], corners[b][1], null);
+    z.push(corners[a][2], corners[b][2], null);
+  }
+  return {
+    type: "scatter3d",
+    mode: "lines",
+    x,
+    y,
+    z,
+    line: { color: "#1B8A5A", width: 3 },
+    hoverinfo: "skip",
+    showlegend: false,
+  } as Data;
+}
+
 function buildTrace(list: EquipmentSummary[], selectedId: number | null): Data[] {
   const selectedIndex = selectedId === null ? -1 : list.findIndex((item) => item.equipment_id === selectedId);
 
@@ -21,8 +79,8 @@ function buildTrace(list: EquipmentSummary[], selectedId: number | null): Data[]
     y: list.map((item) => item.cof),
     z: list.map((item) => item.dof),
     text: list.map((item) => item.transformer_name),
-    customdata: list.map((item) => item.equipment_id),
-    hovertemplate: "<b>%{text}</b><br>PoF %{x}<br>CoF %{y}<br>DoF %{z}<extra></extra>",
+    customdata: list.map((item) => [item.equipment_id, item.total_score]),
+    hovertemplate: "<b>%{text}</b><br>PoF %{x}<br>CoF %{y}<br>DoF %{z}<br>종합점수 %{customdata[1]:.1f}<extra></extra>",
     marker: {
       size: list.map((item) => (item.needs_inspection ? 9 : 7)),
       color: list.map((item) => (item.needs_inspection ? "#C4392B" : "#3E8E8E")),
@@ -36,7 +94,7 @@ function buildTrace(list: EquipmentSummary[], selectedId: number | null): Data[]
     trace.unselected = { marker: { opacity: 0.35 } };
   }
 
-  return [trace as Data];
+  return [buildNormalRangeBox(), buildNormalRangeEdges(), trace as Data];
 }
 
 const layout: Partial<Layout> = {
@@ -58,7 +116,8 @@ onMounted(async () => {
   if (!plotEl.value) return;
   gd = await Plotly.newPlot(plotEl.value, buildTrace(props.equipmentList, props.selectedId), layout, config);
   gd.on("plotly_click", (event) => {
-    const id = event.points?.[0]?.customdata;
+    const customdata = event.points?.[0]?.customdata as unknown as number[] | undefined;
+    const id = customdata?.[0];
     if (typeof id === "number") emit("select", id);
   });
   gd.on("plotly_hover", () => {
@@ -95,7 +154,7 @@ const flaggedCount = computed(() => props.equipmentList.filter((item) => item.ne
   <div>
     <div ref="plotEl" :style="{ width: '100%', height: '480px', cursor: hovering ? 'pointer' : 'default' }"></div>
     <div style="font-size: 11px; color: #8891a0; padding: 0 8px 6px">
-      ● 정상 {{ healthyCount }}대&nbsp;&nbsp;● 점검필요 {{ flaggedCount }}대 · 드래그로 회전 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택
+      ● 정상 {{ healthyCount }}대&nbsp;&nbsp;● 점검필요 {{ flaggedCount }}대 · 드래그로 회전 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택 · 연한 초록 박스 = 정상 범위(PoF≥20·CoF≥30·DoF≥20)
     </div>
   </div>
 </template>

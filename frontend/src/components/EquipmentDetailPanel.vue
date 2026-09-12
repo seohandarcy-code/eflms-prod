@@ -52,6 +52,7 @@ function formatMonth(isoDate: string): string {
           <span class="chip" :style="{ background: detail.needs_inspection ? '#FBE7E4' : '#E4F3EA', color: detail.needs_inspection ? '#C4392B' : '#1B8A5A' }">
             {{ detail.needs_inspection ? "점검필요" : "정상" }}
           </span>
+          <span class="total-score-badge">종합점수: {{ detail.score.total_score.toFixed(1) }}</span>
         </div>
         <div class="meta">
           {{ detail.factory_code }} · {{ detail.voltage.toLocaleString() }}V · ONAN {{ detail.onan_val }}MVA · 가동 {{ formatMonth(detail.operation_start_time) }}
@@ -102,102 +103,135 @@ function formatMonth(isoDate: string): string {
         </button>
 
         <div v-if="showRaw" class="raw-groups">
-          <div class="raw-group">
-            <div class="raw-title">DGA (유중가스)</div>
-            <div class="raw-fields">
-              <div class="raw-field"><span>진단일</span><b>{{ detail.dga.diag_time }}</b></div>
-              <div class="raw-field"><span>H2</span><b>{{ detail.dga.dga_h2 }}</b></div>
-              <div class="raw-field"><span>C2H2</span><b>{{ detail.dga.dga_c2h2 }}</b></div>
-              <div class="raw-field"><span>C2H4</span><b>{{ detail.dga.dga_c2h4 }}</b></div>
-              <div class="raw-field"><span>C2H6</span><b>{{ detail.dga.dga_c2h6 }}</b></div>
-              <div class="raw-field"><span>CH4</span><b>{{ detail.dga.dga_ch4 }}</b></div>
-              <div class="raw-field"><span>C3H8</span><b>{{ detail.dga.dga_c3h8 }}</b></div>
-              <div class="raw-field"><span>CO</span><b>{{ detail.dga.dga_co }}</b></div>
-              <div class="raw-field"><span>CO2</span><b>{{ detail.dga.dga_co2 }}</b></div>
-              <div class="raw-field"><span>O2</span><b>{{ detail.dga.dga_o2 }}</b></div>
-              <div class="raw-field"><span>N2</span><b>{{ detail.dga.dga_n2 }}</b></div>
-              <div class="raw-field"><span>변동</span><b>{{ detail.dga.dga_fluc }}</b></div>
-              <div class="raw-field"><span>TCG</span><b>{{ detail.score_detail.dga_tcg }}</b></div>
-              <div class="raw-field"><span>판정</span><b>{{ detail.score_detail.dga_diag }}</b></div>
-              <div class="raw-field"><span>감점</span><b class="neg">{{ detail.score_detail.dga_minus }}</b></div>
+          <div class="raw-group raw-group-pof">
+            <div class="raw-title">PoF 구성</div>
+            <div class="raw-subgrid">
+              <div class="raw-subgroup">
+                <div class="raw-subtitle">경과연수</div>
+                <div class="raw-fields">
+                  <div class="raw-field"><span>가동연수</span><b>{{ detail.score_detail.operation_year }}년</b></div>
+                  <div class="raw-field"><span>경과연수 감점</span><b class="neg">{{ detail.score_detail.age_minus }}</b></div>
+                </div>
+              </div>
+
+              <div class="raw-subgroup">
+                <div class="raw-subtitle">DGA (유중가스)</div>
+                <div class="raw-fields">
+                  <div class="raw-field"><span>진단일</span><b>{{ detail.dga.diag_time }}</b></div>
+                  <div class="raw-field"><span>H2</span><b>{{ detail.dga.dga_h2 }}</b></div>
+                  <div class="raw-field"><span>C2H2</span><b>{{ detail.dga.dga_c2h2 }}</b></div>
+                  <div class="raw-field"><span>C2H4</span><b>{{ detail.dga.dga_c2h4 }}</b></div>
+                  <div class="raw-field"><span>C2H6</span><b>{{ detail.dga.dga_c2h6 }}</b></div>
+                  <div class="raw-field"><span>CH4</span><b>{{ detail.dga.dga_ch4 }}</b></div>
+                  <div class="raw-field"><span>C3H8</span><b>{{ detail.dga.dga_c3h8 }}</b></div>
+                  <div class="raw-field"><span>CO</span><b>{{ detail.dga.dga_co }}</b></div>
+                  <div class="raw-field"><span>CO2</span><b>{{ detail.dga.dga_co2 }}</b></div>
+                  <div class="raw-field"><span>O2</span><b>{{ detail.dga.dga_o2 }}</b></div>
+                  <div class="raw-field"><span>N2</span><b>{{ detail.dga.dga_n2 }}</b></div>
+                  <div class="raw-field"><span>변동</span><b>{{ detail.dga.dga_fluc }}</b></div>
+                  <div class="raw-field"><span>TCG</span><b>{{ detail.score_detail.dga_tcg }}</b></div>
+                  <div class="raw-field"><span>판정</span><b>{{ detail.score_detail.dga_diag }}</b></div>
+                  <div class="raw-field"><span>감점</span><b class="neg">{{ detail.score_detail.dga_minus }}</b></div>
+                </div>
+              </div>
+
+              <div class="raw-subgroup">
+                <div class="raw-subtitle">Furan</div>
+                <div class="raw-fields">
+                  <div class="raw-field"><span>진단일</span><b>{{ detail.furan.diag_time }}</b></div>
+                  <div class="raw-field"><span>5H2F</span><b>{{ detail.furan.furan_5h2f }}</b></div>
+                  <div class="raw-field"><span>2FOL</span><b>{{ detail.furan.furan_2fol }}</b></div>
+                  <div class="raw-field"><span>2FAL</span><b>{{ detail.furan.furan_2fal }}</b></div>
+                  <div class="raw-field"><span>2ACF</span><b>{{ detail.furan.furan_2acf }}</b></div>
+                  <div class="raw-field"><span>5M2F</span><b>{{ detail.furan.furan_5m2f }}</b></div>
+                  <div class="raw-field"><span>합계</span><b>{{ detail.score_detail.furan_total }}</b></div>
+                  <div class="raw-field"><span>연간환산</span><b>{{ detail.score_detail.furan_total_per_year.toFixed(2) }}</b></div>
+                  <div class="raw-field"><span>판정</span><b>{{ detail.score_detail.furan_desc }}</b></div>
+                  <div class="raw-field"><span>감점</span><b class="neg">{{ detail.score_detail.furan_minus }}</b></div>
+                </div>
+              </div>
+
+              <div class="raw-subgroup">
+                <div class="raw-subtitle">절연내력시험</div>
+                <div class="raw-fields">
+                  <div class="raw-field"><span>1차</span><b>{{ detail.dielectric.dielec_str_te_1 }}</b></div>
+                  <div class="raw-field"><span>2차</span><b>{{ detail.dielectric.dielec_str_te_2 }}</b></div>
+                  <div class="raw-field"><span>3차</span><b>{{ detail.dielectric.dielec_str_te_3 }}</b></div>
+                  <div class="raw-field"><span>4차</span><b>{{ detail.dielectric.dielec_str_te_4 }}</b></div>
+                  <div class="raw-field"><span>5차</span><b>{{ detail.dielectric.dielec_str_te_5 }}</b></div>
+                  <div class="raw-field"><span>6차</span><b>{{ detail.dielectric.dielec_str_te_6 }}</b></div>
+                  <div class="raw-field"><span>평균</span><b>{{ detail.score_detail.dielec_str_te_avg.toFixed(1) }}</b></div>
+                  <div class="raw-field"><span>판정</span><b>{{ detail.score_detail.dielec_str_te_diag }}</b></div>
+                  <div class="raw-field"><span>감점</span><b class="neg">{{ detail.score_detail.dielec_str_te_minus }}</b></div>
+                </div>
+              </div>
+
+              <div class="raw-subgroup">
+                <div class="raw-subtitle">유중시험</div>
+                <div class="raw-fields">
+                  <div class="raw-field"><span>산가도</span><b>{{ detail.oil.acid_measure_val }}</b></div>
+                  <div class="raw-field"><span>산가도 판정</span><b>{{ detail.score_detail.acid_measure_desc }}</b></div>
+                  <div class="raw-field"><span>산가도 감점</span><b class="neg">{{ detail.score_detail.acid_measure_minus }}</b></div>
+                  <div class="raw-field"><span>수분</span><b>{{ detail.oil.moisture_rslt }}</b></div>
+                  <div class="raw-field"><span>수분 판정</span><b>{{ detail.score_detail.moisture_desc }}</b></div>
+                  <div class="raw-field"><span>수분 감점</span><b class="neg">{{ detail.score_detail.moisture_minus }}</b></div>
+                </div>
+              </div>
+
+              <div class="raw-subgroup">
+                <div class="raw-subtitle">부하상태</div>
+                <div class="raw-fields">
+                  <div class="raw-field"><span>측정일</span><b>{{ detail.load.measured_at }}</b></div>
+                  <div class="raw-field"><span>부하율</span><b>{{ detail.load.load_percent }}%</b></div>
+                  <div class="raw-field"><span>권선최고온도</span><b>{{ detail.load.coil_max_temp }}℃</b></div>
+                  <div class="raw-field"><span>부하 감점</span><b class="neg">{{ detail.score_detail.load_minus }}</b></div>
+                  <div class="raw-field"><span>온도 감점</span><b class="neg">{{ detail.score_detail.temp_minus }}</b></div>
+                </div>
+              </div>
+
+              <div class="raw-subgroup">
+                <div class="raw-subtitle">점검진단</div>
+                <div class="raw-fields">
+                  <div class="raw-field"><span>측정일</span><b>{{ detail.inspection.measured_at }}</b></div>
+                  <div class="raw-field"><span>부분방전</span><b>{{ detail.inspection.part_discharge_diag }}</b></div>
+                  <div class="raw-field"><span>부분방전 감점</span><b class="neg">{{ detail.score_detail.part_discharge_minus }}</b></div>
+                  <div class="raw-field"><span>96T진단</span><b>{{ detail.inspection.oltc_96t_diag }}</b></div>
+                  <div class="raw-field"><span>96T 감점</span><b class="neg">{{ detail.score_detail.oltc_96t_minus }}</b></div>
+                  <div class="raw-field"><span>탭절환횟수</span><b>{{ detail.inspection.oltc_rslt }}</b></div>
+                  <div class="raw-field"><span>탭절환타입</span><b>{{ detail.inspection.oltc_type }}</b></div>
+                  <div class="raw-field"><span>OLTC진단</span><b>{{ detail.score_detail.oltc_diag }}</b></div>
+                  <div class="raw-field"><span>OLTC 감점</span><b class="neg">{{ detail.score_detail.oltc_minus }}</b></div>
+                  <div class="raw-field"><span>열화상</span><b>{{ detail.inspection.thermal_img_temp }}</b></div>
+                  <div class="raw-field"><span>열화상 감점</span><b class="neg">{{ detail.score_detail.thermal_img_minus }}</b></div>
+                  <div class="raw-field"><span>이상소음</span><b>{{ detail.inspection.noise_diag }}</b></div>
+                  <div class="raw-field"><span>소음 감점</span><b class="neg">{{ detail.score_detail.noise_minus }}</b></div>
+                </div>
+              </div>
             </div>
           </div>
 
           <div class="raw-group">
-            <div class="raw-title">Furan</div>
+            <div class="raw-title">CoF 구성</div>
             <div class="raw-fields">
-              <div class="raw-field"><span>진단일</span><b>{{ detail.furan.diag_time }}</b></div>
-              <div class="raw-field"><span>5H2F</span><b>{{ detail.furan.furan_5h2f }}</b></div>
-              <div class="raw-field"><span>2FOL</span><b>{{ detail.furan.furan_2fol }}</b></div>
-              <div class="raw-field"><span>2FAL</span><b>{{ detail.furan.furan_2fal }}</b></div>
-              <div class="raw-field"><span>2ACF</span><b>{{ detail.furan.furan_2acf }}</b></div>
-              <div class="raw-field"><span>5M2F</span><b>{{ detail.furan.furan_5m2f }}</b></div>
-              <div class="raw-field"><span>합계</span><b>{{ detail.score_detail.furan_total }}</b></div>
-              <div class="raw-field"><span>연간환산</span><b>{{ detail.score_detail.furan_total_per_year.toFixed(2) }}</b></div>
-              <div class="raw-field"><span>판정</span><b>{{ detail.score_detail.furan_desc }}</b></div>
-              <div class="raw-field"><span>감점</span><b class="neg">{{ detail.score_detail.furan_minus }}</b></div>
+              <div class="raw-field"><span>1차전압</span><b>{{ detail.score_detail.first_voltage.toLocaleString() }}</b></div>
+              <div class="raw-field"><span>1차전압 감점</span><b class="neg">{{ detail.score_detail.first_voltage_minus }}</b></div>
+              <div class="raw-field"><span>용량×부하율</span><b>{{ detail.score_detail.capa_times_load.toFixed(1) }}</b></div>
+              <div class="raw-field"><span>생산성 감점</span><b class="neg">{{ detail.score_detail.productivity_minus }}</b></div>
+              <div class="raw-field"><span>화재취약성</span><b>{{ detail.design.fire_vul_type }}</b></div>
+              <div class="raw-field"><span>화재취약성 감점</span><b class="neg">{{ detail.score_detail.fire_minus }}</b></div>
+              <div class="raw-field"><span>화재확산장소</span><b>{{ detail.design.fire_spread_loc }}</b></div>
+              <div class="raw-field"><span>화재확산 감점</span><b class="neg">{{ detail.score_detail.fire_spread_minus }}</b></div>
+              <div class="raw-field"><span>비상대응</span><b>{{ detail.design.emerge_response_1s }}</b></div>
+              <div class="raw-field"><span>비상대응 감점</span><b class="neg">{{ detail.score_detail.emerge_response_minus }}</b></div>
+              <div class="raw-field"><span>교체비용</span><b>{{ detail.score_detail.rep_cost }}</b></div>
+              <div class="raw-field"><span>교체비용 감점</span><b class="neg">{{ detail.score_detail.rep_cost_minus }}</b></div>
+              <div class="raw-field"><span>교체기간</span><b>{{ detail.score_detail.rep_time }}</b></div>
+              <div class="raw-field"><span>교체기간 감점</span><b class="neg">{{ detail.score_detail.rep_time_minus }}</b></div>
             </div>
           </div>
 
           <div class="raw-group">
-            <div class="raw-title">절연내력시험</div>
-            <div class="raw-fields">
-              <div class="raw-field"><span>1차</span><b>{{ detail.dielectric.dielec_str_te_1 }}</b></div>
-              <div class="raw-field"><span>2차</span><b>{{ detail.dielectric.dielec_str_te_2 }}</b></div>
-              <div class="raw-field"><span>3차</span><b>{{ detail.dielectric.dielec_str_te_3 }}</b></div>
-              <div class="raw-field"><span>4차</span><b>{{ detail.dielectric.dielec_str_te_4 }}</b></div>
-              <div class="raw-field"><span>5차</span><b>{{ detail.dielectric.dielec_str_te_5 }}</b></div>
-              <div class="raw-field"><span>6차</span><b>{{ detail.dielectric.dielec_str_te_6 }}</b></div>
-              <div class="raw-field"><span>평균</span><b>{{ detail.score_detail.dielec_str_te_avg.toFixed(1) }}</b></div>
-              <div class="raw-field"><span>판정</span><b>{{ detail.score_detail.dielec_str_te_diag }}</b></div>
-              <div class="raw-field"><span>감점</span><b class="neg">{{ detail.score_detail.dielec_str_te_minus }}</b></div>
-            </div>
-          </div>
-
-          <div class="raw-group">
-            <div class="raw-title">유중시험</div>
-            <div class="raw-fields">
-              <div class="raw-field"><span>산가도</span><b>{{ detail.oil.acid_measure_val }}</b></div>
-              <div class="raw-field"><span>산가도 판정</span><b>{{ detail.score_detail.acid_measure_desc }}</b></div>
-              <div class="raw-field"><span>산가도 감점</span><b class="neg">{{ detail.score_detail.acid_measure_minus }}</b></div>
-              <div class="raw-field"><span>수분</span><b>{{ detail.oil.moisture_rslt }}</b></div>
-              <div class="raw-field"><span>수분 판정</span><b>{{ detail.score_detail.moisture_desc }}</b></div>
-              <div class="raw-field"><span>수분 감점</span><b class="neg">{{ detail.score_detail.moisture_minus }}</b></div>
-            </div>
-          </div>
-
-          <div class="raw-group">
-            <div class="raw-title">부하상태</div>
-            <div class="raw-fields">
-              <div class="raw-field"><span>측정일</span><b>{{ detail.load.measured_at }}</b></div>
-              <div class="raw-field"><span>부하율</span><b>{{ detail.load.load_percent }}%</b></div>
-              <div class="raw-field"><span>권선최고온도</span><b>{{ detail.load.coil_max_temp }}℃</b></div>
-              <div class="raw-field"><span>부하 감점</span><b class="neg">{{ detail.score_detail.load_minus }}</b></div>
-              <div class="raw-field"><span>온도 감점</span><b class="neg">{{ detail.score_detail.temp_minus }}</b></div>
-            </div>
-          </div>
-
-          <div class="raw-group">
-            <div class="raw-title">점검진단</div>
-            <div class="raw-fields">
-              <div class="raw-field"><span>측정일</span><b>{{ detail.inspection.measured_at }}</b></div>
-              <div class="raw-field"><span>부분방전</span><b>{{ detail.inspection.part_discharge_diag }}</b></div>
-              <div class="raw-field"><span>부분방전 감점</span><b class="neg">{{ detail.score_detail.part_discharge_minus }}</b></div>
-              <div class="raw-field"><span>96T진단</span><b>{{ detail.inspection.oltc_96t_diag }}</b></div>
-              <div class="raw-field"><span>96T 감점</span><b class="neg">{{ detail.score_detail.oltc_96t_minus }}</b></div>
-              <div class="raw-field"><span>탭절환횟수</span><b>{{ detail.inspection.oltc_rslt }}</b></div>
-              <div class="raw-field"><span>탭절환타입</span><b>{{ detail.inspection.oltc_type }}</b></div>
-              <div class="raw-field"><span>OLTC진단</span><b>{{ detail.score_detail.oltc_diag }}</b></div>
-              <div class="raw-field"><span>OLTC 감점</span><b class="neg">{{ detail.score_detail.oltc_minus }}</b></div>
-              <div class="raw-field"><span>열화상</span><b>{{ detail.inspection.thermal_img_temp }}</b></div>
-              <div class="raw-field"><span>열화상 감점</span><b class="neg">{{ detail.score_detail.thermal_img_minus }}</b></div>
-              <div class="raw-field"><span>이상소음</span><b>{{ detail.inspection.noise_diag }}</b></div>
-              <div class="raw-field"><span>소음 감점</span><b class="neg">{{ detail.score_detail.noise_minus }}</b></div>
-            </div>
-          </div>
-
-          <div class="raw-group">
-            <div class="raw-title">설계속성 (DoF)</div>
+            <div class="raw-title">DoF 구성</div>
             <div class="raw-fields">
               <div class="raw-field"><span>예비화</span><b>{{ detail.design.redundancy }}</b></div>
               <div class="raw-field"><span>예비화 감점</span><b class="neg">{{ detail.score_detail.redundancy_minus }}</b></div>
@@ -225,26 +259,6 @@ function formatMonth(isoDate: string): string {
               <div class="raw-field"><span>부싱 감점</span><b class="neg">{{ detail.score_detail.bushing_minus }}</b></div>
               <div class="raw-field"><span>OLTC(진공식)</span><b>{{ detail.design.vacuum_set }}</b></div>
               <div class="raw-field"><span>OLTC 감점</span><b class="neg">{{ detail.score_detail.oltc2_minus }}</b></div>
-            </div>
-          </div>
-
-          <div class="raw-group">
-            <div class="raw-title">CoF 구성</div>
-            <div class="raw-fields">
-              <div class="raw-field"><span>1차전압</span><b>{{ detail.score_detail.first_voltage.toLocaleString() }}</b></div>
-              <div class="raw-field"><span>1차전압 감점</span><b class="neg">{{ detail.score_detail.first_voltage_minus }}</b></div>
-              <div class="raw-field"><span>용량×부하율</span><b>{{ detail.score_detail.capa_times_load.toFixed(1) }}</b></div>
-              <div class="raw-field"><span>생산성 감점</span><b class="neg">{{ detail.score_detail.productivity_minus }}</b></div>
-              <div class="raw-field"><span>화재취약성</span><b>{{ detail.design.fire_vul_type }}</b></div>
-              <div class="raw-field"><span>화재취약성 감점</span><b class="neg">{{ detail.score_detail.fire_minus }}</b></div>
-              <div class="raw-field"><span>화재확산장소</span><b>{{ detail.design.fire_spread_loc }}</b></div>
-              <div class="raw-field"><span>화재확산 감점</span><b class="neg">{{ detail.score_detail.fire_spread_minus }}</b></div>
-              <div class="raw-field"><span>비상대응</span><b>{{ detail.design.emerge_response_1s }}</b></div>
-              <div class="raw-field"><span>비상대응 감점</span><b class="neg">{{ detail.score_detail.emerge_response_minus }}</b></div>
-              <div class="raw-field"><span>교체비용</span><b>{{ detail.score_detail.rep_cost }}</b></div>
-              <div class="raw-field"><span>교체비용 감점</span><b class="neg">{{ detail.score_detail.rep_cost_minus }}</b></div>
-              <div class="raw-field"><span>교체기간</span><b>{{ detail.score_detail.rep_time }}</b></div>
-              <div class="raw-field"><span>교체기간 감점</span><b class="neg">{{ detail.score_detail.rep_time_minus }}</b></div>
             </div>
           </div>
         </div>
@@ -297,6 +311,16 @@ function formatMonth(isoDate: string): string {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
+}
+.total-score-badge {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a2230;
+  background: #f4f5f7;
+  border: 1px solid #e2e5ea;
+  border-radius: 6px;
+  padding: 3px 10px;
 }
 .meta {
   font-size: 12px;
@@ -371,7 +395,7 @@ function formatMonth(isoDate: string): string {
 .raw-groups {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-top: 4px;
 }
@@ -381,11 +405,28 @@ function formatMonth(isoDate: string): string {
   padding: 10px 12px;
   min-width: 0;
 }
+.raw-group-pof {
+  grid-column: 1 / -1;
+}
 .raw-title {
   font-weight: 600;
   font-size: 12px;
   color: #c4392b;
   margin-bottom: 8px;
+}
+.raw-subgrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+.raw-subgroup {
+  min-width: 0;
+}
+.raw-subtitle {
+  font-weight: 600;
+  font-size: 11px;
+  color: #4a5361;
+  margin-bottom: 4px;
 }
 .raw-fields {
   display: grid;
