@@ -24,5 +24,8 @@ Thumbs.db
 # Claude Code local runtime state
 .claude/
 
+# Locally-fetched tool binaries (e.g. project-pinned Node 22 LTS)
+.tools/
+
 # Design canvas build output (regenerated from design/*.dc.html + canvas.json)
 design/eflms-dashboard-directions.html
