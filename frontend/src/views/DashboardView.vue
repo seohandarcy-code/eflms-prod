@@ -62,8 +62,8 @@ function formatDateTime(value: string | null): string {
           <div class="kpi-row">
             <div class="card kpi">
               <div class="kpi-label">전체 설비</div>
-              <div class="kpi-value">{{ store.summary?.total_equipment ?? 0 }}<span class="unit">대</span></div>
-              <div class="kpi-sub">EF1 · 변압기 기준</div>
+              <div class="kpi-value">{{ store.equipmentList.length }}<span class="unit">대</span></div>
+              <div class="kpi-sub">EF1 · 변압기 기준{{ store.factoryFilter ? ` · ${store.factoryFilter} 필터 적용` : "" }}</div>
             </div>
             <div class="card kpi">
               <div class="kpi-label">최근 데이터 갱신</div>
@@ -74,7 +74,7 @@ function formatDateTime(value: string | null): string {
 
           <div class="risk-panel">
             <div class="risk-header">
-              <div class="risk-count">{{ store.summary?.needs_inspection_count ?? 0 }}<span class="risk-label">건 점검필요</span></div>
+              <div class="risk-count">{{ store.needsInspectionList.length }}<span class="risk-label">건 점검필요</span></div>
               <div class="risk-desc">PoF·CoF·DoF 3축 분포 · 기준 미달 설비를 빨간색으로 표시</div>
             </div>
             <div class="risk-body">
