@@ -5,7 +5,7 @@ import type { Data, Layout, PlotlyHTMLElement } from "plotly.js";
 import type { EquipmentSummary } from "../types/equipment";
 
 const props = defineProps<{ equipmentList: EquipmentSummary[]; selectedId: number | null }>();
-const emit = defineEmits<{ select: [equipmentId: number] }>();
+const emit = defineEmits<{ select: [equipmentId: number]; hover: [equipmentId: number | null] }>();
 
 const THRESHOLDS = { pof: 20, cof: 30, dof: 20 };
 const CARD_WIDTH = 192;
@@ -163,11 +163,14 @@ onMounted(async () => {
   gd.on("plotly_hover", (event) => {
     hovering.value = true;
     const id = event.points?.[0]?.customdata;
-    hoveredItem.value = typeof id === "number" ? (props.equipmentList.find((item) => item.equipment_id === id) ?? null) : null;
+    const resolvedId = typeof id === "number" ? id : null;
+    hoveredItem.value = resolvedId !== null ? (props.equipmentList.find((item) => item.equipment_id === resolvedId) ?? null) : null;
+    emit("hover", resolvedId);
   });
   gd.on("plotly_unhover", () => {
     hovering.value = false;
     hoveredItem.value = null;
+    emit("hover", null);
   });
 });
 
