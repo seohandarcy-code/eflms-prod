@@ -9,8 +9,6 @@ import type { ReasonsByAxis } from "../utils/scoreBreakdown";
 
 const store = useEquipmentStore();
 const selectedId = ref<number | null>(null);
-const hoveredId = ref<number | null>(null);
-const reasonScrollEl = ref<HTMLDivElement | null>(null);
 const factories = ["H1", "H2", "K1", "P1"];
 
 const EMPTY_REASONS: ReasonsByAxis = { pof: [], cof: [], dof: [] };
@@ -34,12 +32,6 @@ onMounted(async () => {
 
 function selectCard(equipmentId: number) {
   selectedId.value = equipmentId;
-}
-
-function onChartHover(equipmentId: number | null) {
-  hoveredId.value = equipmentId;
-  if (equipmentId === null || !reasonScrollEl.value) return;
-  reasonScrollEl.value.querySelector(`[data-equipment-id="${equipmentId}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 function formatDateTime(value: string | null): string {
@@ -95,18 +87,17 @@ function formatDateTime(value: string | null): string {
             </div>
             <div class="risk-body">
               <div class="chart-col">
-                <RiskScatterChart :equipment-list="store.equipmentList" :selected-id="selectedId" @select="selectCard" @hover="onChartHover" />
+                <RiskScatterChart :equipment-list="store.equipmentList" :selected-id="selectedId" @select="selectCard" />
               </div>
               <div class="reason-col">
                 <div class="reason-title">점검필요 순위 · 종합점수 낮은순</div>
                 <div class="reason-hint">항목이 많아지면 이 영역 안에서만 스크롤됩니다</div>
-                <div class="reason-scroll" ref="reasonScrollEl">
+                <div class="reason-scroll">
                   <div
                     v-for="entry in detailReasons"
                     :key="entry.item.equipment_id"
                     class="reason-card"
-                    :class="{ active: selectedId === entry.item.equipment_id, hovered: hoveredId === entry.item.equipment_id }"
-                    :data-equipment-id="entry.item.equipment_id"
+                    :class="{ active: selectedId === entry.item.equipment_id }"
                     @click="selectCard(entry.item.equipment_id)"
                   >
                     <div class="reason-row">
@@ -372,10 +363,6 @@ function formatDateTime(value: string | null): string {
   border-width: 2px;
   padding: 11px 13px;
   background: #fff8f7;
-}
-.reason-card.hovered:not(.active) {
-  border-color: #0f8a8a;
-  box-shadow: 0 0 0 2px rgba(15, 138, 138, 0.15);
 }
 .reason-row {
   display: flex;
