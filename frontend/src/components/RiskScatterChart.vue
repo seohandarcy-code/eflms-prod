@@ -16,6 +16,17 @@ const hovering = ref(false);
 const hoveredItem = ref<EquipmentSummary | null>(null);
 const cursorPos = ref({ x: 0, y: 0 });
 let gd: PlotlyHTMLElement | null = null;
+let pendingFrame: number | null = null;
+
+function cancelPendingFrame() {
+  if (pendingFrame !== null) {
+    cancelAnimationFrame(pendingFrame);
+    pendingFrame = null;
+  }
+}
+
+// 모서리 와이어프레임(0번) 바로 뒤, 마커(2번)보다 앞에 고정 위치.
+const PROJECTION_TRACE_INDEX = 1;
 
 // 정상 범위(점검불필요 기준: PoF>=20, CoF>=30, DoF>=20)에 해당하는 직육면체.
 // 면을 채우지 않고 모서리 와이어프레임만 항상 표시한다 — 채운 반투명 박스는
@@ -77,6 +88,31 @@ function findSpotlightAxis(item: EquipmentSummary): SpotlightAxis | null {
   return candidates.reduce((worst, cur) => (cur.threshold - cur.value > worst.threshold - worst.value ? cur : worst));
 }
 
+// 스포트라이트 축 하나에 대해서만 "현재 위치 → 그 축만 기준값으로 바꾼 위치"로
+// 향하는 선분을 만든다. 카드가 가리키는 축과 항상 같은 축을 그린다.
+function buildProjectionSegment(item: EquipmentSummary, axis: SpotlightAxis) {
+  const { pof, cof, dof } = item;
+  const end = {
+    pof: axis.key === "pof" ? axis.threshold : pof,
+    cof: axis.key === "cof" ? axis.threshold : cof,
+    dof: axis.key === "dof" ? axis.threshold : dof,
+  };
+  return { x: [pof, end.pof], y: [cof, end.cof], z: [dof, end.dof] };
+}
+
+function buildProjectionTrace(): Data {
+  return {
+    type: "scatter3d",
+    mode: "lines",
+    x: [],
+    y: [],
+    z: [],
+    line: { color: "#C4392B", width: 4, dash: "dot" },
+    hoverinfo: "skip",
+    showlegend: false,
+  } as unknown as Data;
+}
+
 const spotlight = computed(() => (hoveredItem.value ? findSpotlightAxis(hoveredItem.value) : null));
 
 const otherAxes = computed(() => {
@@ -127,7 +163,7 @@ function buildTrace(list: EquipmentSummary[], selectedId: number | null): Data[]
     trace.unselected = { marker: { opacity: 0.35 } };
   }
 
-  return [buildNormalRangeEdges(), trace as Data];
+  return [buildNormalRangeEdges(), buildProjectionTrace(), trace as Data];
 }
 
 const layout: Partial<Layout> = {
@@ -164,13 +200,28 @@ onMounted(async () => {
     hovering.value = true;
     const id = event.points?.[0]?.customdata;
     const resolvedId = typeof id === "number" ? id : null;
-    hoveredItem.value = resolvedId !== null ? (props.equipmentList.find((item) => item.equipment_id === resolvedId) ?? null) : null;
+    const item = resolvedId !== null ? (props.equipmentList.find((eq) => eq.equipment_id === resolvedId) ?? null) : null;
+    hoveredItem.value = item;
     emit("hover", resolvedId);
+
+    const axis = item ? findSpotlightAxis(item) : null;
+    const segment = item && axis ? buildProjectionSegment(item, axis) : { x: [], y: [], z: [] };
+    cancelPendingFrame();
+    pendingFrame = requestAnimationFrame(() => {
+      pendingFrame = null;
+      if (gd) Plotly.restyle(gd, { x: [segment.x], y: [segment.y], z: [segment.z] }, [PROJECTION_TRACE_INDEX]);
+    });
   });
   gd.on("plotly_unhover", () => {
     hovering.value = false;
     hoveredItem.value = null;
     emit("hover", null);
+
+    cancelPendingFrame();
+    pendingFrame = requestAnimationFrame(() => {
+      pendingFrame = null;
+      if (gd) Plotly.restyle(gd, { x: [[]], y: [[]], z: [[]] }, [PROJECTION_TRACE_INDEX]);
+    });
   });
 });
 
@@ -178,6 +229,7 @@ watch(
   [() => props.equipmentList, () => props.selectedId],
   ([list, selectedId]) => {
     if (gd) {
+      cancelPendingFrame();
       hoveredItem.value = null;
       Plotly.react(gd, buildTrace(list, selectedId), layout, config);
     }
@@ -185,6 +237,7 @@ watch(
 );
 
 onUnmounted(() => {
+  cancelPendingFrame();
   plotEl.value?.removeEventListener("mousemove", onContainerMouseMove);
   if (gd) {
     gd.removeAllListeners("plotly_click");
@@ -227,7 +280,7 @@ const flaggedCount = computed(() => props.equipmentList.filter((item) => item.ne
     </div>
 
     <div style="font-size: 11px; color: #8891a0; padding: 0 8px 6px">
-      ● 정상 {{ healthyCount }}대&nbsp;&nbsp;● 점검필요 {{ flaggedCount }}대 · 드래그로 회전 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택 · 초록 테두리 = 정상 범위(PoF≥20·CoF≥30·DoF≥20)
+      ● 정상 {{ healthyCount }}대&nbsp;&nbsp;● 점검필요 {{ flaggedCount }}대 · 드래그로 회전 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택 · 초록 테두리 = 정상 범위(PoF≥20·CoF≥30·DoF≥20) · 빨간 점선 = 기준까지 부족한 거리
     </div>
   </div>
 </template>
