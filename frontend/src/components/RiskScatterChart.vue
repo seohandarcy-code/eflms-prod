@@ -161,7 +161,10 @@ function buildMarkerTrace(
     // (Plotly의 loneHover/hovertemplateString 렌더링 경로 자체를 타지 않게 됨)
     hoverinfo: "none",
     marker: {
-      size,
+      // Plotly gl3d는 marker.size가 스칼라일 때와 배열일 때 크기 산정 방식이 달라
+      // 눈에 띄게 다르게 보인다. 분리 전(단일 trace, 배열 크기)과 동일하게 보이도록
+      // 그룹 내 모든 점에 같은 값을 반복한 배열로 넘긴다.
+      size: groupList.map(() => size),
       color,
       line: { color: "#fff", width: 1 },
     },
