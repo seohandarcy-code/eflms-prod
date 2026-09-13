@@ -21,8 +21,8 @@ function buildTrace(list: EquipmentSummary[], selectedId: number | null): Data[]
     y: list.map((item) => item.cof),
     z: list.map((item) => item.dof),
     text: list.map((item) => item.transformer_name),
-    customdata: list.map((item) => item.equipment_id),
-    hovertemplate: "<b>%{text}</b><br>PoF %{x}<br>CoF %{y}<br>DoF %{z}<extra></extra>",
+    customdata: list.map((item) => [item.equipment_id, item.total_score]),
+    hovertemplate: "<b>%{text}</b><br>PoF %{x}<br>CoF %{y}<br>DoF %{z}<br>종합점수 %{customdata[1]:.1f}<extra></extra>",
     marker: {
       size: list.map((item) => (item.needs_inspection ? 9 : 7)),
       color: list.map((item) => (item.needs_inspection ? "#C4392B" : "#3E8E8E")),
@@ -58,7 +58,8 @@ onMounted(async () => {
   if (!plotEl.value) return;
   gd = await Plotly.newPlot(plotEl.value, buildTrace(props.equipmentList, props.selectedId), layout, config);
   gd.on("plotly_click", (event) => {
-    const id = event.points?.[0]?.customdata;
+    const customdata = event.points?.[0]?.customdata as unknown as number[] | undefined;
+    const id = customdata?.[0];
     if (typeof id === "number") emit("select", id);
   });
   gd.on("plotly_hover", () => {
