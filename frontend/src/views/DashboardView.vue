@@ -82,16 +82,30 @@ function formatDateTime(value: string | null): string {
               <div class="kpi-sub">EF1 · 변압기 기준{{ store.factoryFilter ? ` · ${store.factoryFilter} 필터 적용` : "" }}</div>
             </div>
             <div class="card kpi">
+              <div class="kpi-label">정상 설비</div>
+              <div class="kpi-value normal">{{ store.equipmentList.length - store.needsInspectionList.length }}<span class="unit">대</span></div>
+              <div class="kpi-sub">PoF·CoF·DoF 모두 기준 충족</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-label">점검 필요 설비</div>
+              <div class="kpi-value flagged">{{ store.needsInspectionList.length }}<span class="unit">대</span></div>
+              <div class="kpi-sub">PoF·CoF·DoF 중 기준 미달</div>
+            </div>
+            <div class="card kpi">
               <div class="kpi-label">최근 데이터 갱신</div>
               <div class="kpi-value small">{{ formatDateTime(store.summary?.last_updated ?? null) }}</div>
               <div class="kpi-sub">DGA · Furan 정기점검 반영</div>
             </div>
           </div>
 
+          <div class="list-header">
+            <div class="list-title">PoF·CoF·DoF 지수 3차원 분포도</div>
+          </div>
+
           <div class="risk-panel">
             <div class="risk-header">
               <div class="risk-count">{{ store.needsInspectionList.length }}<span class="risk-label">건 점검필요</span></div>
-              <div class="risk-desc">PoF·CoF·DoF 3축 분포 · 기준 미달 설비를 빨간색으로 표시</div>
+              <div class="risk-desc">기준 미달 설비를 빨간색으로 표시</div>
             </div>
             <div class="risk-body">
               <div class="chart-col">
@@ -262,7 +276,7 @@ function formatDateTime(value: string | null): string {
 }
 .kpi-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -286,6 +300,12 @@ function formatDateTime(value: string | null): string {
 }
 .kpi-value.small {
   font-size: 20px;
+}
+.kpi-value.normal {
+  color: #3e8e8e;
+}
+.kpi-value.flagged {
+  color: #c4392b;
 }
 .unit {
   font-size: 14px;
