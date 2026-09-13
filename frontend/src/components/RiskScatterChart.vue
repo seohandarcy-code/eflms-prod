@@ -14,6 +14,15 @@ const PROJECTION_TRACE_INDEX = 2;
 const plotEl = ref<HTMLDivElement | null>(null);
 const hovering = ref(false);
 let gd: PlotlyHTMLElement | null = null;
+let lastHoveredId: number | null = null;
+let pendingFrame: number | null = null;
+
+function cancelPendingFrame() {
+  if (pendingFrame !== null) {
+    cancelAnimationFrame(pendingFrame);
+    pendingFrame = null;
+  }
+}
 
 // 정상 범위(점검불필요 기준: PoF>=20, CoF>=30, DoF>=20)에 해당하는 직육면체
 const NORMAL_RANGE = { xMin: 20, xMax: 100, yMin: 30, yMax: 100, zMin: 20, zMax: 100 };
@@ -172,25 +181,47 @@ onMounted(async () => {
   });
   gd.on("plotly_hover", (event) => {
     hovering.value = true;
-    if (!gd) return;
 
     const point = event.points?.[0] as (typeof event.points)[0] & { z?: number };
     const customdata = point?.customdata as unknown as number[] | undefined;
-    const id = customdata?.[0];
-    emit("hover", typeof id === "number" ? id : null);
+    const id = customdata?.[0] ?? null;
 
-    Plotly.restyle(gd, { visible: true }, BOX_TRACE_INDICES);
+    // gl3d는 같은 점 위에서도 미세한 움직임마다 plotly_hover를 반복 발화한다.
+    // 매번 restyle을 다시 실행하면 중복 작업이 쌓이므로 점이 바뀔 때만 처리한다.
+    if (id === lastHoveredId) return;
+    lastHoveredId = id;
 
-    if (point && typeof point.x === "number" && typeof point.y === "number" && typeof point.z === "number") {
-      const projection = buildProjectionSegments(point.x, point.y, point.z);
-      Plotly.restyle(gd, { x: [projection.x], y: [projection.y], z: [projection.z], visible: true }, [PROJECTION_TRACE_INDEX]);
-    }
+    emit("hover", id);
+
+    const px = typeof point?.x === "number" ? point.x : null;
+    const py = typeof point?.y === "number" ? point.y : null;
+    const pz = typeof point?.z === "number" ? point.z : null;
+
+    // Plotly 자신의 호버 렌더링 파이프라인(loneHover) 안에서 동기적으로 restyle을
+    // 호출하면 재진입 재귀로 콜스택이 쌓여 화면이 멈춘다(Maximum call stack size
+    // exceeded). 다음 애니메이션 프레임으로 미뤄 그 호출 스택을 빠져나온 뒤 실행한다.
+    cancelPendingFrame();
+    pendingFrame = requestAnimationFrame(() => {
+      pendingFrame = null;
+      if (!gd) return;
+      Plotly.restyle(gd, { visible: true }, BOX_TRACE_INDICES);
+      if (px !== null && py !== null && pz !== null) {
+        const projection = buildProjectionSegments(px, py, pz);
+        Plotly.restyle(gd, { x: [projection.x], y: [projection.y], z: [projection.z], visible: true }, [PROJECTION_TRACE_INDEX]);
+      }
+    });
   });
   gd.on("plotly_unhover", () => {
     hovering.value = false;
+    lastHoveredId = null;
     emit("hover", null);
-    if (!gd) return;
-    Plotly.restyle(gd, { visible: false }, [...BOX_TRACE_INDICES, PROJECTION_TRACE_INDEX]);
+
+    cancelPendingFrame();
+    pendingFrame = requestAnimationFrame(() => {
+      pendingFrame = null;
+      if (!gd) return;
+      Plotly.restyle(gd, { visible: false }, [...BOX_TRACE_INDICES, PROJECTION_TRACE_INDEX]);
+    });
   });
 });
 
@@ -198,12 +229,15 @@ watch(
   [() => props.equipmentList, () => props.selectedId],
   ([list, selectedId]) => {
     if (gd) {
+      cancelPendingFrame();
+      lastHoveredId = null;
       Plotly.react(gd, buildTrace(list, selectedId), layout, config);
     }
   },
 );
 
 onUnmounted(() => {
+  cancelPendingFrame();
   if (gd) {
     gd.removeAllListeners("plotly_click");
     gd.removeAllListeners("plotly_hover");
