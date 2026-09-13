@@ -53,7 +53,7 @@ function formatDateTime(value: string | null): string {
     <header class="topbar">
       <div class="brand">
         <div class="title">전기설비 수명관리 시스템</div>
-        <div class="subtitle">각 설비의 PoF, CoF, DoF 지수를 평가하여 점검 설비 우선 순위를 도출합니다.</div>
+        <div class="subtitle">각 설비의 POF, COF, DOF 지수를 평가하여 점검 설비 우선 순위를 도출합니다.</div>
       </div>
       <div class="filters">
         <button class="filtbtn" :class="{ active: store.factoryFilter === null }" @click="store.setFactoryFilter(null)">전체 사업장</button>
@@ -84,12 +84,12 @@ function formatDateTime(value: string | null): string {
             <div class="card kpi">
               <div class="kpi-label">정상 설비</div>
               <div class="kpi-value normal">{{ store.equipmentList.length - store.needsInspectionList.length }}<span class="unit">대</span></div>
-              <div class="kpi-sub">PoF·CoF·DoF 모두 기준 충족</div>
+              <div class="kpi-sub">POF·COF·DOF 모두 기준 충족</div>
             </div>
             <div class="card kpi">
               <div class="kpi-label">점검 필요 설비</div>
               <div class="kpi-value flagged">{{ store.needsInspectionList.length }}<span class="unit">대</span></div>
-              <div class="kpi-sub">PoF·CoF·DoF 중 기준 미달</div>
+              <div class="kpi-sub">POF·COF·DOF 중 기준 미달</div>
             </div>
             <div class="card kpi">
               <div class="kpi-label">최근 데이터 갱신</div>
@@ -99,7 +99,7 @@ function formatDateTime(value: string | null): string {
           </div>
 
           <div class="list-header">
-            <div class="list-title">PoF·CoF·DoF 지수 3차원 분포도</div>
+            <div class="list-title">POF·COF·DOF 지수 3차원 분포도</div>
           </div>
 
           <div class="risk-panel">
@@ -131,21 +131,21 @@ function formatDateTime(value: string | null): string {
 
                     <div class="axis-grid">
                       <div class="axis-col">
-                        <div class="axis-head" :class="{ fail: entry.item.pof < 20 }">PoF <b>{{ entry.item.pof }}</b></div>
+                        <div class="axis-head" :class="{ fail: entry.item.pof < 20 }">POF <b>{{ entry.item.pof }}</b></div>
                         <div v-for="reason in entry.reasons.pof" :key="reason.label" class="axis-reason">
                           {{ reason.label }} <span class="neg">{{ reason.value }}</span>
                         </div>
                         <div v-if="entry.reasons.pof.length === 0" class="axis-empty">감점 없음</div>
                       </div>
                       <div class="axis-col">
-                        <div class="axis-head" :class="{ fail: entry.item.cof < 30 }">CoF <b>{{ entry.item.cof }}</b></div>
+                        <div class="axis-head" :class="{ fail: entry.item.cof < 30 }">COF <b>{{ entry.item.cof }}</b></div>
                         <div v-for="reason in entry.reasons.cof" :key="reason.label" class="axis-reason">
                           {{ reason.label }} <span class="neg">{{ reason.value }}</span>
                         </div>
                         <div v-if="entry.reasons.cof.length === 0" class="axis-empty">감점 없음</div>
                       </div>
                       <div class="axis-col">
-                        <div class="axis-head" :class="{ fail: entry.item.dof < 20 }">DoF <b>{{ entry.item.dof }}</b></div>
+                        <div class="axis-head" :class="{ fail: entry.item.dof < 20 }">DOF <b>{{ entry.item.dof }}</b></div>
                         <div v-for="reason in entry.reasons.dof" :key="reason.label" class="axis-reason">
                           {{ reason.label }} <span class="neg">{{ reason.value }}</span>
                         </div>

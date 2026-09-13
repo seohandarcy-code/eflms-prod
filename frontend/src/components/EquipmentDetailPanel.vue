@@ -61,13 +61,13 @@ function formatMonth(isoDate: string): string {
 
       <div class="body">
         <div class="score-bars">
-          <span>PoF</span>
+          <span>POF</span>
           <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.pof) + '%', background: detail.score.pof < 20 ? '#C4392B' : '#3E8E8E' }" /></div>
           <span class="bar-value mono">{{ detail.score.pof }}</span>
-          <span>CoF</span>
+          <span>COF</span>
           <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.cof) + '%', background: detail.score.cof < 30 ? '#C4392B' : '#3E8E8E' }" /></div>
           <span class="bar-value mono">{{ detail.score.cof }}</span>
-          <span>DoF</span>
+          <span>DOF</span>
           <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.dof) + '%', background: detail.score.dof < 20 ? '#C4392B' : '#3E8E8E' }" /></div>
           <span class="bar-value mono">{{ detail.score.dof }}</span>
         </div>
@@ -103,8 +103,8 @@ function formatMonth(isoDate: string): string {
         </button>
 
         <div v-if="showRaw" class="raw-groups">
-          <div class="raw-group raw-group-pof">
-            <div class="raw-title">PoF 구성</div>
+          <div class="raw-group">
+            <div class="raw-title">POF 구성</div>
             <div class="raw-subgrid">
               <div class="raw-subgroup">
                 <div class="raw-subtitle">경과연수</div>
@@ -211,7 +211,7 @@ function formatMonth(isoDate: string): string {
           </div>
 
           <div class="raw-group">
-            <div class="raw-title">CoF 구성</div>
+            <div class="raw-title">COF 구성</div>
             <div class="raw-fields">
               <div class="raw-field"><span>1차전압</span><b>{{ detail.score_detail.first_voltage.toLocaleString() }}</b></div>
               <div class="raw-field"><span>1차전압 감점</span><b class="neg">{{ detail.score_detail.first_voltage_minus }}</b></div>
@@ -231,7 +231,7 @@ function formatMonth(isoDate: string): string {
           </div>
 
           <div class="raw-group">
-            <div class="raw-title">DoF 구성</div>
+            <div class="raw-title">DOF 구성</div>
             <div class="raw-fields">
               <div class="raw-field"><span>예비화</span><b>{{ detail.design.redundancy }}</b></div>
               <div class="raw-field"><span>예비화 감점</span><b class="neg">{{ detail.score_detail.redundancy_minus }}</b></div>
@@ -402,18 +402,16 @@ function formatMonth(isoDate: string): string {
 .raw-groups {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   margin-top: 4px;
+  align-items: start;
 }
 .raw-group {
   border: 1px solid #eef0f3;
   border-radius: 8px;
   padding: 10px 12px;
   min-width: 0;
-}
-.raw-group-pof {
-  grid-column: 1 / -1;
 }
 .raw-title {
   font-weight: 600;
@@ -423,8 +421,7 @@ function formatMonth(isoDate: string): string {
 }
 .raw-subgrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px 16px;
+  gap: 12px;
 }
 .raw-subgroup {
   min-width: 0;

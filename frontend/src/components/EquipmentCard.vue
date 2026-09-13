@@ -31,17 +31,17 @@ const statusColor = computed(() => (props.summary.needs_inspection ? "#C4392B" :
 
     <div class="mini-bars">
       <div class="bar-row">
-        <span>PoF</span>
+        <span>POF</span>
         <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.pof) + '%', background: summary.pof < 20 ? '#C4392B' : '#3E8E8E' }" /></div>
         <span class="bar-value mono">{{ summary.pof }}</span>
       </div>
       <div class="bar-row">
-        <span>CoF</span>
+        <span>COF</span>
         <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.cof) + '%', background: summary.cof < 30 ? '#C4392B' : '#3E8E8E' }" /></div>
         <span class="bar-value mono">{{ summary.cof }}</span>
       </div>
       <div class="bar-row">
-        <span>DoF</span>
+        <span>DOF</span>
         <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.dof) + '%', background: summary.dof < 20 ? '#C4392B' : '#3E8E8E' }" /></div>
         <span class="bar-value mono">{{ summary.dof }}</span>
       </div>

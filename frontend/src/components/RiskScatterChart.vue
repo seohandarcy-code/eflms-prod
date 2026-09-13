@@ -81,9 +81,9 @@ interface SpotlightAxis {
 // 미달 축이 여럿이면 기준값과의 차이(deficit)가 가장 큰 축 하나만 스포트라이트로 고른다.
 function findSpotlightAxis(item: EquipmentSummary): SpotlightAxis | null {
   const candidates: SpotlightAxis[] = [];
-  if (item.pof < THRESHOLDS.pof) candidates.push({ key: "pof", label: "PoF", value: item.pof, threshold: THRESHOLDS.pof });
-  if (item.cof < THRESHOLDS.cof) candidates.push({ key: "cof", label: "CoF", value: item.cof, threshold: THRESHOLDS.cof });
-  if (item.dof < THRESHOLDS.dof) candidates.push({ key: "dof", label: "DoF", value: item.dof, threshold: THRESHOLDS.dof });
+  if (item.pof < THRESHOLDS.pof) candidates.push({ key: "pof", label: "POF", value: item.pof, threshold: THRESHOLDS.pof });
+  if (item.cof < THRESHOLDS.cof) candidates.push({ key: "cof", label: "COF", value: item.cof, threshold: THRESHOLDS.cof });
+  if (item.dof < THRESHOLDS.dof) candidates.push({ key: "dof", label: "DOF", value: item.dof, threshold: THRESHOLDS.dof });
   if (candidates.length === 0) return null;
   return candidates.reduce((worst, cur) => (cur.threshold - cur.value > worst.threshold - worst.value ? cur : worst));
 }
@@ -119,9 +119,9 @@ const otherAxes = computed(() => {
   if (!hoveredItem.value) return [];
   const item = hoveredItem.value;
   const all: SpotlightAxis[] = [
-    { key: "pof", label: "PoF", value: item.pof, threshold: THRESHOLDS.pof },
-    { key: "cof", label: "CoF", value: item.cof, threshold: THRESHOLDS.cof },
-    { key: "dof", label: "DoF", value: item.dof, threshold: THRESHOLDS.dof },
+    { key: "pof", label: "POF", value: item.pof, threshold: THRESHOLDS.pof },
+    { key: "cof", label: "COF", value: item.cof, threshold: THRESHOLDS.cof },
+    { key: "dof", label: "DOF", value: item.dof, threshold: THRESHOLDS.dof },
   ];
   return spotlight.value ? all.filter((a) => a.key !== spotlight.value!.key) : all;
 });
@@ -200,9 +200,9 @@ const layout: Partial<Layout> = {
   paper_bgcolor: "rgba(0,0,0,0)",
   scene: {
     aspectmode: "cube",
-    xaxis: { title: { text: "PoF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
-    yaxis: { title: { text: "CoF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
-    zaxis: { title: { text: "DoF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
+    xaxis: { title: { text: "POF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
+    yaxis: { title: { text: "COF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
+    zaxis: { title: { text: "DOF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
     camera: { eye: { x: 1.4, y: -1.4, z: 1.0 } },
   },
 };
@@ -308,7 +308,7 @@ const flaggedCount = computed(() => props.equipmentList.filter((item) => item.ne
     </div>
 
     <div style="font-size: 11px; color: #8891a0; padding: 0 8px 6px">
-      ● 정상 {{ healthyCount }}대&nbsp;&nbsp;● 점검필요 {{ flaggedCount }}대 · 드래그로 회전 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택 · 초록 테두리 = 정상 범위(PoF≥20·CoF≥30·DoF≥20) · 빨간 점선 = 기준까지 부족한 거리
+      ● 정상 {{ healthyCount }}대&nbsp;&nbsp;● 점검필요 {{ flaggedCount }}대 · 드래그로 회전 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택 · 초록 테두리 = 정상 범위(POF≥20·COF≥30·DOF≥20) · 빨간 점선 = 기준까지 부족한 거리
     </div>
   </div>
 </template>
