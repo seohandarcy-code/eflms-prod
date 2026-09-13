@@ -177,18 +177,14 @@ function formatDateTime(value: string | null): string {
   flex-direction: column;
 }
 .topbar {
-  height: 128px;
+  height: 96px;
   flex: 0 0 auto;
   background: #fff;
   border-bottom: 1px solid #e2e5ea;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  padding: 0 32px;
-}
-.brand {
-  align-self: flex-end;
-  padding-bottom: 16px;
+  padding: 0 32px 14px;
 }
 .title {
   font-size: 24px;
