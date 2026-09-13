@@ -13,7 +13,11 @@ const statusColor = computed(() => (props.summary.needs_inspection ? "#C4392B" :
 </script>
 
 <template>
-  <div class="equipment-card" :class="{ active }" @click="emit('select', summary.equipment_id)">
+  <div
+    class="equipment-card"
+    :class="{ active, 'active-flagged': active && summary.needs_inspection, 'active-normal': active && !summary.needs_inspection }"
+    @click="emit('select', summary.equipment_id)"
+  >
     <div class="card-head">
       <div>
         <span class="name">{{ summary.transformer_name }}</span>
@@ -57,9 +61,13 @@ const statusColor = computed(() => (props.summary.needs_inspection ? "#C4392B" :
   padding: 16px;
   cursor: pointer;
 }
-.equipment-card.active {
+.equipment-card.active-flagged {
   border-color: #c4392b;
   box-shadow: 0 0 0 2px rgba(196, 57, 43, 0.15);
+}
+.equipment-card.active-normal {
+  border-color: #3e8e8e;
+  box-shadow: 0 0 0 2px rgba(62, 142, 142, 0.15);
 }
 .equipment-card:hover {
   border-color: #c7ccd3;

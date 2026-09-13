@@ -42,7 +42,7 @@ function formatMonth(isoDate: string): string {
 </script>
 
 <template>
-  <div class="panel">
+  <div class="panel" :class="{ flagged: detail?.needs_inspection, normal: detail && !detail.needs_inspection }">
     <div v-if="loading || !detail" class="loading">불러오는 중...</div>
     <template v-else>
       <div class="eyebrow">선택된 설비</div>
@@ -270,13 +270,20 @@ function formatMonth(isoDate: string): string {
 <style scoped>
 .panel {
   background: #fff;
-  border: 1px solid #c4392b;
-  box-shadow: 0 0 0 2px rgba(196, 57, 43, 0.12);
+  border: 1px solid #e2e5ea;
   border-radius: 10px;
   padding: 20px 24px;
   margin-bottom: 20px;
   font-family: "IBM Plex Sans", system-ui, sans-serif;
   color: #1a2230;
+}
+.panel.flagged {
+  border-color: #c4392b;
+  box-shadow: 0 0 0 2px rgba(196, 57, 43, 0.12);
+}
+.panel.normal {
+  border-color: #3e8e8e;
+  box-shadow: 0 0 0 2px rgba(62, 142, 142, 0.12);
 }
 .loading {
   color: #8891a0;

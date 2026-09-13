@@ -177,7 +177,7 @@ function formatDateTime(value: string | null): string {
   flex-direction: column;
 }
 .topbar {
-  height: 64px;
+  height: 128px;
   flex: 0 0 auto;
   background: #fff;
   border-bottom: 1px solid #e2e5ea;
@@ -186,13 +186,18 @@ function formatDateTime(value: string | null): string {
   justify-content: space-between;
   padding: 0 32px;
 }
+.brand {
+  align-self: flex-end;
+  padding-bottom: 16px;
+}
 .title {
-  font-size: 15px;
+  font-size: 24px;
   font-weight: 700;
 }
 .subtitle {
-  font-size: 11.5px;
+  font-size: 14px;
   color: #8891a0;
+  margin-top: 4px;
 }
 .filters {
   display: flex;
@@ -233,7 +238,7 @@ function formatDateTime(value: string | null): string {
   padding: 24px 20px;
 }
 .rail-title {
-  font: 600 11px "IBM Plex Sans";
+  font: 600 13px "IBM Plex Sans";
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #8891a0;
