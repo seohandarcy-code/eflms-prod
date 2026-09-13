@@ -12,6 +12,7 @@ from app.db.models import (
     DgaReading,
     DielectricTest,
     Equipment,
+    EquipmentExtraAttribute,
     EquipmentType,
     FuranReading,
     LoadCondition,
@@ -35,6 +36,7 @@ _RESET_ORDER = [
     DielectricTest,
     FuranReading,
     DgaReading,
+    EquipmentExtraAttribute,
     Equipment,
     EquipmentType,
 ]
