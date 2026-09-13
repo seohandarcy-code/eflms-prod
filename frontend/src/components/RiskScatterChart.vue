@@ -16,6 +16,76 @@ const hovering = ref(false);
 const hoveredItem = ref<EquipmentSummary | null>(null);
 const cursorPos = ref({ x: 0, y: 0 });
 let gd: PlotlyHTMLElement | null = null;
+let pendingFrame: number | null = null;
+
+function cancelPendingFrame() {
+  if (pendingFrame !== null) {
+    cancelAnimationFrame(pendingFrame);
+    pendingFrame = null;
+  }
+}
+
+// 정상 범위(점검불필요 기준: PoF>=20, CoF>=30, DoF>=20)에 해당하는 직육면체.
+// 박스/모서리선 trace는 항상 배열 맨 앞(0, 1번)에 오도록 buildTrace()에서 고정한다.
+const NORMAL_RANGE = { xMin: 20, xMax: 100, yMin: 30, yMax: 100, zMin: 20, zMax: 100 };
+const BOX_TRACE_INDICES = [0, 1];
+
+function buildNormalRangeBox(): Data {
+  const { xMin, xMax, yMin, yMax, zMin, zMax } = NORMAL_RANGE;
+  return {
+    type: "mesh3d",
+    x: [xMin, xMax, xMax, xMin, xMin, xMax, xMax, xMin],
+    y: [yMin, yMin, yMax, yMax, yMin, yMin, yMax, yMax],
+    z: [zMin, zMin, zMin, zMin, zMax, zMax, zMax, zMax],
+    i: [0, 0, 4, 4, 0, 0, 3, 3, 0, 0, 1, 1],
+    j: [1, 2, 5, 6, 1, 5, 2, 6, 3, 7, 2, 6],
+    k: [2, 3, 6, 7, 5, 4, 6, 7, 7, 4, 6, 5],
+    opacity: 0.1,
+    color: "#1B8A5A",
+    flatshading: true,
+    hoverinfo: "skip",
+    showlegend: false,
+    visible: false,
+  } as unknown as Data;
+}
+
+function buildNormalRangeEdges(): Data {
+  const { xMin, xMax, yMin, yMax, zMin, zMax } = NORMAL_RANGE;
+  const corners = [
+    [xMin, yMin, zMin],
+    [xMax, yMin, zMin],
+    [xMax, yMax, zMin],
+    [xMin, yMax, zMin],
+    [xMin, yMin, zMax],
+    [xMax, yMin, zMax],
+    [xMax, yMax, zMax],
+    [xMin, yMax, zMax],
+  ];
+  const edges: [number, number][] = [
+    [0, 1], [1, 2], [2, 3], [3, 0],
+    [4, 5], [5, 6], [6, 7], [7, 4],
+    [0, 4], [1, 5], [2, 6], [3, 7],
+  ];
+  const x: (number | null)[] = [];
+  const y: (number | null)[] = [];
+  const z: (number | null)[] = [];
+  for (const [a, b] of edges) {
+    x.push(corners[a][0], corners[b][0], null);
+    y.push(corners[a][1], corners[b][1], null);
+    z.push(corners[a][2], corners[b][2], null);
+  }
+  return {
+    type: "scatter3d",
+    mode: "lines",
+    x,
+    y,
+    z,
+    line: { color: "#1B8A5A", width: 3 },
+    hoverinfo: "skip",
+    showlegend: false,
+    visible: false,
+  } as Data;
+}
 
 interface SpotlightAxis {
   key: "pof" | "cof" | "dof";
@@ -84,7 +154,7 @@ function buildTrace(list: EquipmentSummary[], selectedId: number | null): Data[]
     trace.unselected = { marker: { opacity: 0.35 } };
   }
 
-  return [trace as Data];
+  return [buildNormalRangeBox(), buildNormalRangeEdges(), trace as Data];
 }
 
 const layout: Partial<Layout> = {
@@ -121,10 +191,24 @@ onMounted(async () => {
     hovering.value = true;
     const id = event.points?.[0]?.customdata;
     hoveredItem.value = typeof id === "number" ? (props.equipmentList.find((item) => item.equipment_id === id) ?? null) : null;
+
+    // 네이티브 호버 라벨을 쓰지 않으므로(hoverinfo:'none') Plotly 자신의 호버
+    // 렌더링 파이프라인과 겹칠 일이 없다. 그래도 안전판으로 다음 프레임에 실행한다.
+    cancelPendingFrame();
+    pendingFrame = requestAnimationFrame(() => {
+      pendingFrame = null;
+      if (gd) Plotly.restyle(gd, { visible: true }, BOX_TRACE_INDICES);
+    });
   });
   gd.on("plotly_unhover", () => {
     hovering.value = false;
     hoveredItem.value = null;
+
+    cancelPendingFrame();
+    pendingFrame = requestAnimationFrame(() => {
+      pendingFrame = null;
+      if (gd) Plotly.restyle(gd, { visible: false }, BOX_TRACE_INDICES);
+    });
   });
 });
 
@@ -132,6 +216,7 @@ watch(
   [() => props.equipmentList, () => props.selectedId],
   ([list, selectedId]) => {
     if (gd) {
+      cancelPendingFrame();
       hoveredItem.value = null;
       Plotly.react(gd, buildTrace(list, selectedId), layout, config);
     }
@@ -139,6 +224,7 @@ watch(
 );
 
 onUnmounted(() => {
+  cancelPendingFrame();
   plotEl.value?.removeEventListener("mousemove", onContainerMouseMove);
   if (gd) {
     gd.removeAllListeners("plotly_click");
@@ -181,7 +267,7 @@ const flaggedCount = computed(() => props.equipmentList.filter((item) => item.ne
     </div>
 
     <div style="font-size: 11px; color: #8891a0; padding: 0 8px 6px">
-      ● 정상 {{ healthyCount }}대&nbsp;&nbsp;● 점검필요 {{ flaggedCount }}대 · 드래그로 회전 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택
+      ● 정상 {{ healthyCount }}대&nbsp;&nbsp;● 점검필요 {{ flaggedCount }}대 · 드래그로 회전 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택 · 연한 초록 박스 = 정상 범위(PoF≥20·CoF≥30·DoF≥20)
     </div>
   </div>
 </template>
