@@ -7,9 +7,55 @@ import type { EquipmentSummary } from "../types/equipment";
 const props = defineProps<{ equipmentList: EquipmentSummary[]; selectedId: number | null }>();
 const emit = defineEmits<{ select: [equipmentId: number] }>();
 
+const THRESHOLDS = { pof: 20, cof: 30, dof: 20 };
+const CARD_WIDTH = 192;
+const CARD_HEIGHT = 128;
+
 const plotEl = ref<HTMLDivElement | null>(null);
 const hovering = ref(false);
+const hoveredItem = ref<EquipmentSummary | null>(null);
+const cursorPos = ref({ x: 0, y: 0 });
 let gd: PlotlyHTMLElement | null = null;
+
+interface SpotlightAxis {
+  key: "pof" | "cof" | "dof";
+  label: string;
+  value: number;
+  threshold: number;
+}
+
+// 미달 축이 여럿이면 기준값과의 차이(deficit)가 가장 큰 축 하나만 스포트라이트로 고른다.
+function findSpotlightAxis(item: EquipmentSummary): SpotlightAxis | null {
+  const candidates: SpotlightAxis[] = [];
+  if (item.pof < THRESHOLDS.pof) candidates.push({ key: "pof", label: "PoF", value: item.pof, threshold: THRESHOLDS.pof });
+  if (item.cof < THRESHOLDS.cof) candidates.push({ key: "cof", label: "CoF", value: item.cof, threshold: THRESHOLDS.cof });
+  if (item.dof < THRESHOLDS.dof) candidates.push({ key: "dof", label: "DoF", value: item.dof, threshold: THRESHOLDS.dof });
+  if (candidates.length === 0) return null;
+  return candidates.reduce((worst, cur) => (cur.threshold - cur.value > worst.threshold - worst.value ? cur : worst));
+}
+
+const spotlight = computed(() => (hoveredItem.value ? findSpotlightAxis(hoveredItem.value) : null));
+
+const otherAxes = computed(() => {
+  if (!hoveredItem.value) return [];
+  const item = hoveredItem.value;
+  const all: SpotlightAxis[] = [
+    { key: "pof", label: "PoF", value: item.pof, threshold: THRESHOLDS.pof },
+    { key: "cof", label: "CoF", value: item.cof, threshold: THRESHOLDS.cof },
+    { key: "dof", label: "DoF", value: item.dof, threshold: THRESHOLDS.dof },
+  ];
+  return spotlight.value ? all.filter((a) => a.key !== spotlight.value!.key) : all;
+});
+
+const cardStyle = computed(() => {
+  const width = plotEl.value?.clientWidth ?? 0;
+  const height = plotEl.value?.clientHeight ?? 0;
+  const maxLeft = Math.max(width - CARD_WIDTH - 4, 4);
+  const maxTop = Math.max(height - CARD_HEIGHT - 4, 4);
+  const left = Math.min(Math.max(cursorPos.value.x + 16, 4), maxLeft);
+  const top = Math.min(Math.max(cursorPos.value.y + 16, 4), maxTop);
+  return { left: `${left}px`, top: `${top}px` };
+});
 
 function buildTrace(list: EquipmentSummary[], selectedId: number | null): Data[] {
   const selectedIndex = selectedId === null ? -1 : list.findIndex((item) => item.equipment_id === selectedId);
@@ -21,8 +67,10 @@ function buildTrace(list: EquipmentSummary[], selectedId: number | null): Data[]
     y: list.map((item) => item.cof),
     z: list.map((item) => item.dof),
     text: list.map((item) => item.transformer_name),
-    customdata: list.map((item) => [item.equipment_id, item.total_score]),
-    hovertemplate: "<b>%{text}</b><br>PoF %{x}<br>CoF %{y}<br>DoF %{z}<br>종합점수 %{customdata[1]:.1f}<extra></extra>",
+    customdata: list.map((item) => item.equipment_id),
+    // 네이티브 호버 라벨은 쓰지 않는다 — 커스텀 오버레이 카드로 완전히 대체한다.
+    // (Plotly의 loneHover/hovertemplateString 렌더링 경로 자체를 타지 않게 됨)
+    hoverinfo: "none",
     marker: {
       size: list.map((item) => (item.needs_inspection ? 9 : 7)),
       color: list.map((item) => (item.needs_inspection ? "#C4392B" : "#3E8E8E")),
@@ -54,19 +102,29 @@ const layout: Partial<Layout> = {
 
 const config = { displayModeBar: false, responsive: true };
 
+function onContainerMouseMove(event: MouseEvent) {
+  if (!plotEl.value) return;
+  const rect = plotEl.value.getBoundingClientRect();
+  cursorPos.value = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+}
+
 onMounted(async () => {
   if (!plotEl.value) return;
+  plotEl.value.addEventListener("mousemove", onContainerMouseMove);
+
   gd = await Plotly.newPlot(plotEl.value, buildTrace(props.equipmentList, props.selectedId), layout, config);
   gd.on("plotly_click", (event) => {
-    const customdata = event.points?.[0]?.customdata as unknown as number[] | undefined;
-    const id = customdata?.[0];
+    const id = event.points?.[0]?.customdata;
     if (typeof id === "number") emit("select", id);
   });
-  gd.on("plotly_hover", () => {
+  gd.on("plotly_hover", (event) => {
     hovering.value = true;
+    const id = event.points?.[0]?.customdata;
+    hoveredItem.value = typeof id === "number" ? (props.equipmentList.find((item) => item.equipment_id === id) ?? null) : null;
   });
   gd.on("plotly_unhover", () => {
     hovering.value = false;
+    hoveredItem.value = null;
   });
 });
 
@@ -74,12 +132,14 @@ watch(
   [() => props.equipmentList, () => props.selectedId],
   ([list, selectedId]) => {
     if (gd) {
+      hoveredItem.value = null;
       Plotly.react(gd, buildTrace(list, selectedId), layout, config);
     }
   },
 );
 
 onUnmounted(() => {
+  plotEl.value?.removeEventListener("mousemove", onContainerMouseMove);
   if (gd) {
     gd.removeAllListeners("plotly_click");
     gd.removeAllListeners("plotly_hover");
@@ -94,9 +154,107 @@ const flaggedCount = computed(() => props.equipmentList.filter((item) => item.ne
 
 <template>
   <div>
-    <div ref="plotEl" :style="{ width: '100%', height: '480px', cursor: hovering ? 'pointer' : 'default' }"></div>
+    <div class="chart-wrap">
+      <div ref="plotEl" :style="{ width: '100%', height: '480px', cursor: hovering ? 'pointer' : 'default' }"></div>
+
+      <div v-if="hoveredItem" class="hover-card" :class="{ fail: !!spotlight }" :style="cardStyle">
+        <div class="hc-head">
+          <span class="hc-dot" :style="{ background: hoveredItem.needs_inspection ? '#C4392B' : '#3E8E8E' }"></span>
+          <span class="hc-name">{{ hoveredItem.transformer_name }}</span>
+          <span class="hc-score">{{ hoveredItem.total_score.toFixed(1) }}점</span>
+        </div>
+
+        <template v-if="spotlight">
+          <div class="hc-spotlight">
+            <div class="hc-big">{{ spotlight.label }} {{ spotlight.value }}</div>
+            <div class="hc-sub">기준 {{ spotlight.threshold }} 미달 · {{ spotlight.value - spotlight.threshold }}</div>
+          </div>
+          <div class="hc-others">{{ otherAxes.map((a) => `${a.label} ${a.value}`).join(" · ") }}</div>
+        </template>
+        <template v-else>
+          <div class="hc-spotlight ok">
+            <div class="hc-big ok">정상 범위</div>
+          </div>
+          <div class="hc-others">{{ otherAxes.map((a) => `${a.label} ${a.value}`).join(" · ") }}</div>
+        </template>
+      </div>
+    </div>
+
     <div style="font-size: 11px; color: #8891a0; padding: 0 8px 6px">
       ● 정상 {{ healthyCount }}대&nbsp;&nbsp;● 점검필요 {{ flaggedCount }}대 · 드래그로 회전 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택
     </div>
   </div>
 </template>
+
+<style scoped>
+.chart-wrap {
+  position: relative;
+}
+.hover-card {
+  position: absolute;
+  width: 192px;
+  background: #e4f3ea;
+  border: 1px solid #1b8a5a;
+  border-radius: 9px;
+  padding: 11px 14px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
+  pointer-events: none;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+}
+.hover-card.fail {
+  background: #fbe7e4;
+  border-color: #c4392b;
+}
+.hc-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #4a5361;
+  margin-bottom: 8px;
+}
+.hover-card.fail .hc-head {
+  color: #8a3327;
+}
+.hc-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.hc-name {
+  font-weight: 700;
+  color: #1a2230;
+}
+.hc-score {
+  margin-left: auto;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+.hc-spotlight {
+  margin-bottom: 8px;
+}
+.hc-big {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: #c4392b;
+  line-height: 1;
+}
+.hc-big.ok {
+  font-size: 16px;
+  color: #1b8a5a;
+}
+.hc-sub {
+  font-size: 10.5px;
+  color: #8a3327;
+  margin-top: 3px;
+}
+.hc-others {
+  font-size: 10.5px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: #4a5361;
+  opacity: 0.85;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 6px;
+}
+</style>
