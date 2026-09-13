@@ -25,8 +25,8 @@ function cancelPendingFrame() {
   }
 }
 
-// 모서리 와이어프레임(0번) 바로 뒤, 마커(2번)보다 앞에 고정 위치.
-const PROJECTION_TRACE_INDEX = 1;
+// 모서리 와이어프레임(0번)·벽면 기준선(1번) 다음, 투영선(2번)보다 앞에 마커(3번).
+const PROJECTION_TRACE_INDEX = 2;
 
 // 정상 범위(점검불필요 기준: PoF>=20, CoF>=30, DoF>=20)에 해당하는 직육면체.
 // 면을 채우지 않고 모서리 와이어프레임만 항상 표시한다 — 채운 반투명 박스는
@@ -69,6 +69,36 @@ function buildNormalRangeEdges(): Data {
     hoverinfo: "skip",
     showlegend: false,
   } as Data;
+}
+
+// 각 축의 임계값을, 그 값이 실제로 걸쳐 있는 벽면 위에 선으로 그어 보여준다.
+// 바닥면(DoF=0, PoF×CoF)엔 PoF=20·CoF=30 두 선이 십자로 교차하고,
+// 옆면(PoF=0, CoF×DoF)엔 DoF=20 선 하나 — 총 3개 선분, 겹치지 않게 구성.
+function buildThresholdWallLines(): Data {
+  const { xMin, yMin, zMin, xMax, yMax } = NORMAL_RANGE;
+  const segments: [[number, number, number], [number, number, number]][] = [
+    [[xMin, 0, 0], [xMin, yMax, 0]], // 바닥(DoF=0): PoF=20 선, CoF 방향 전체를 가로지름
+    [[0, yMin, 0], [xMax, yMin, 0]], // 바닥(DoF=0): CoF=30 선, PoF 방향 전체를 가로지름
+    [[0, 0, zMin], [0, yMax, zMin]], // 옆면(PoF=0): DoF=20 선, CoF 방향 전체를 가로지름
+  ];
+  const x: (number | null)[] = [];
+  const y: (number | null)[] = [];
+  const z: (number | null)[] = [];
+  for (const [a, b] of segments) {
+    x.push(a[0], b[0], null);
+    y.push(a[1], b[1], null);
+    z.push(a[2], b[2], null);
+  }
+  return {
+    type: "scatter3d",
+    mode: "lines",
+    x,
+    y,
+    z,
+    line: { color: "#1B8A5A", width: 2, dash: "dot" },
+    hoverinfo: "skip",
+    showlegend: false,
+  } as unknown as Data;
 }
 
 interface SpotlightAxis {
@@ -163,7 +193,7 @@ function buildTrace(list: EquipmentSummary[], selectedId: number | null): Data[]
     trace.unselected = { marker: { opacity: 0.35 } };
   }
 
-  return [buildNormalRangeEdges(), buildProjectionTrace(), trace as Data];
+  return [buildNormalRangeEdges(), buildThresholdWallLines(), buildProjectionTrace(), trace as Data];
 }
 
 const layout: Partial<Layout> = {
@@ -172,9 +202,12 @@ const layout: Partial<Layout> = {
   paper_bgcolor: "rgba(0,0,0,0)",
   scene: {
     aspectmode: "cube",
-    xaxis: { title: { text: "PoF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
-    yaxis: { title: { text: "CoF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
-    zaxis: { title: { text: "DoF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
+    // 세 축 모두 같은 간격(0/20/40/60/80/100)을 기본으로 쓰고, 그 간격에 없는
+    // CoF 임계값(30)만 추가로 끼워 넣는다 — 축마다 다른 간격을 쓰면 어색해 보여서
+    // 간격은 통일하고 임계값만 예외적으로 눈금에 포함시키는 쪽을 택함.
+    xaxis: { title: { text: "PoF" }, range: [0, 100], tickvals: [0, 20, 40, 60, 80, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
+    yaxis: { title: { text: "CoF" }, range: [0, 100], tickvals: [0, 20, 30, 40, 60, 80, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
+    zaxis: { title: { text: "DoF" }, range: [0, 100], tickvals: [0, 20, 40, 60, 80, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
     camera: { eye: { x: 1.4, y: -1.4, z: 1.0 } },
   },
 };
@@ -280,7 +313,7 @@ const flaggedCount = computed(() => props.equipmentList.filter((item) => item.ne
     </div>
 
     <div style="font-size: 11px; color: #8891a0; padding: 0 8px 6px">
-      ● 정상 {{ healthyCount }}대&nbsp;&nbsp;● 점검필요 {{ flaggedCount }}대 · 드래그로 회전 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택 · 초록 테두리 = 정상 범위(PoF≥20·CoF≥30·DoF≥20) · 빨간 점선 = 기준까지 부족한 거리
+      ● 정상 {{ healthyCount }}대&nbsp;&nbsp;● 점검필요 {{ flaggedCount }}대 · 드래그로 회전 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택 · 초록 테두리·점선 = 정상 범위 기준(PoF≥20·CoF≥30·DoF≥20) · 빨간 점선 = 기준까지 부족한 거리
     </div>
   </div>
 </template>
