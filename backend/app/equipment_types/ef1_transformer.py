@@ -37,10 +37,11 @@ def _gen_redundancy():
     return random.choices(["N+N", "N+1", "N+0"], weights=[0.5, 0.3, 0.2])[0]
 
 
-# label: 사내 입력파일 임포트 시 컬럼 매칭에 쓰는 한글 라벨(name 또는 label 중 하나만
-# 맞으면 매칭됨). ref_data/schema_eflms.py의 라벨을 그대로 이식하되, 그쪽에 있던 중복/오기
-# 3건(coil_max_temp가 "부하율"과 중복, furan_diag_time이 dga_diag_time과 "진단일" 중복,
-# furan_2FOL이 "dga_2fol"로 오기)은 라벨 매칭이 모호해지지 않도록 여기서만 바로잡았다.
+# label: 각 항목이 무엇인지 설명하는 한글 부연 라벨(문서/화면 표시용 메타데이터).
+# 사내 입력파일은 영문 헤더로만 오므로 컬럼 매칭에는 쓰이지 않는다 — 매칭은 항상 name
+# 기준(app/services/import_service.py 참고). ref_data/schema_eflms.py의 라벨을 그대로
+# 이식하되, 그쪽에 있던 중복/오기 3건(coil_max_temp가 "부하율"과 중복, furan_diag_time이
+# dga_diag_time과 "진단일" 중복, furan_2FOL이 "dga_2fol"로 오기)은 여기서 바로잡았다.
 INPUT_COLUMNS = [
     {"name": "factory_code", "label": "사업장명", "dtype": "str", "generator": lambda: random.choice(["H1", "H2", "K1", "P1"])},
     {"name": "EF_code", "label": "전기설비코드", "dtype": "str", "generator": lambda: EF_CODE},

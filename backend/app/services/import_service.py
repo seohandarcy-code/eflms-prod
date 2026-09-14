@@ -16,12 +16,15 @@ from app.equipment_types.ef1_transformer import INPUT_COLUMNS, calculate
 from app.services.ingest import ingest_row
 
 _COLUMNS_BY_NAME = {col["name"]: col for col in INPUT_COLUMNS}
-_COLUMNS_BY_LABEL = {col["label"]: col for col in INPUT_COLUMNS if col.get("label")}
 
 
 def _match_column(header: str) -> dict | None:
-    key = header.strip()
-    return _COLUMNS_BY_NAME.get(key) or _COLUMNS_BY_LABEL.get(key)
+    """파일 헤더를 name(영문)으로만 매칭한다.
+
+    INPUT_COLUMNS의 label(한글)은 항목 설명용 메타데이터일 뿐 — 실제 사내
+    입력파일은 영문 헤더로만 오는 것으로 확인되어 매칭 기준에서 제외했다.
+    """
+    return _COLUMNS_BY_NAME.get(header.strip())
 
 
 def _cast_value(raw: str, dtype: str):

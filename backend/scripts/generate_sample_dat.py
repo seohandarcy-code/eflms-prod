@@ -11,9 +11,6 @@ from app.equipment_types.ef1_transformer import INPUT_COLUMNS, generate_input_ro
 
 SAMPLE_DIR = Path(__file__).resolve().parent.parent / "sample_data"
 
-# 일부 컬럼은 영문 name 대신 한글 label로 헤더를 써서, 두 표기 모두 매칭되는지 보여준다.
-_LABEL_HEADER_COLUMNS = {"factory_code", "transformer_name", "voltage"}
-
 
 def _format_value(value) -> str:
     from datetime import date
@@ -24,7 +21,8 @@ def _format_value(value) -> str:
 
 
 def _header_row() -> list[str]:
-    return [col["label"] if col["name"] in _LABEL_HEADER_COLUMNS else col["name"] for col in INPUT_COLUMNS]
+    # 실제 사내 입력파일은 영문 헤더로만 오므로, 샘플도 name(영문)만 사용한다.
+    return [col["name"] for col in INPUT_COLUMNS]
 
 
 def _data_row(row: dict) -> list[str]:

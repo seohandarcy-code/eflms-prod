@@ -47,7 +47,7 @@ mock 생성기(ref_data 로직 이식)     ─┐
 - **시드 스크립트** `backend/app/db/seed.py` — mock 생성기로 flat dict를 만들어 `ingest_row` 호출 (`--rows`, `--reset`).
 - **파일 임포트** `backend/app/services/import_service.py` — 사내 입력 파일(탭 구분 텍스트, `.dat`)을 파싱해 flat dict로 만든 뒤 동일 파이프라인 호출. 실행은 CLI로 웹서버 기동과 분리(`python -m app.db.import_data --file ... --ef-code EF1`).
   - **인코딩**: UTF-8을 우선 시도하고 실패 시 CP949(EUC-KR)로 폴백 — 사내에서 받는 파일이 두 인코딩을 오갈 수 있음을 전제.
-  - **컬럼 매칭**: 파일 헤더를 `schema_eflms.py`의 `name`(영문) 또는 `label`(한글) 중 하나와 매칭. 매칭된 컬럼은 정의된 dtype으로 값 검증.
+  - **컬럼 매칭**: 파일 헤더를 `name`(영문)과 매칭한다(사내 입력파일은 영문 헤더로만 옴을 확인함). `label`(한글)은 각 항목이 무엇인지 설명하는 문서/화면 표시용 메타데이터일 뿐, 매칭에는 쓰지 않는다. 매칭된 컬럼은 정의된 dtype으로 값 검증.
   - **미등록 컬럼**: 실패시키지 않고 `equipment_extra_attribute`(equipment_id, column_name, value, inferred_type, source_file, imported_at)에 자동 저장(타입은 int→float→date→string 순으로 추론) + 임포트 후 "미등록 컬럼 발견" 리포트. 정식 컬럼 승격은 수동(스키마 마이그레이션)으로만 진행.
   - **검증 실패 정책**: 파일 내 일부 행에 오류가 있으면 전체 임포트를 중단하고 문제 행을 상세 리포트로 표시(부분 반영 금지).
   - **임포트 단위**: 파일 1건 = 해당 EF_code 설비들의 전체 입력 스냅샷을 통째로 갱신.
