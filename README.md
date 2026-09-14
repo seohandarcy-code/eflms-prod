@@ -62,7 +62,13 @@ cd backend
 .venv/Scripts/python -m app.db.import_data --file <파일경로> --ef-code EF1
 ```
 
-컬럼명이 실제 파일과 다르거나 날짜 형식이 다를 때 무엇을 고쳐야 하는지는 [backend/CLAUDE.md](backend/CLAUDE.md)의 "운영 데이터 임포트" 섹션에 정리되어 있음. 먼저 `backend/sample_data/`의 샘플 파일 3종(정상/오류/미등록컬럼 케이스)으로 동작을 확인해볼 수 있음.
+먼저 아래처럼 샘플 파일로 바로 실행해볼 수 있음(mock 스키마 기준으로 만든 100행짜리 연습용 파일, 실제 회사 파일 아님):
+
+```bash
+.venv/Scripts/python -m app.db.import_data --file sample_data/sample_valid.dat --ef-code EF1
+```
+
+`backend/sample_data/`에는 이 정상 케이스 외에 오류/미등록컬럼 케이스 파일도 있고(`sample_with_errors.dat`, `sample_with_extra_columns.dat`), `python scripts/generate_sample_dat.py`로 재생성 가능. 컬럼명이 실제 파일과 다르거나 날짜 형식이 다를 때 무엇을 고쳐야 하는지는 [backend/CLAUDE.md](backend/CLAUDE.md)의 "운영 데이터 임포트" 섹션에 정리되어 있음.
 
 ## 테스트
 

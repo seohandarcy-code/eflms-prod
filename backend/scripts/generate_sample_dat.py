@@ -31,7 +31,7 @@ def _data_row(row: dict) -> list[str]:
     return [_format_value(row[col["name"]]) for col in INPUT_COLUMNS]
 
 
-def write_valid(path: Path, rows: int = 5) -> None:
+def write_valid(path: Path, rows: int = 100) -> None:
     header = _header_row()
     lines = ["\t".join(header)]
     for _ in range(rows):
@@ -39,7 +39,7 @@ def write_valid(path: Path, rows: int = 5) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_with_errors(path: Path, rows: int = 5) -> None:
+def write_with_errors(path: Path, rows: int = 100) -> None:
     header = _header_row()
     lines = ["\t".join(header)]
     voltage_idx = [col["name"] for col in INPUT_COLUMNS].index("voltage")
@@ -51,7 +51,7 @@ def write_with_errors(path: Path, rows: int = 5) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_with_extra_columns(path: Path, rows: int = 5) -> None:
+def write_with_extra_columns(path: Path, rows: int = 100) -> None:
     header = [*_header_row(), "점검자", "비고"]
     lines = ["\t".join(header)]
     for i in range(rows):
