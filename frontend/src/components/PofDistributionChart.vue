@@ -83,7 +83,7 @@ const bars = computed(() => {
 }
 .chart-svg-wrap {
   width: 100%;
-  max-width: 440px;
+  max-width: 660px;
   height: 150px;
 }
 .chart-svg {
