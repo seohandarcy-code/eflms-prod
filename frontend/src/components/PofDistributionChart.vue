@@ -6,7 +6,7 @@ const props = defineProps<{ equipmentList: EquipmentSummary[]; selectedPof: numb
 
 const NEUTRAL = "#C7CCD3";
 const PAD_L = 20;
-const PAD_B = 16;
+const PAD_B = 32;
 const PAD_T = 14;
 const BAR_GAP = 6;
 const CARD_WIDTH = 180;
@@ -97,7 +97,7 @@ const tooltipStyle = computed(() => {
           <text v-if="bar.isSelected" :x="bar.x + bar.width / 2" :y="bar.y - 4" text-anchor="middle" class="bar-count" :fill="highlightColor">
             {{ bar.count }}
           </text>
-          <text :x="bar.x + bar.width / 2" :y="height - PAD_B + 10" text-anchor="middle" class="axis-tick">{{ bar.label }}</text>
+          <text :x="bar.x + bar.width / 2" :y="height - PAD_B + 21" text-anchor="middle" class="axis-tick">{{ bar.label }}</text>
         </g>
       </svg>
 

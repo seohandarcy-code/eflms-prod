@@ -352,7 +352,8 @@ const color = computed(() => (detail.value ? statusColor(detail.value.status) : 
 .chart-title {
   align-self: end;
   padding-top: 10px;
-  font-size: 11px;
+  margin-bottom: 13px;
+  font-size: 13px;
   font-weight: 600;
   color: #4a5361;
 }

@@ -7,7 +7,7 @@ const YEARS = [0, 1, 2, 3, 4, 5];
 const PAD_L = 26;
 const PAD_R = 22;
 const PAD_T = 18;
-const PAD_B = 20;
+const PAD_B = 33;
 
 const wrapEl = ref<HTMLDivElement | null>(null);
 const width = ref(280);
@@ -56,7 +56,7 @@ const linePath = computed(() => points.value.map((p, i) => `${i === 0 ? "M" : "L
         <g v-for="(p, i) in points" :key="i">
           <circle :cx="p.x" :cy="p.y" r="4" :fill="color" />
           <text :x="p.x" :y="p.y - 8" text-anchor="middle" class="point-value" :fill="color">{{ p.value.toFixed(1) }}</text>
-          <text :x="p.x" :y="height - PAD_B + 11" text-anchor="middle" class="axis-tick">{{ p.label }}</text>
+          <text :x="p.x" :y="height - PAD_B + 22" text-anchor="middle" class="axis-tick">{{ p.label }}</text>
         </g>
       </svg>
     </div>
