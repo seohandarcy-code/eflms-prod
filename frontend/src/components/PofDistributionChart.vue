@@ -8,7 +8,7 @@ const NEUTRAL = "#C7CCD3";
 const PAD_L = 20;
 const PAD_B = 16;
 const PAD_T = 14;
-const BAR_GAP = 3;
+const BAR_GAP = 6;
 const CARD_WIDTH = 180;
 
 const wrapEl = ref<HTMLDivElement | null>(null);
@@ -58,7 +58,6 @@ const bars = computed(() => {
 });
 
 const hoveredBin = ref<number | null>(null);
-const cursorPos = ref({ x: 0, y: 0 });
 
 function onBarEnter(i: number) {
   hoveredBin.value = i;
@@ -66,23 +65,22 @@ function onBarEnter(i: number) {
 function onBarLeave() {
   hoveredBin.value = null;
 }
-function onWrapMouseMove(event: MouseEvent) {
-  if (!wrapEl.value) return;
-  const rect = wrapEl.value.getBoundingClientRect();
-  cursorPos.value = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-}
 
+// 커서를 따라다니지 않고, 호버된 막대 위에 고정된다(3D 차트의 점 hover와 달리
+// 막대 위치가 고정돼 있으므로 이 편이 더 안정적으로 느껴진다).
 const tooltipStyle = computed(() => {
+  if (hoveredBin.value === null) return {};
+  const bar = bars.value[hoveredBin.value];
   const maxLeft = Math.max(width.value - CARD_WIDTH - 4, 4);
-  const left = Math.min(Math.max(cursorPos.value.x + 14, 4), maxLeft);
-  const top = Math.min(Math.max(cursorPos.value.y - 12, 4), height.value - 4);
-  return { left: `${left}px`, top: `${top}px` };
+  const left = Math.min(Math.max(bar.x + bar.width / 2 - CARD_WIDTH / 2, 4), maxLeft);
+  const top = Math.max(bar.y - 8, 4);
+  return { left: `${left}px`, top: `${top}px`, transform: "translateY(-100%)" };
 });
 </script>
 
 <template>
   <div class="chart-block">
-    <div ref="wrapEl" class="chart-svg-wrap" @mousemove="onWrapMouseMove">
+    <div ref="wrapEl" class="chart-svg-wrap">
       <svg :viewBox="`0 0 ${width} ${height}`" class="chart-svg" preserveAspectRatio="none">
         <line :x1="PAD_L" :y1="height - PAD_B" :x2="width" :y2="height - PAD_B" stroke="#EEF0F3" stroke-width="1" />
         <g v-for="(bar, i) in bars" :key="i">
@@ -103,10 +101,10 @@ const tooltipStyle = computed(() => {
         </g>
       </svg>
 
-      <div v-if="hoveredBin !== null" class="bar-tooltip" :style="tooltipStyle">
+      <div v-if="hoveredBin !== null" class="bar-tooltip" :style="{ ...tooltipStyle, borderColor: highlightColor }">
         <div class="bt-head">
-          <span class="bt-dot"></span>
-          <span class="bt-name">POF {{ hoveredBin * 10 }}-{{ hoveredBin * 10 + 10 }}</span>
+          <span class="bt-dot" :style="{ background: highlightColor }"></span>
+          <span class="bt-name" :style="{ color: highlightColor }">POF {{ hoveredBin * 10 }}-{{ hoveredBin * 10 + 10 }}</span>
           <span class="bt-value">{{ bars[hoveredBin].count }}대</span>
         </div>
         <div class="bt-caption">이 구간에 속한 설비 수</div>
@@ -144,7 +142,7 @@ const tooltipStyle = computed(() => {
   z-index: 6;
   width: 180px;
   background: #fff;
-  border: 1px solid #1b8a5a;
+  border: 1px solid #1a2230;
   border-radius: 9px;
   padding: 10px 12px;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
@@ -161,12 +159,10 @@ const tooltipStyle = computed(() => {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #1b8a5a;
   flex: 0 0 auto;
 }
 .bt-name {
   font-weight: 700;
-  color: #1b8a5a;
   font-size: 12px;
 }
 .bt-value {
