@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useEquipmentStore } from "../stores/equipment";
 import RiskScatterChart from "../components/RiskScatterChart.vue";
 import EquipmentCard from "../components/EquipmentCard.vue";
+import EquipmentListTable from "../components/EquipmentListTable.vue";
 import EquipmentDetailPanel from "../components/EquipmentDetailPanel.vue";
-import { getReasonsByAxis } from "../utils/scoreBreakdown";
+import { getEvidence, getReasonsByAxis } from "../utils/scoreBreakdown";
 import type { ReasonsByAxis } from "../utils/scoreBreakdown";
 import { statusColor, statusLabel } from "../utils/statusStyle";
-import type { EquipmentSummary } from "../types/equipment";
+import type { EquipmentDetail, EquipmentSummary } from "../types/equipment";
 
 const store = useEquipmentStore();
 const selectedId = ref<number | null>(null);
@@ -18,15 +19,115 @@ const factories = ["H1", "H2", "K1", "P1"];
 const EMPTY_REASONS: ReasonsByAxis = { pof: [], cof: [], dof: [] };
 
 const detailReasons = computed(() =>
-  store.needsInspectionList.map((item) => ({
-    item,
-    reasons: store.detailCache[item.equipment_id] ? getReasonsByAxis(store.detailCache[item.equipment_id].score_detail) : EMPTY_REASONS,
-  })),
+  store.needsInspectionList.map((item) => {
+    const detail = store.detailCache[item.equipment_id] as EquipmentDetail | undefined;
+    return {
+      item,
+      detail,
+      reasons: detail ? getReasonsByAxis(detail.score_detail) : EMPTY_REASONS,
+    };
+  }),
 );
+
+interface ReasonTooltip {
+  label: string;
+  value: number;
+  evidence: string;
+  color: string;
+  top: number;
+  left: number;
+}
+
+const hoveredReason = ref<ReasonTooltip | null>(null);
+
+function onReasonEnter(event: MouseEvent, reason: { label: string; value: number; field: string }, detail: EquipmentDetail | undefined, color: string) {
+  if (!detail || !reasonScrollEl.value) return;
+  const evidence = getEvidence(reason.field, detail);
+  if (!evidence) return;
+
+  const containerRect = reasonScrollEl.value.getBoundingClientRect();
+  const targetRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  hoveredReason.value = {
+    label: reason.label,
+    value: reason.value,
+    evidence,
+    color,
+    top: targetRect.top - containerRect.top + reasonScrollEl.value.scrollTop - 6,
+    left: targetRect.left - containerRect.left,
+  };
+}
+
+function onReasonLeave() {
+  hoveredReason.value = null;
+}
 
 const normalCount = computed(() => store.equipmentList.filter((item) => item.status === "normal").length);
 const reviewCount = computed(() => store.equipmentList.filter((item) => item.status === "review").length);
 const replaceCount = computed(() => store.equipmentList.filter((item) => item.status === "replace").length);
+
+type SortKey = "score_asc" | "score_desc" | "name_asc" | "name_desc";
+const SORT_LABELS: Record<SortKey, string> = {
+  score_asc: "종합점수 낮은순",
+  score_desc: "종합점수 높은순",
+  name_asc: "설비명 오름차순",
+  name_desc: "설비명 내림차순",
+};
+
+const searchQuery = ref("");
+const sortKey = ref<SortKey>("score_asc");
+
+// 완전 일치가 아니어도(순서만 같으면 중간에 다른 글자가 끼어 있어도) 매치되는 느슨한 검색.
+// 예: "bk3"는 "BANK3"에 매치됨(b→B, k→K, 3→3 순서대로 등장).
+function fuzzyMatch(target: string, query: string): boolean {
+  let qi = 0;
+  const t = target.toLowerCase();
+  for (let ti = 0; ti < t.length && qi < query.length; ti++) {
+    if (t[ti] === query[qi]) qi++;
+  }
+  return qi === query.length;
+}
+
+const displayList = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
+  const filtered = query ? store.equipmentList.filter((item) => fuzzyMatch(item.transformer_name, query)) : store.equipmentList;
+
+  const sorted = [...filtered];
+  switch (sortKey.value) {
+    case "score_asc":
+      sorted.sort((a, b) => a.total_score - b.total_score);
+      break;
+    case "score_desc":
+      sorted.sort((a, b) => b.total_score - a.total_score);
+      break;
+    case "name_asc":
+      sorted.sort((a, b) => a.transformer_name.localeCompare(b.transformer_name));
+      break;
+    case "name_desc":
+      sorted.sort((a, b) => b.transformer_name.localeCompare(a.transformer_name));
+      break;
+  }
+  return sorted;
+});
+
+const PAGE_SIZE = 24;
+const viewMode = ref<"card" | "list">("card");
+const currentPage = ref(1);
+
+const totalPages = computed(() => Math.max(1, Math.ceil(displayList.value.length / PAGE_SIZE)));
+
+const pagedList = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE;
+  return displayList.value.slice(start, start + PAGE_SIZE);
+});
+
+// 검색/정렬/사업장 필터가 바뀌면 지금 보던 페이지 번호가 더 이상 유효하지 않을 수 있어 1페이지로 되돌린다.
+watch([searchQuery, sortKey, () => store.factoryFilter], () => {
+  currentPage.value = 1;
+});
+
+function goToPage(page: number) {
+  currentPage.value = Math.min(Math.max(page, 1), totalPages.value);
+}
 
 onMounted(async () => {
   await store.load();
@@ -67,10 +168,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
         <div class="subtitle">각 설비의 POF, COF, DOF 지수를 평가하여 점검 설비 우선 순위를 도출합니다.</div>
       </div>
       <div class="filters">
-        <button class="filtbtn" :class="{ active: store.factoryFilter === null }" @click="store.setFactoryFilter(null)">전체 사업장</button>
-        <button v-for="f in factories" :key="f" class="filtbtn" :class="{ active: store.factoryFilter === f }" @click="store.setFactoryFilter(f)">
-          {{ f }}
-        </button>
+        <span class="filter-badge">{{ store.factoryFilter ? `${store.factoryFilter} 사업장` : "전체 사업장" }}</span>
         <span class="ef-badge">EF1 · 변압기</span>
       </div>
     </header>
@@ -80,6 +178,20 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
         <div class="rail-title">설비유형</div>
         <div class="rail-row muted">EF1 · 변압기</div>
         <div class="rail-hint">EF2~EF22 설비유형 추가 예정</div>
+
+        <div class="rail-title rail-title-spaced">사업장</div>
+        <div class="rail-filter-group">
+          <button class="rail-filtbtn" :class="{ active: store.factoryFilter === null }" @click="store.setFactoryFilter(null)">전체 사업장</button>
+          <button
+            v-for="f in factories"
+            :key="f"
+            class="rail-filtbtn"
+            :class="{ active: store.factoryFilter === f }"
+            @click="store.setFactoryFilter(f)"
+          >
+            {{ f }}
+          </button>
+        </div>
       </aside>
 
       <main class="main">
@@ -115,7 +227,10 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
           </div>
 
           <div class="list-header">
-            <div class="list-title">POF·COF·DOF 지수 3차원 분포도</div>
+            <div class="list-title">
+              POF·COF·DOF 지수 3차원 분포도
+              <RouterLink to="/guide" class="guide-link" title="지표 설명 보기">?</RouterLink>
+            </div>
           </div>
 
           <div class="risk-panel">
@@ -151,28 +266,54 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
                     <div class="axis-grid">
                       <div class="axis-col">
                         <div class="axis-head">POF <b>{{ entry.item.pof }}</b></div>
-                        <div v-for="reason in entry.reasons.pof" :key="reason.label" class="axis-reason">
-                          {{ reason.label }} <span class="neg">{{ reason.value }}</span>
+                        <div
+                          v-for="reason in entry.reasons.pof"
+                          :key="reason.label"
+                          class="axis-reason"
+                          @mouseenter="onReasonEnter($event, reason, entry.detail, statusColor(entry.item.status))"
+                          @mouseleave="onReasonLeave"
+                        >
+                          <span class="reason-label">{{ reason.label }}</span> <span class="neg">{{ reason.value }}</span>
                         </div>
                         <div v-if="entry.reasons.pof.length === 0" class="axis-empty">감점 없음</div>
                       </div>
                       <div class="axis-col">
                         <div class="axis-head">COF <b>{{ entry.item.cof }}</b></div>
-                        <div v-for="reason in entry.reasons.cof" :key="reason.label" class="axis-reason">
-                          {{ reason.label }} <span class="neg">{{ reason.value }}</span>
+                        <div
+                          v-for="reason in entry.reasons.cof"
+                          :key="reason.label"
+                          class="axis-reason"
+                          @mouseenter="onReasonEnter($event, reason, entry.detail, statusColor(entry.item.status))"
+                          @mouseleave="onReasonLeave"
+                        >
+                          <span class="reason-label">{{ reason.label }}</span> <span class="neg">{{ reason.value }}</span>
                         </div>
                         <div v-if="entry.reasons.cof.length === 0" class="axis-empty">감점 없음</div>
                       </div>
                       <div class="axis-col">
                         <div class="axis-head">DOF <b>{{ entry.item.dof }}</b></div>
-                        <div v-for="reason in entry.reasons.dof" :key="reason.label" class="axis-reason">
-                          {{ reason.label }} <span class="neg">{{ reason.value }}</span>
+                        <div
+                          v-for="reason in entry.reasons.dof"
+                          :key="reason.label"
+                          class="axis-reason"
+                          @mouseenter="onReasonEnter($event, reason, entry.detail, statusColor(entry.item.status))"
+                          @mouseleave="onReasonLeave"
+                        >
+                          <span class="reason-label">{{ reason.label }}</span> <span class="neg">{{ reason.value }}</span>
                         </div>
                         <div v-if="entry.reasons.dof.length === 0" class="axis-empty">감점 없음</div>
                       </div>
                     </div>
                   </div>
                   <div v-if="detailReasons.length === 0" class="muted">점검필요 설비가 없습니다</div>
+
+                  <div v-if="hoveredReason" class="reason-tooltip" :style="{ top: `${hoveredReason.top}px`, left: `${hoveredReason.left}px`, borderColor: hoveredReason.color }">
+                    <div class="rt-head">
+                      <span class="rt-label">{{ hoveredReason.label }}</span>
+                      <span class="rt-value">{{ hoveredReason.value }}</span>
+                    </div>
+                    <div class="rt-evidence">{{ hoveredReason.evidence }}</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -180,20 +321,52 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
 
           <div class="list-header">
             <div class="list-title">설비 목록</div>
-            <div class="list-hint">전체 {{ store.equipmentList.length }}건 · 정렬: 종합점수 낮은순 · 카드를 클릭하면(또는 위 3D 그래프의 점을 클릭하면) 아래 상세정보가 갱신됩니다</div>
+            <div class="list-hint">
+              {{ searchQuery ? `전체 ${store.equipmentList.length}건 중 ${displayList.length}건 검색됨` : `전체 ${displayList.length}건` }}
+              · 정렬: {{ SORT_LABELS[sortKey] }} · 카드를 클릭하면(또는 위 3D 그래프의 점을 클릭하면) 아래 상세정보가 갱신됩니다
+            </div>
+          </div>
+
+          <div class="list-controls">
+            <input v-model="searchQuery" type="text" class="search-input" placeholder="설비명 검색 (예: BANK3)" />
+            <select v-model="sortKey" class="sort-select">
+              <option v-for="(label, key) in SORT_LABELS" :key="key" :value="key">{{ label }}</option>
+            </select>
+            <div class="view-toggle">
+              <button class="view-btn" :class="{ active: viewMode === 'card' }" title="카드형" @click="viewMode = 'card'">⊞</button>
+              <button class="view-btn" :class="{ active: viewMode === 'list' }" title="리스트형" @click="viewMode = 'list'">☰</button>
+            </div>
           </div>
 
           <EquipmentDetailPanel v-if="selectedId !== null" :equipment-id="selectedId" />
 
-          <div class="card-grid">
-            <EquipmentCard
-              v-for="item in store.equipmentList"
-              :key="item.equipment_id"
-              :summary="item"
-              :active="selectedId === item.equipment_id"
-              @select="selectCard"
-            />
-          </div>
+          <div v-if="displayList.length === 0" class="muted" style="padding: 24px 0">검색 결과가 없습니다</div>
+          <template v-else>
+            <div v-if="viewMode === 'card'" class="card-grid">
+              <EquipmentCard
+                v-for="item in pagedList"
+                :key="item.equipment_id"
+                :summary="item"
+                :active="selectedId === item.equipment_id"
+                @select="selectCard"
+              />
+            </div>
+            <EquipmentListTable v-else :items="pagedList" :active-id="selectedId" @select="selectCard" />
+
+            <div v-if="totalPages > 1" class="pagination">
+              <button class="page-btn" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">이전</button>
+              <button
+                v-for="page in totalPages"
+                :key="page"
+                class="page-btn"
+                :class="{ active: page === currentPage }"
+                @click="goToPage(page)"
+              >
+                {{ page }}
+              </button>
+              <button class="page-btn" :disabled="currentPage === totalPages" @click="goToPage(currentPage + 1)">다음</button>
+            </div>
+          </template>
         </template>
       </main>
     </div>
@@ -233,19 +406,13 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   align-items: center;
   gap: 8px;
 }
-.filtbtn {
-  border: 1px solid #e2e5ea;
-  background: #fff;
+.filter-badge {
+  font-size: 12px;
+  font-weight: 600;
   color: #4a5361;
-  font: 500 13px "IBM Plex Sans", sans-serif;
-  padding: 6px 14px;
+  border: 1px solid #e2e5ea;
   border-radius: 6px;
-  cursor: pointer;
-}
-.filtbtn.active {
-  background: #1a2230;
-  border-color: #1a2230;
-  color: #fff;
+  padding: 5px 10px;
 }
 .ef-badge {
   font-size: 12px;
@@ -281,6 +448,32 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   font-size: 11.5px;
   color: #b4bac4;
   margin-top: 2px;
+}
+.rail-title-spaced {
+  margin-top: 22px;
+}
+.rail-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rail-filtbtn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #4a5361;
+  font: 500 13px "IBM Plex Sans", sans-serif;
+  padding: 7px 10px;
+  border-radius: 6px;
+  text-align: left;
+  cursor: pointer;
+}
+.rail-filtbtn:hover {
+  background: #f4f5f7;
+}
+.rail-filtbtn.active {
+  background: #1a2230;
+  border-color: #1a2230;
+  color: #fff;
 }
 .main {
   flex: 1;
@@ -389,10 +582,48 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   margin-bottom: 10px;
 }
 .reason-scroll {
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding-right: 6px;
+}
+.reason-tooltip {
+  position: absolute;
+  transform: translateY(calc(-100% - 6px));
+  z-index: 5;
+  min-width: 160px;
+  max-width: 220px;
+  background: #fff;
+  border: 1px solid #1a2230;
+  border-radius: 9px;
+  padding: 8px 10px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
+  pointer-events: none;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+}
+.rt-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.rt-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a2230;
+}
+.rt-value {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #c4392b;
+}
+.rt-evidence {
+  font-size: 10px;
+  color: #4a5361;
+  line-height: 1.5;
 }
 .reason-card {
   border: 1px solid #e2e5ea;
@@ -451,6 +682,10 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   color: #4a5361;
   line-height: 1.5;
   overflow-wrap: break-word;
+  cursor: help;
+}
+.reason-label {
+  border-bottom: 1px dotted #c7ccd3;
 }
 .axis-empty {
   font-size: 10.5px;
@@ -470,14 +705,106 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   font-size: 15px;
   font-weight: 700;
 }
+.guide-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  border-radius: 50%;
+  border: 1px solid #c7ccd3;
+  color: #8891a0;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  vertical-align: middle;
+}
+.guide-link:hover {
+  border-color: #0f8a8a;
+  color: #0f8a8a;
+}
 .list-hint {
   font-size: 12px;
   color: #8891a0;
+}
+.list-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.search-input {
+  flex: 1;
+  max-width: 320px;
+  border: 1px solid #e2e5ea;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font: 500 13px "IBM Plex Sans", sans-serif;
+  color: #1a2230;
+}
+.search-input:focus {
+  outline: none;
+  border-color: #0f8a8a;
+}
+.sort-select {
+  border: 1px solid #e2e5ea;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font: 500 13px "IBM Plex Sans", sans-serif;
+  color: #1a2230;
+  background: #fff;
+}
+.view-toggle {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  border: 1px solid #e2e5ea;
+  border-radius: 6px;
+  padding: 2px;
+}
+.view-btn {
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 15px;
+  line-height: 1;
+  color: #8891a0;
+  cursor: pointer;
+}
+.view-btn.active {
+  background: #1a2230;
+  color: #fff;
 }
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 16px;
+}
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 20px;
+  justify-content: center;
+}
+.page-btn {
+  border: 1px solid #e2e5ea;
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font: 500 13px "IBM Plex Mono", ui-monospace, monospace;
+  color: #4a5361;
+  cursor: pointer;
+}
+.page-btn:disabled {
+  color: #c7ccd3;
+  cursor: not-allowed;
+}
+.page-btn.active {
+  background: #1a2230;
+  border-color: #1a2230;
+  color: #fff;
 }
 .muted {
   color: #8891a0;
