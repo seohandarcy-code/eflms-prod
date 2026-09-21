@@ -3,6 +3,8 @@ import { computed, ref, watch } from "vue";
 import { useEquipmentStore } from "../stores/equipment";
 import type { EquipmentDetail } from "../types/equipment";
 import { statusBg, statusColor, statusLabel } from "../utils/statusStyle";
+import PofDistributionChart from "./PofDistributionChart.vue";
+import ScoreProjectionChart from "./ScoreProjectionChart.vue";
 
 const props = defineProps<{ equipmentId: number }>();
 
@@ -48,8 +50,12 @@ const color = computed(() => (detail.value ? statusColor(detail.value.status) : 
   <div class="panel" :style="detail ? { borderColor: color } : {}">
     <div v-if="loading || !detail" class="loading">불러오는 중...</div>
     <template v-else>
-      <div class="eyebrow">선택된 설비</div>
-      <div class="panel-head">
+      <div class="panel-grid">
+        <div class="eyebrow">선택된 설비</div>
+        <div class="meta">
+          {{ detail.factory_code }} · {{ detail.voltage.toLocaleString() }}V · ONAN {{ detail.onan_val }}MVA · 가동 {{ formatMonth(detail.operation_start_time) }}
+        </div>
+
         <div class="name-row">
           <span class="name">{{ detail.transformer_name }}</span>
           <span class="chip" :style="{ background: statusBg(detail.status), color }">
@@ -57,47 +63,51 @@ const color = computed(() => (detail.value ? statusColor(detail.value.status) : 
           </span>
           <span class="total-score-badge">종합점수: {{ detail.score.total_score.toFixed(1) }}</span>
         </div>
-        <div class="meta">
-          {{ detail.factory_code }} · {{ detail.voltage.toLocaleString() }}V · ONAN {{ detail.onan_val }}MVA · 가동 {{ formatMonth(detail.operation_start_time) }}
+        <div class="chart-title chart-title-1">POF 분포 <span class="muted">· 이 설비가 속한 구간을 강조 표시</span></div>
+        <div class="chart-title chart-title-2">5개년 예측 <span class="muted">· 연 -1점 단순 가정(실제 예측 아님)</span></div>
+
+        <div class="left-col">
+          <div class="score-bars">
+            <span>POF</span>
+            <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.pof) + '%', background: color }" /></div>
+            <span class="bar-value mono">{{ detail.score.pof }}</span>
+            <span>COF</span>
+            <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.cof) + '%', background: color }" /></div>
+            <span class="bar-value mono">{{ detail.score.cof }}</span>
+            <span>DOF</span>
+            <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.dof) + '%', background: color }" /></div>
+            <span class="bar-value mono">{{ detail.score.dof }}</span>
+          </div>
+
+          <div class="compact-details">
+            <div class="compact-row">
+              <span class="compact-label">DGA(유중가스)</span>
+              <span class="compact-value mono">{{ detail.score_detail.dga_tcg }}ppm · {{ detail.score_detail.dga_diag }}</span>
+            </div>
+            <div class="compact-row">
+              <span class="compact-label">부하·온도</span>
+              <span class="compact-value mono">{{ detail.load.load_percent }}% · {{ detail.load.coil_max_temp }}℃</span>
+            </div>
+            <div class="compact-row">
+              <span class="compact-label">절연·유중시험</span>
+              <span class="compact-value mono">{{ detail.score_detail.dielec_str_te_avg.toFixed(1) }}kV · {{ detail.score_detail.acid_measure_desc }}</span>
+            </div>
+            <div class="compact-row">
+              <span class="compact-label">설계속성</span>
+              <span class="compact-value mono">예비화 {{ detail.design.redundancy }} · 자동전환 {{ detail.design.ato }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-cell chart-cell-1">
+          <PofDistributionChart :equipment-list="store.equipmentList" :selected-pof="detail.score.pof" :highlight-color="color" />
+        </div>
+        <div class="chart-cell chart-cell-2">
+          <ScoreProjectionChart :current-score="detail.score.total_score" :color="color" />
         </div>
       </div>
 
-      <div class="body">
-        <div class="score-bars">
-          <span>POF</span>
-          <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.pof) + '%', background: color }" /></div>
-          <span class="bar-value mono">{{ detail.score.pof }}</span>
-          <span>COF</span>
-          <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.cof) + '%', background: color }" /></div>
-          <span class="bar-value mono">{{ detail.score.cof }}</span>
-          <span>DOF</span>
-          <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.dof) + '%', background: color }" /></div>
-          <span class="bar-value mono">{{ detail.score.dof }}</span>
-        </div>
-
-        <div class="detail-grid">
-          <div class="detail-col">
-            <div class="detail-title">DGA (유중가스)</div>
-            <div class="mono">TCG {{ detail.score_detail.dga_tcg }}ppm</div>
-            <div class="muted">판정: {{ detail.score_detail.dga_diag }}</div>
-          </div>
-          <div class="detail-col">
-            <div class="detail-title">부하 · 온도</div>
-            <div class="mono">부하율 {{ detail.load.load_percent }}%</div>
-            <div class="muted">권선 최고온도 {{ detail.load.coil_max_temp }}℃</div>
-          </div>
-          <div class="detail-col">
-            <div class="detail-title">절연 · 유중시험</div>
-            <div class="mono">절연내력 평균 {{ detail.score_detail.dielec_str_te_avg.toFixed(1) }}kV</div>
-            <div class="muted">산가도 {{ detail.score_detail.acid_measure_desc }}</div>
-          </div>
-          <div class="detail-col">
-            <div class="detail-title">설계속성</div>
-            <div class="muted">예비화 {{ detail.design.redundancy }} · 계통자동전환 {{ detail.design.ato }}</div>
-            <div class="muted">온라인 유중가스 {{ detail.design.online_og_chk }} · 안전공사 정밀점검 {{ detail.design.offline_safety_chk }}</div>
-          </div>
-        </div>
-
+      <div class="raw-section">
         <button type="button" class="raw-toggle" @click="showRaw = !showRaw">
           {{ showRaw ? "원본 데이터 접기" : "원본 데이터 전체 보기" }}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :style="{ transform: showRaw ? 'rotate(180deg)' : 'none' }">
@@ -284,24 +294,39 @@ const color = computed(() => (detail.value ? statusColor(detail.value.status) : 
   color: #8891a0;
   padding: 16px 0;
 }
+.panel-grid {
+  display: grid;
+  grid-template-columns: 420px 1fr 1fr;
+  grid-template-rows: auto auto 150px;
+  column-gap: 28px;
+  row-gap: 6px;
+  grid-template-areas:
+    "eyebrow meta   meta"
+    "name    title1 title2"
+    "info    chart1 chart2";
+}
 .eyebrow {
+  grid-area: eyebrow;
   font: 600 11px "IBM Plex Sans";
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #c4392b;
-  margin-bottom: 8px;
+  align-self: end;
 }
-.panel-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px;
+.meta {
+  grid-area: meta;
+  justify-self: end;
+  align-self: end;
+  font-size: 12px;
+  color: #8891a0;
 }
 .name-row {
+  grid-area: name;
+  align-self: end;
   display: flex;
   align-items: center;
   gap: 10px;
+  padding-top: 10px;
 }
 .name {
   font-size: 18px;
@@ -324,20 +349,40 @@ const color = computed(() => (detail.value ? statusColor(detail.value.status) : 
   border-radius: 6px;
   padding: 3px 10px;
 }
-.meta {
-  font-size: 12px;
-  color: #8891a0;
+.chart-title {
+  align-self: end;
+  padding-top: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4a5361;
 }
-.body {
-  margin-top: 16px;
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 24px;
+.chart-title-1 {
+  grid-area: title1;
+}
+.chart-title-2 {
+  grid-area: title2;
+}
+.chart-cell {
+  min-width: 0;
+}
+.chart-cell-1 {
+  grid-area: chart1;
+}
+.chart-cell-2 {
+  grid-area: chart2;
+}
+.left-col {
+  grid-area: info;
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
 }
 .score-bars {
+  flex: 0 0 170px;
   display: grid;
   grid-template-columns: 34px 1fr 34px;
   gap: 8px 10px;
+  align-content: start;
   align-items: center;
   font-size: 12px;
   color: #8891a0;
@@ -356,16 +401,28 @@ const color = computed(() => (detail.value ? statusColor(detail.value.status) : 
   color: #4a5361;
   text-align: right;
 }
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
-  font-size: 12.5px;
+.compact-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-left: 1px solid #eef0f3;
+  padding-left: 16px;
 }
-.detail-title {
+.compact-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.compact-label {
+  font-size: 10.5px;
   font-weight: 600;
-  color: #4a5361;
-  margin-bottom: 6px;
+  color: #8891a0;
+}
+.compact-value {
+  font-size: 12px;
+  color: #1a2230;
 }
 .mono {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
@@ -373,9 +430,10 @@ const color = computed(() => (detail.value ? statusColor(detail.value.status) : 
 .muted {
   color: #8891a0;
 }
+.raw-section {
+  margin-top: 16px;
+}
 .raw-toggle {
-  grid-column: 1 / -1;
-  justify-self: start;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -395,7 +453,6 @@ const color = computed(() => (detail.value ? statusColor(detail.value.status) : 
   transition: transform 0.15s ease;
 }
 .raw-groups {
-  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;

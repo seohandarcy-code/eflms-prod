@@ -5,6 +5,7 @@ import RiskScatterChart from "../components/RiskScatterChart.vue";
 import EquipmentCard from "../components/EquipmentCard.vue";
 import EquipmentListTable from "../components/EquipmentListTable.vue";
 import EquipmentDetailPanel from "../components/EquipmentDetailPanel.vue";
+import MultiSelectFilter from "../components/MultiSelectFilter.vue";
 import { getEvidence, getReasonsByAxis } from "../utils/scoreBreakdown";
 import type { ReasonsByAxis } from "../utils/scoreBreakdown";
 import { statusColor, statusLabel } from "../utils/statusStyle";
@@ -14,7 +15,20 @@ const store = useEquipmentStore();
 const selectedId = ref<number | null>(null);
 const hoveredId = ref<number | null>(null);
 const reasonScrollEl = ref<HTMLDivElement | null>(null);
-const factories = ["H1", "H2", "K1", "P1"];
+
+const FACTORY_OPTIONS = [
+  { value: "H1", label: "H1" },
+  { value: "H2", label: "H2" },
+  { value: "K1", label: "K1" },
+  { value: "P1", label: "P1" },
+];
+const EQUIPMENT_TYPE_OPTIONS = [{ value: "EF1", label: "EF1 · 변압기" }];
+
+const filterSummaryText = computed(() => {
+  const factoryText = store.factoryFilters.length === 0 ? "전체 사업장" : store.factoryFilters.join(", ");
+  const typeText = store.equipmentTypeFilters.length === 0 ? "EF1 · 변압기" : store.equipmentTypeFilters.join(", ");
+  return `${typeText} · ${factoryText}`;
+});
 
 const EMPTY_REASONS: ReasonsByAxis = { pof: [], cof: [], dof: [] };
 
@@ -120,8 +134,8 @@ const pagedList = computed(() => {
   return displayList.value.slice(start, start + PAGE_SIZE);
 });
 
-// 검색/정렬/사업장 필터가 바뀌면 지금 보던 페이지 번호가 더 이상 유효하지 않을 수 있어 1페이지로 되돌린다.
-watch([searchQuery, sortKey, () => store.factoryFilter], () => {
+// 검색/정렬/필터가 바뀌면 지금 보던 페이지 번호가 더 이상 유효하지 않을 수 있어 1페이지로 되돌린다.
+watch([searchQuery, sortKey, () => store.factoryFilters, () => store.equipmentTypeFilters], () => {
   currentPage.value = 1;
 });
 
@@ -168,30 +182,28 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
         <div class="subtitle">각 설비의 POF, COF, DOF 지수를 평가하여 점검 설비 우선 순위를 도출합니다.</div>
       </div>
       <div class="filters">
-        <span class="filter-badge">{{ store.factoryFilter ? `${store.factoryFilter} 사업장` : "전체 사업장" }}</span>
-        <span class="ef-badge">EF1 · 변압기</span>
+        <span class="filter-badge">{{ filterSummaryText }}</span>
       </div>
     </header>
 
     <div class="body">
       <aside class="rail">
-        <div class="rail-title">설비유형</div>
-        <div class="rail-row muted">EF1 · 변압기</div>
+        <MultiSelectFilter
+          label="설비유형"
+          :options="EQUIPMENT_TYPE_OPTIONS"
+          :model-value="store.equipmentTypeFilters"
+          all-label="전체 설비유형"
+          @update:model-value="store.setEquipmentTypeFilters"
+        />
         <div class="rail-hint">EF2~EF22 설비유형 추가 예정</div>
 
-        <div class="rail-title rail-title-spaced">사업장</div>
-        <div class="rail-filter-group">
-          <button class="rail-filtbtn" :class="{ active: store.factoryFilter === null }" @click="store.setFactoryFilter(null)">전체 사업장</button>
-          <button
-            v-for="f in factories"
-            :key="f"
-            class="rail-filtbtn"
-            :class="{ active: store.factoryFilter === f }"
-            @click="store.setFactoryFilter(f)"
-          >
-            {{ f }}
-          </button>
-        </div>
+        <MultiSelectFilter
+          label="사업장"
+          :options="FACTORY_OPTIONS"
+          :model-value="store.factoryFilters"
+          all-label="전체 사업장"
+          @update:model-value="store.setFactoryFilters"
+        />
       </aside>
 
       <main class="main">
@@ -202,7 +214,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
             <div class="card kpi">
               <div class="kpi-label">전체 설비</div>
               <div class="kpi-value">{{ store.equipmentList.length }}<span class="unit">대</span></div>
-              <div class="kpi-sub">EF1 · 변압기 기준{{ store.factoryFilter ? ` · ${store.factoryFilter} 필터 적용` : "" }}</div>
+              <div class="kpi-sub">EF1 · 변압기 기준{{ store.factoryFilters.length > 0 ? ` · ${store.factoryFilters.join(", ")} 필터 적용` : "" }}</div>
             </div>
             <div class="card kpi">
               <div class="kpi-label">정상 설비</div>
@@ -414,14 +426,6 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   border-radius: 6px;
   padding: 5px 10px;
 }
-.ef-badge {
-  font-size: 12px;
-  color: #8891a0;
-  border: 1px solid #e2e5ea;
-  border-radius: 6px;
-  padding: 5px 10px;
-  margin-left: 4px;
-}
 .body {
   display: flex;
   flex: 1;
@@ -429,51 +433,17 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
 .rail {
   width: 224px;
   flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
   background: #fff;
   border-right: 1px solid #e2e5ea;
   padding: 24px 20px;
 }
-.rail-title {
-  font: 600 13px "IBM Plex Sans";
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #8891a0;
-  margin-bottom: 10px;
-}
-.rail-row {
-  font-size: 13px;
-  padding: 5px 0;
-}
 .rail-hint {
   font-size: 11.5px;
   color: #b4bac4;
-  margin-top: 2px;
-}
-.rail-title-spaced {
-  margin-top: 22px;
-}
-.rail-filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.rail-filtbtn {
-  border: 1px solid transparent;
-  background: transparent;
-  color: #4a5361;
-  font: 500 13px "IBM Plex Sans", sans-serif;
-  padding: 7px 10px;
-  border-radius: 6px;
-  text-align: left;
-  cursor: pointer;
-}
-.rail-filtbtn:hover {
-  background: #f4f5f7;
-}
-.rail-filtbtn.active {
-  background: #1a2230;
-  border-color: #1a2230;
-  color: #fff;
+  margin-top: -14px;
 }
 .main {
   flex: 1;
