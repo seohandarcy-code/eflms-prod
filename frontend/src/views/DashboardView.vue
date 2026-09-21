@@ -248,7 +248,16 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
           <div class="list-header">
             <div class="list-title">
               POF·COF·DOF 지수 3차원 분포도
-              <RouterLink to="/guide" class="guide-link" title="지표 설명 보기">?</RouterLink>
+              <span class="guide-link-wrap">
+                <RouterLink to="/guide" class="guide-link">?</RouterLink>
+                <div class="guide-tooltip">
+                  <div class="gt-head">
+                    <span class="gt-dot"></span>
+                    <span class="gt-name">지표 설명 보기</span>
+                  </div>
+                  <div class="gt-caption">POF·COF·DOF 정의, 계산식, 판정 기준을 확인할 수 있어요</div>
+                </div>
+              </span>
             </div>
           </div>
 
@@ -697,6 +706,11 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   font-size: 15px;
   font-weight: 700;
 }
+.guide-link-wrap {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
 .guide-link {
   display: inline-flex;
   align-items: center;
@@ -705,16 +719,63 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   height: 18px;
   margin-left: 6px;
   border-radius: 50%;
-  border: 1px solid #c7ccd3;
-  color: #8891a0;
+  border: 1px solid #1b8a5a;
+  color: #1b8a5a;
   font-size: 11px;
   font-weight: 700;
   text-decoration: none;
   vertical-align: middle;
 }
 .guide-link:hover {
-  border-color: #0f8a8a;
-  color: #0f8a8a;
+  background: #1b8a5a;
+  color: #fff;
+}
+.guide-tooltip {
+  position: absolute;
+  z-index: 6;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  background: #fff;
+  border: 1px solid #1b8a5a;
+  border-radius: 9px;
+  padding: 11px 14px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+.guide-link-wrap:hover .guide-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+.gt-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.gt-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #1b8a5a;
+  flex: 0 0 auto;
+}
+.gt-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1b8a5a;
+}
+.gt-caption {
+  font-size: 11px;
+  color: #4a5361;
+  opacity: 0.85;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 6px;
 }
 .list-hint {
   font-size: 12px;
