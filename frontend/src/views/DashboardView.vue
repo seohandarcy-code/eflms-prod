@@ -178,8 +178,15 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   <div class="dashboard">
     <header class="topbar">
       <div class="brand">
-        <div class="title">전기설비 수명관리 시스템</div>
-        <div class="subtitle">각 설비의 POF, COF, DOF 지수를 평가하여 점검 설비 우선 순위를 도출합니다.</div>
+        <div class="brand-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </div>
+        <div>
+          <div class="title">전기설비 수명관리 시스템</div>
+          <div class="subtitle">각 설비의 POF, COF, DOF 지수를 평가하여 점검 설비 우선 순위를 도출합니다.</div>
+        </div>
       </div>
       <div class="filters">
         <span class="filter-badge">{{ filterSummaryText }}</span>
@@ -403,6 +410,21 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   align-items: flex-end;
   justify-content: space-between;
   padding: 0 32px 14px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.brand-icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: #0f8a8a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .title {
   font-size: 24px;

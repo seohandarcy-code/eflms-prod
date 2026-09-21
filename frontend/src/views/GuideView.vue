@@ -12,8 +12,15 @@ const dofItems = computed(() => Object.values(DOF_FIELD_LABELS));
   <div class="guide">
     <header class="topbar">
       <div class="brand">
-        <div class="title">POF · COF · DOF 지표 설명</div>
-        <div class="subtitle">설비 건전성 점수가 어떻게 매겨지는지 정리한 안내 페이지입니다.</div>
+        <div class="brand-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </div>
+        <div>
+          <div class="title">POF · COF · DOF 지표 설명</div>
+          <div class="subtitle">설비 건전성 점수가 어떻게 매겨지는지 정리한 안내 페이지입니다.</div>
+        </div>
       </div>
       <RouterLink to="/" class="back-link">← 대시보드로</RouterLink>
     </header>
@@ -120,6 +127,21 @@ const dofItems = computed(() => Object.values(DOF_FIELD_LABELS));
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.brand-icon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: #0f8a8a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .title {
   font-size: 24px;

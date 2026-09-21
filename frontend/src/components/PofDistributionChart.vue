@@ -83,6 +83,7 @@ const bars = computed(() => {
 }
 .chart-svg-wrap {
   width: 100%;
+  max-width: 400px;
   height: 150px;
 }
 .chart-svg {
@@ -91,11 +92,11 @@ const bars = computed(() => {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
 }
 .axis-tick {
-  font-size: 7px;
+  font-size: 11px;
   fill: #b4bac4;
 }
 .bar-count {
-  font-size: 8.5px;
+  font-size: 12px;
   font-weight: 700;
 }
 </style>

@@ -5,7 +5,7 @@ const props = defineProps<{ currentScore: number; color: string }>();
 
 const YEARS = [0, 1, 2, 3, 4, 5];
 const PAD_L = 26;
-const PAD_R = 8;
+const PAD_R = 22;
 const PAD_T = 18;
 const PAD_B = 20;
 
@@ -70,6 +70,7 @@ const linePath = computed(() => points.value.map((p, i) => `${i === 0 ? "M" : "L
 }
 .chart-svg-wrap {
   width: 100%;
+  max-width: 400px;
   height: 150px;
 }
 .chart-svg {
@@ -78,11 +79,11 @@ const linePath = computed(() => points.value.map((p, i) => `${i === 0 ? "M" : "L
   font-family: "IBM Plex Mono", ui-monospace, monospace;
 }
 .axis-tick {
-  font-size: 7px;
+  font-size: 11px;
   fill: #b4bac4;
 }
 .point-value {
-  font-size: 8.5px;
+  font-size: 12px;
   font-weight: 700;
 }
 </style>
