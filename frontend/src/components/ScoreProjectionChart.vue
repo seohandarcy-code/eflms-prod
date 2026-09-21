@@ -70,7 +70,7 @@ const linePath = computed(() => points.value.map((p, i) => `${i === 0 ? "M" : "L
 }
 .chart-svg-wrap {
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
   height: 150px;
 }
 .chart-svg {
