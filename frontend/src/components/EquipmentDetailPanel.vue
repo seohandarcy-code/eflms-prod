@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useEquipmentStore } from "../stores/equipment";
 import type { EquipmentDetail } from "../types/equipment";
+import { statusBg, statusColor, statusLabel } from "../utils/statusStyle";
 
 const props = defineProps<{ equipmentId: number }>();
 
@@ -39,18 +40,20 @@ function clampWidth(value: number): number {
 function formatMonth(isoDate: string): string {
   return isoDate.slice(0, 7);
 }
+
+const color = computed(() => (detail.value ? statusColor(detail.value.status) : "#8891a0"));
 </script>
 
 <template>
-  <div class="panel" :class="{ flagged: detail?.needs_inspection, normal: detail && !detail.needs_inspection }">
+  <div class="panel" :style="detail ? { borderColor: color } : {}">
     <div v-if="loading || !detail" class="loading">불러오는 중...</div>
     <template v-else>
       <div class="eyebrow">선택된 설비</div>
       <div class="panel-head">
         <div class="name-row">
           <span class="name">{{ detail.transformer_name }}</span>
-          <span class="chip" :style="{ background: detail.needs_inspection ? '#FBE7E4' : '#E4F3EA', color: detail.needs_inspection ? '#C4392B' : '#1B8A5A' }">
-            {{ detail.needs_inspection ? "점검필요" : "정상" }}
+          <span class="chip" :style="{ background: statusBg(detail.status), color }">
+            {{ statusLabel(detail.status) }}
           </span>
           <span class="total-score-badge">종합점수: {{ detail.score.total_score.toFixed(1) }}</span>
         </div>
@@ -62,13 +65,13 @@ function formatMonth(isoDate: string): string {
       <div class="body">
         <div class="score-bars">
           <span>POF</span>
-          <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.pof) + '%', background: detail.score.pof < 20 ? '#C4392B' : '#3E8E8E' }" /></div>
+          <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.pof) + '%', background: color }" /></div>
           <span class="bar-value mono">{{ detail.score.pof }}</span>
           <span>COF</span>
-          <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.cof) + '%', background: detail.score.cof < 30 ? '#C4392B' : '#3E8E8E' }" /></div>
+          <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.cof) + '%', background: color }" /></div>
           <span class="bar-value mono">{{ detail.score.cof }}</span>
           <span>DOF</span>
-          <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.dof) + '%', background: detail.score.dof < 20 ? '#C4392B' : '#3E8E8E' }" /></div>
+          <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.dof) + '%', background: color }" /></div>
           <span class="bar-value mono">{{ detail.score.dof }}</span>
         </div>
 
@@ -276,14 +279,6 @@ function formatMonth(isoDate: string): string {
   margin-bottom: 20px;
   font-family: "IBM Plex Sans", system-ui, sans-serif;
   color: #1a2230;
-}
-.panel.flagged {
-  border-color: #c4392b;
-  box-shadow: 0 0 0 2px rgba(196, 57, 43, 0.12);
-}
-.panel.normal {
-  border-color: #3e8e8e;
-  box-shadow: 0 0 0 2px rgba(62, 142, 142, 0.12);
 }
 .loading {
   color: #8891a0;

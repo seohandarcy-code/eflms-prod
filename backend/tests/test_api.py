@@ -9,7 +9,9 @@ async def test_summary_counts_seeded_rows(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["total_equipment"] == 3
-    assert 0 <= data["needs_inspection_count"] <= 3
+    assert 0 <= data["review_count"] <= 3
+    assert 0 <= data["replace_count"] <= 3
+    assert data["review_count"] + data["replace_count"] <= 3
 
 
 async def test_equipment_list_is_sorted_by_total_score(client):

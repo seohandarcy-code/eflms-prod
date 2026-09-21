@@ -1,6 +1,9 @@
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
+
+EquipmentStatus = Literal["normal", "review", "replace"]
 
 
 class EquipmentSummary(BaseModel):
@@ -15,7 +18,7 @@ class EquipmentSummary(BaseModel):
     cof: int
     dof: int
     total_score: float
-    needs_inspection: bool
+    status: EquipmentStatus
     last_diag_date: date | None = None
 
 
@@ -177,7 +180,7 @@ class EquipmentDetail(BaseModel):
     onan_val: int
     onaf_val: float
     operation_start_time: date
-    needs_inspection: bool
+    status: EquipmentStatus
 
     dga: DgaReadingOut
     furan: FuranReadingOut
@@ -192,5 +195,6 @@ class EquipmentDetail(BaseModel):
 
 class SummaryKPI(BaseModel):
     total_equipment: int
-    needs_inspection_count: int
+    review_count: int
+    replace_count: int
     last_updated: datetime | None = None

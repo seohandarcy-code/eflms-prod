@@ -22,7 +22,9 @@ export const useEquipmentStore = defineStore("equipment", {
   }),
   getters: {
     needsInspectionList(state): EquipmentSummary[] {
-      return state.equipmentList.filter((item) => item.needs_inspection).sort((a, b) => a.total_score - b.total_score);
+      return state.equipmentList
+        .filter((item) => item.status === "review" || item.status === "replace")
+        .sort((a, b) => a.total_score - b.total_score);
     },
   },
   actions: {

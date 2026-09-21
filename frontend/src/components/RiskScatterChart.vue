@@ -2,62 +2,87 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import Plotly from "plotly.js-gl3d-dist-min";
 import type { Data, Layout, PlotlyHTMLElement } from "plotly.js";
-import type { EquipmentSummary } from "../types/equipment";
+import type { EquipmentStatus, EquipmentSummary } from "../types/equipment";
+import { statusColor, statusLabel } from "../utils/statusStyle";
 
 const props = defineProps<{ equipmentList: EquipmentSummary[]; selectedId: number | null }>();
 const emit = defineEmits<{ select: [equipmentId: number]; hover: [equipmentId: number | null] }>();
 
-const THRESHOLDS = { pof: 20, cof: 30, dof: 20 };
 const CARD_WIDTH = 192;
-const CARD_HEIGHT = 128;
+const CARD_HEIGHT = 92;
 
 const plotEl = ref<HTMLDivElement | null>(null);
 const hovering = ref(false);
 const hoveredItem = ref<EquipmentSummary | null>(null);
 const cursorPos = ref({ x: 0, y: 0 });
 let gd: PlotlyHTMLElement | null = null;
-let pendingFrame: number | null = null;
 
-function cancelPendingFrame() {
-  if (pendingFrame !== null) {
-    cancelAnimationFrame(pendingFrame);
-    pendingFrame = null;
-  }
+interface Box {
+  xMin: number;
+  xMax: number;
+  yMin: number;
+  yMax: number;
+  zMin: number;
+  zMax: number;
 }
 
-// 모서리 와이어프레임(0번) 바로 뒤, 마커(2번)보다 앞에 고정 위치.
-const PROJECTION_TRACE_INDEX = 1;
+// 3단계 판정 경계(docs 참고: backend app/services/equipment_service.py의 classify_status와 반드시 일치시킨다).
+// x=POF, y=COF, z=DOF.
+// COF·DOF가 둘 다 60 초과인 "구석"에서는 기준선이 완화되기 때문에, 경계는 큰 상자(POF가 그 값보다
+// 크면 항상 통과) + 그 구석에 붙은 작은 상자(완화된 구간)로 이루어진 계단형 입체가 된다.
+const NORMAL_BIG: Box = { xMin: 60, xMax: 100, yMin: 0, yMax: 100, zMin: 0, zMax: 100 };
+const NORMAL_NOTCH: Box = { xMin: 50, xMax: 60, yMin: 60, yMax: 100, zMin: 60, zMax: 100 };
+const REVIEW_BIG: Box = { xMin: 40, xMax: 100, yMin: 0, yMax: 100, zMin: 0, zMax: 100 };
+const REVIEW_NOTCH: Box = { xMin: 30, xMax: 40, yMin: 60, yMax: 100, zMin: 60, zMax: 100 };
 
-// 정상 범위(점검불필요 기준: PoF>=20, CoF>=30, DoF>=20)에 해당하는 직육면체.
-// 면을 채우지 않고 모서리 와이어프레임만 항상 표시한다 — 채운 반투명 박스는
-// 점 위에 표면이 겹쳐 클릭 피킹을 방해하는 느낌이 있어(2단계 검증 후 피드백),
-// 면이 없는 와이어프레임은 그 표면 자체가 없어 호버 토글 없이도 항상 안전하다.
-const NORMAL_RANGE = { xMin: 20, xMax: 100, yMin: 30, yMax: 100, zMin: 20, zMax: 100 };
+type Pt = [number, number, number];
 
-function buildNormalRangeEdges(): Data {
-  const { xMin, xMax, yMin, yMax, zMin, zMax } = NORMAL_RANGE;
-  const corners = [
-    [xMin, yMin, zMin],
-    [xMax, yMin, zMin],
-    [xMax, yMax, zMin],
-    [xMin, yMax, zMin],
-    [xMin, yMin, zMax],
-    [xMax, yMin, zMax],
-    [xMax, yMax, zMax],
-    [xMin, yMax, zMax],
+function faceEdges(points: Pt[]): [Pt, Pt][] {
+  return points.map((p, i) => [p, points[(i + 1) % points.length]]);
+}
+
+function edgeKey(a: Pt, b: Pt): string {
+  const [p, q] = [a, b].sort((u, v) => u[0] - v[0] || u[1] - v[1] || u[2] - v[2]);
+  return `${p.join(",")}|${q.join(",")}`;
+}
+
+// big 상자와, big의 xMin 면 한쪽 구석(notch.yMin~big.yMax, notch.zMin~big.zMax)에 flush로 붙은
+// notch 상자의 "합쳐진 입체"의 진짜 바깥 테두리만 그린다. 맞닿는 면은 내부로 사라지므로 중복선이
+// 생기지 않는다 — 9개 면(맞닿아 없어지는 면 1개 제외)의 모서리를 모아 겹치는 선을 한 번만 남긴다.
+// `drawnKeys`를 여러 와이어프레임 호출에 공유하면, 먼저 그린 경계(예: 정상)와 좌표가 완전히 같은
+// 선(예: 두 경계가 똑같이 맞닿는 가장 먼 벽면)은 나중 경계(예: 교체검토)에서 건너뛰어 중복을 없앤다.
+function buildNotchedBoxEdges(big: Box, notch: Box, color: string, drawnKeys: Set<string>): Data {
+  const { xMin: X1, xMax: X2, yMin: Y0, yMax: Y1, zMin: Z0, zMax: Z1 } = big;
+  const NX = notch.xMin;
+  const NY = notch.yMin;
+  const NZ = notch.zMin;
+
+  const faces: Pt[][] = [
+    [[X2, Y0, Z0], [X2, Y1, Z0], [X2, Y1, Z1], [X2, Y0, Z1]], // X = X2 (그대로)
+    [[X1, Y0, Z0], [X2, Y0, Z0], [X2, Y0, Z1], [X1, Y0, Z1]], // Y = Y0 (그대로)
+    [[X1, Y0, Z0], [X2, Y0, Z0], [X2, Y1, Z0], [X1, Y1, Z0]], // Z = Z0 (그대로)
+    [[X1, Y0, Z0], [X1, Y1, Z0], [X1, Y1, NZ], [X1, NY, NZ], [X1, NY, Z1], [X1, Y0, Z1]], // X = X1, 구석이 파임
+    [[X2, Y1, Z0], [X2, Y1, Z1], [NX, Y1, Z1], [NX, Y1, NZ], [X1, Y1, NZ], [X1, Y1, Z0]], // Y = Y1, notch만큼 확장
+    [[X2, Y0, Z1], [X2, Y1, Z1], [NX, Y1, Z1], [NX, NY, Z1], [X1, NY, Z1], [X1, Y0, Z1]], // Z = Z1, notch만큼 확장
+    [[NX, NY, NZ], [NX, Y1, NZ], [NX, Y1, Z1], [NX, NY, Z1]], // notch 바깥 캡 X = NX
+    [[NX, NY, NZ], [X1, NY, NZ], [X1, NY, Z1], [NX, NY, Z1]], // notch 밑면 Y = NY
+    [[NX, NY, NZ], [X1, NY, NZ], [X1, Y1, NZ], [NX, Y1, NZ]], // notch 밑면 Z = NZ
   ];
-  const edges: [number, number][] = [
-    [0, 1], [1, 2], [2, 3], [3, 0],
-    [4, 5], [5, 6], [6, 7], [7, 4],
-    [0, 4], [1, 5], [2, 6], [3, 7],
-  ];
+
+  const dedup = new Map<string, [Pt, Pt]>();
+  for (const face of faces) {
+    for (const [a, b] of faceEdges(face)) dedup.set(edgeKey(a, b), [a, b]);
+  }
+
   const x: (number | null)[] = [];
   const y: (number | null)[] = [];
   const z: (number | null)[] = [];
-  for (const [a, b] of edges) {
-    x.push(corners[a][0], corners[b][0], null);
-    y.push(corners[a][1], corners[b][1], null);
-    z.push(corners[a][2], corners[b][2], null);
+  for (const [key, [a, b]] of dedup) {
+    if (drawnKeys.has(key)) continue;
+    drawnKeys.add(key);
+    x.push(a[0], b[0], null);
+    y.push(a[1], b[1], null);
+    z.push(a[2], b[2], null);
   }
   return {
     type: "scatter3d",
@@ -65,66 +90,11 @@ function buildNormalRangeEdges(): Data {
     x,
     y,
     z,
-    line: { color: "#1B8A5A", width: 3 },
+    line: { color, width: 3 },
     hoverinfo: "skip",
     showlegend: false,
   } as Data;
 }
-
-interface SpotlightAxis {
-  key: "pof" | "cof" | "dof";
-  label: string;
-  value: number;
-  threshold: number;
-}
-
-// 미달 축이 여럿이면 기준값과의 차이(deficit)가 가장 큰 축 하나만 스포트라이트로 고른다.
-function findSpotlightAxis(item: EquipmentSummary): SpotlightAxis | null {
-  const candidates: SpotlightAxis[] = [];
-  if (item.pof < THRESHOLDS.pof) candidates.push({ key: "pof", label: "POF", value: item.pof, threshold: THRESHOLDS.pof });
-  if (item.cof < THRESHOLDS.cof) candidates.push({ key: "cof", label: "COF", value: item.cof, threshold: THRESHOLDS.cof });
-  if (item.dof < THRESHOLDS.dof) candidates.push({ key: "dof", label: "DOF", value: item.dof, threshold: THRESHOLDS.dof });
-  if (candidates.length === 0) return null;
-  return candidates.reduce((worst, cur) => (cur.threshold - cur.value > worst.threshold - worst.value ? cur : worst));
-}
-
-// 스포트라이트 축 하나에 대해서만 "현재 위치 → 그 축만 기준값으로 바꾼 위치"로
-// 향하는 선분을 만든다. 카드가 가리키는 축과 항상 같은 축을 그린다.
-function buildProjectionSegment(item: EquipmentSummary, axis: SpotlightAxis) {
-  const { pof, cof, dof } = item;
-  const end = {
-    pof: axis.key === "pof" ? axis.threshold : pof,
-    cof: axis.key === "cof" ? axis.threshold : cof,
-    dof: axis.key === "dof" ? axis.threshold : dof,
-  };
-  return { x: [pof, end.pof], y: [cof, end.cof], z: [dof, end.dof] };
-}
-
-function buildProjectionTrace(): Data {
-  return {
-    type: "scatter3d",
-    mode: "lines",
-    x: [],
-    y: [],
-    z: [],
-    line: { color: "#C4392B", width: 4, dash: "dot" },
-    hoverinfo: "skip",
-    showlegend: false,
-  } as unknown as Data;
-}
-
-const spotlight = computed(() => (hoveredItem.value ? findSpotlightAxis(hoveredItem.value) : null));
-
-const otherAxes = computed(() => {
-  if (!hoveredItem.value) return [];
-  const item = hoveredItem.value;
-  const all: SpotlightAxis[] = [
-    { key: "pof", label: "POF", value: item.pof, threshold: THRESHOLDS.pof },
-    { key: "cof", label: "COF", value: item.cof, threshold: THRESHOLDS.cof },
-    { key: "dof", label: "DOF", value: item.dof, threshold: THRESHOLDS.dof },
-  ];
-  return spotlight.value ? all.filter((a) => a.key !== spotlight.value!.key) : all;
-});
 
 const cardStyle = computed(() => {
   const width = plotEl.value?.clientWidth ?? 0;
@@ -133,10 +103,11 @@ const cardStyle = computed(() => {
   const maxTop = Math.max(height - CARD_HEIGHT - 4, 4);
   const left = Math.min(Math.max(cursorPos.value.x + 16, 4), maxLeft);
   const top = Math.min(Math.max(cursorPos.value.y + 16, 4), maxTop);
-  return { left: `${left}px`, top: `${top}px` };
+  const color = hoveredItem.value ? statusColor(hoveredItem.value.status) : "#1a2230";
+  return { left: `${left}px`, top: `${top}px`, borderColor: color };
 });
 
-// 정상/점검필요 설비를 별도 trace로 그려, 범례에서 각각 독립적으로 켜고 끌 수 있게 한다.
+// 정상/교체검토/즉시교체 설비를 별도 trace로 그려, 범례에서 각각 독립적으로 켜고 끌 수 있게 한다.
 function buildMarkerTrace(
   groupList: EquipmentSummary[],
   name: string,
@@ -170,7 +141,7 @@ function buildMarkerTrace(
     },
   };
 
-  // 선택된 설비가 (둘 중 어느 trace든) 실제로 존재할 때만 강조/흐림을 적용한다.
+  // 선택된 설비가 (어느 trace든) 실제로 존재할 때만 강조/흐림을 적용한다.
   // 이 그룹에 없으면 selectedpoints:[]가 되어 이 trace 전체가 흐려진다.
   if (selectionExists) {
     trace.selectedpoints = selectedIndex >= 0 ? [selectedIndex] : [];
@@ -181,16 +152,24 @@ function buildMarkerTrace(
   return trace as Data;
 }
 
+function groupByStatus(list: EquipmentSummary[], status: EquipmentStatus): EquipmentSummary[] {
+  return list.filter((item) => item.status === status);
+}
+
 function buildTrace(list: EquipmentSummary[], selectedId: number | null): Data[] {
-  const normalList = list.filter((item) => !item.needs_inspection);
-  const flaggedList = list.filter((item) => item.needs_inspection);
+  const normalList = groupByStatus(list, "normal");
+  const reviewList = groupByStatus(list, "review");
+  const replaceList = groupByStatus(list, "replace");
   const selectionExists = selectedId !== null && list.some((item) => item.equipment_id === selectedId);
 
+  const drawnEdgeKeys = new Set<string>();
+
   return [
-    buildNormalRangeEdges(),
-    buildProjectionTrace(),
-    buildMarkerTrace(normalList, `정상 설비 : ${normalList.length} 건`, "#3E8E8E", 7, selectedId, selectionExists),
-    buildMarkerTrace(flaggedList, `점검 필요 설비 : ${flaggedList.length} 건`, "#C4392B", 9, selectedId, selectionExists),
+    buildNotchedBoxEdges(NORMAL_BIG, NORMAL_NOTCH, statusColor("normal"), drawnEdgeKeys),
+    buildNotchedBoxEdges(REVIEW_BIG, REVIEW_NOTCH, statusColor("review"), drawnEdgeKeys),
+    buildMarkerTrace(normalList, `정상 설비 : ${normalList.length} 건`, statusColor("normal"), 7, selectedId, selectionExists),
+    buildMarkerTrace(reviewList, `교체검토 설비 : ${reviewList.length} 건`, statusColor("review"), 8, selectedId, selectionExists),
+    buildMarkerTrace(replaceList, `즉시교체 설비 : ${replaceList.length} 건`, statusColor("replace"), 9, selectedId, selectionExists),
   ];
 }
 
@@ -203,7 +182,12 @@ const layout: Partial<Layout> = {
     xaxis: { title: { text: "POF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
     yaxis: { title: { text: "COF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
     zaxis: { title: { text: "DOF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
-    camera: { eye: { x: 1.4, y: -1.4, z: 1.0 } },
+    // 원근 투영(perspective)은 스크롤 확대가 카메라를 시선 방향으로 실제로 이동시키는 방식이라
+    // 여러 번 스크롤하면 회전이 섞인 것처럼 느껴지는 부작용이 있다. 직교 투영(orthographic)은
+    // 확대가 순수한 배율 변경이라 이 문제가 없다.
+    // (plotly.js 타입 정의에 projection이 아직 없어 캐스팅— 런타임에는 정식 지원되는 옵션)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    camera: { eye: { x: 1.4, y: -1.4, z: 1.0 }, projection: { type: "orthographic" } } as any,
   },
 };
 
@@ -231,25 +215,11 @@ onMounted(async () => {
     const item = resolvedId !== null ? (props.equipmentList.find((eq) => eq.equipment_id === resolvedId) ?? null) : null;
     hoveredItem.value = item;
     emit("hover", resolvedId);
-
-    const axis = item ? findSpotlightAxis(item) : null;
-    const segment = item && axis ? buildProjectionSegment(item, axis) : { x: [], y: [], z: [] };
-    cancelPendingFrame();
-    pendingFrame = requestAnimationFrame(() => {
-      pendingFrame = null;
-      if (gd) Plotly.restyle(gd, { x: [segment.x], y: [segment.y], z: [segment.z] }, [PROJECTION_TRACE_INDEX]);
-    });
   });
   gd.on("plotly_unhover", () => {
     hovering.value = false;
     hoveredItem.value = null;
     emit("hover", null);
-
-    cancelPendingFrame();
-    pendingFrame = requestAnimationFrame(() => {
-      pendingFrame = null;
-      if (gd) Plotly.restyle(gd, { x: [[]], y: [[]], z: [[]] }, [PROJECTION_TRACE_INDEX]);
-    });
   });
 });
 
@@ -257,7 +227,6 @@ watch(
   [() => props.equipmentList, () => props.selectedId],
   ([list, selectedId]) => {
     if (gd) {
-      cancelPendingFrame();
       hoveredItem.value = null;
       Plotly.react(gd, buildTrace(list, selectedId), layout, config);
     }
@@ -265,7 +234,6 @@ watch(
 );
 
 onUnmounted(() => {
-  cancelPendingFrame();
   plotEl.value?.removeEventListener("mousemove", onContainerMouseMove);
   if (gd) {
     gd.removeAllListeners("plotly_click");
@@ -275,8 +243,9 @@ onUnmounted(() => {
   }
 });
 
-const healthyCount = computed(() => props.equipmentList.filter((item) => !item.needs_inspection).length);
-const flaggedCount = computed(() => props.equipmentList.filter((item) => item.needs_inspection).length);
+const normalCount = computed(() => groupByStatus(props.equipmentList, "normal").length);
+const reviewCount = computed(() => groupByStatus(props.equipmentList, "review").length);
+const replaceCount = computed(() => groupByStatus(props.equipmentList, "replace").length);
 </script>
 
 <template>
@@ -284,31 +253,19 @@ const flaggedCount = computed(() => props.equipmentList.filter((item) => item.ne
     <div class="chart-wrap">
       <div ref="plotEl" :style="{ width: '100%', height: '480px', cursor: hovering ? 'pointer' : 'default' }"></div>
 
-      <div v-if="hoveredItem" class="hover-card" :class="{ fail: !!spotlight }" :style="cardStyle">
+      <div v-if="hoveredItem" class="hover-card" :style="cardStyle">
         <div class="hc-head">
-          <span class="hc-dot" :style="{ background: hoveredItem.needs_inspection ? '#C4392B' : '#3E8E8E' }"></span>
+          <span class="hc-dot" :style="{ background: statusColor(hoveredItem.status) }"></span>
           <span class="hc-name">{{ hoveredItem.transformer_name }}</span>
           <span class="hc-score">{{ hoveredItem.total_score.toFixed(1) }}점</span>
         </div>
-
-        <template v-if="spotlight">
-          <div class="hc-spotlight">
-            <div class="hc-big">{{ spotlight.label }} {{ spotlight.value }}</div>
-            <div class="hc-sub">기준 {{ spotlight.threshold }} 미달 · {{ spotlight.value - spotlight.threshold }}</div>
-          </div>
-          <div class="hc-others">{{ otherAxes.map((a) => `${a.label} ${a.value}`).join(" · ") }}</div>
-        </template>
-        <template v-else>
-          <div class="hc-spotlight ok">
-            <div class="hc-big ok">정상 범위</div>
-          </div>
-          <div class="hc-others">{{ otherAxes.map((a) => `${a.label} ${a.value}`).join(" · ") }}</div>
-        </template>
+        <div class="hc-status" :style="{ color: statusColor(hoveredItem.status) }">{{ statusLabel(hoveredItem.status) }}</div>
+        <div class="hc-axes">POF {{ hoveredItem.pof }} · COF {{ hoveredItem.cof }} · DOF {{ hoveredItem.dof }}</div>
       </div>
     </div>
 
     <div style="font-size: 11px; color: #8891a0; padding: 0 8px 6px">
-      ● 정상 {{ healthyCount }}대&nbsp;&nbsp;● 점검필요 {{ flaggedCount }}대 · 드래그로 회전 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택 · 초록 테두리 = 정상 범위(POF≥20·COF≥30·DOF≥20) · 빨간 점선 = 기준까지 부족한 거리
+      ● 정상 {{ normalCount }}대&nbsp;&nbsp;● 교체검토 {{ reviewCount }}대&nbsp;&nbsp;● 즉시교체 {{ replaceCount }}대 · 드래그로 회전 · 오른쪽 드래그로 이동 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택 · 초록 테두리 = 정상 경계 · 노랑 테두리 = 교체검토 경계(그 안쪽은 즉시교체)
     </div>
   </div>
 </template>
@@ -320,17 +277,13 @@ const flaggedCount = computed(() => props.equipmentList.filter((item) => item.ne
 .hover-card {
   position: absolute;
   width: 192px;
-  background: #e4f3ea;
-  border: 1px solid #1b8a5a;
+  background: #fff;
+  border: 1px solid #1a2230;
   border-radius: 9px;
   padding: 11px 14px;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
   pointer-events: none;
   font-family: "IBM Plex Sans", system-ui, sans-serif;
-}
-.hover-card.fail {
-  background: #fbe7e4;
-  border-color: #c4392b;
 }
 .hc-head {
   display: flex;
@@ -338,10 +291,7 @@ const flaggedCount = computed(() => props.equipmentList.filter((item) => item.ne
   gap: 6px;
   font-size: 11px;
   color: #4a5361;
-  margin-bottom: 8px;
-}
-.hover-card.fail .hc-head {
-  color: #8a3327;
+  margin-bottom: 6px;
 }
 .hc-dot {
   width: 7px;
@@ -357,26 +307,12 @@ const flaggedCount = computed(() => props.equipmentList.filter((item) => item.ne
   margin-left: auto;
   font-family: "IBM Plex Mono", ui-monospace, monospace;
 }
-.hc-spotlight {
-  margin-bottom: 8px;
-}
-.hc-big {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 22px;
+.hc-status {
+  font-size: 15px;
   font-weight: 700;
-  color: #c4392b;
-  line-height: 1;
+  margin-bottom: 6px;
 }
-.hc-big.ok {
-  font-size: 16px;
-  color: #1b8a5a;
-}
-.hc-sub {
-  font-size: 10.5px;
-  color: #8a3327;
-  margin-top: 3px;
-}
-.hc-others {
+.hc-axes {
   font-size: 10.5px;
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   color: #4a5361;

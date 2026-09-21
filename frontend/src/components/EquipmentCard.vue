@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { EquipmentSummary } from "../types/equipment";
+import { statusBg, statusColor, statusLabel } from "../utils/statusStyle";
 
 const props = defineProps<{ summary: EquipmentSummary; active?: boolean }>();
 const emit = defineEmits<{ select: [equipmentId: number] }>();
@@ -9,13 +10,14 @@ function clampWidth(value: number): number {
   return Math.max(0, Math.min(100, value));
 }
 
-const statusColor = computed(() => (props.summary.needs_inspection ? "#C4392B" : "#1B8A5A"));
+const color = computed(() => statusColor(props.summary.status));
 </script>
 
 <template>
   <div
     class="equipment-card"
-    :class="{ active, 'active-flagged': active && summary.needs_inspection, 'active-normal': active && !summary.needs_inspection }"
+    :class="{ active }"
+    :style="active ? { borderColor: color, boxShadow: `0 0 0 2px ${color}26` } : {}"
     @click="emit('select', summary.equipment_id)"
   >
     <div class="card-head">
@@ -23,26 +25,26 @@ const statusColor = computed(() => (props.summary.needs_inspection ? "#C4392B" :
         <span class="name">{{ summary.transformer_name }}</span>
         <span class="meta">{{ summary.factory_code }} · {{ summary.voltage.toLocaleString() }}V</span>
       </div>
-      <span class="chip" :style="{ background: summary.needs_inspection ? '#FBE7E4' : '#E4F3EA', color: statusColor }">
-        <span class="dot" :style="{ background: statusColor }"></span>
-        {{ summary.needs_inspection ? "점검필요" : "정상" }}
+      <span class="chip" :style="{ background: statusBg(summary.status), color }">
+        <span class="dot" :style="{ background: color }"></span>
+        {{ statusLabel(summary.status) }}
       </span>
     </div>
 
     <div class="mini-bars">
       <div class="bar-row">
         <span>POF</span>
-        <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.pof) + '%', background: summary.pof < 20 ? '#C4392B' : '#3E8E8E' }" /></div>
+        <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.pof) + '%', background: color }" /></div>
         <span class="bar-value mono">{{ summary.pof }}</span>
       </div>
       <div class="bar-row">
         <span>COF</span>
-        <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.cof) + '%', background: summary.cof < 30 ? '#C4392B' : '#3E8E8E' }" /></div>
+        <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.cof) + '%', background: color }" /></div>
         <span class="bar-value mono">{{ summary.cof }}</span>
       </div>
       <div class="bar-row">
         <span>DOF</span>
-        <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.dof) + '%', background: summary.dof < 20 ? '#C4392B' : '#3E8E8E' }" /></div>
+        <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.dof) + '%', background: color }" /></div>
         <span class="bar-value mono">{{ summary.dof }}</span>
       </div>
       <div class="foot">
@@ -60,14 +62,6 @@ const statusColor = computed(() => (props.summary.needs_inspection ? "#C4392B" :
   border-radius: 8px;
   padding: 16px;
   cursor: pointer;
-}
-.equipment-card.active-flagged {
-  border-color: #c4392b;
-  box-shadow: 0 0 0 2px rgba(196, 57, 43, 0.15);
-}
-.equipment-card.active-normal {
-  border-color: #3e8e8e;
-  box-shadow: 0 0 0 2px rgba(62, 142, 142, 0.15);
 }
 .equipment-card:hover {
   border-color: #c7ccd3;

@@ -6,6 +6,8 @@ import EquipmentCard from "../components/EquipmentCard.vue";
 import EquipmentDetailPanel from "../components/EquipmentDetailPanel.vue";
 import { getReasonsByAxis } from "../utils/scoreBreakdown";
 import type { ReasonsByAxis } from "../utils/scoreBreakdown";
+import { statusColor, statusLabel } from "../utils/statusStyle";
+import type { EquipmentSummary } from "../types/equipment";
 
 const store = useEquipmentStore();
 const selectedId = ref<number | null>(null);
@@ -21,6 +23,10 @@ const detailReasons = computed(() =>
     reasons: store.detailCache[item.equipment_id] ? getReasonsByAxis(store.detailCache[item.equipment_id].score_detail) : EMPTY_REASONS,
   })),
 );
+
+const normalCount = computed(() => store.equipmentList.filter((item) => item.status === "normal").length);
+const reviewCount = computed(() => store.equipmentList.filter((item) => item.status === "review").length);
+const replaceCount = computed(() => store.equipmentList.filter((item) => item.status === "replace").length);
 
 onMounted(async () => {
   await store.load();
@@ -45,6 +51,11 @@ function onChartHover(equipmentId: number | null) {
 function formatDateTime(value: string | null): string {
   if (!value) return "-";
   return value.replace("T", " ").slice(0, 16);
+}
+
+function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
+  const color = statusColor(item.status);
+  return isActive ? { borderColor: color, boxShadow: `0 0 0 2px ${color}26` } : { borderColor: color };
 }
 </script>
 
@@ -83,13 +94,18 @@ function formatDateTime(value: string | null): string {
             </div>
             <div class="card kpi">
               <div class="kpi-label">정상 설비</div>
-              <div class="kpi-value normal">{{ store.equipmentList.length - store.needsInspectionList.length }}<span class="unit">대</span></div>
-              <div class="kpi-sub">POF·COF·DOF 모두 기준 충족</div>
+              <div class="kpi-value" :style="{ color: statusColor('normal') }">{{ normalCount }}<span class="unit">대</span></div>
+              <div class="kpi-sub">{{ statusLabel("normal") }} 기준 충족</div>
             </div>
             <div class="card kpi">
-              <div class="kpi-label">점검 필요 설비</div>
-              <div class="kpi-value flagged">{{ store.needsInspectionList.length }}<span class="unit">대</span></div>
-              <div class="kpi-sub">POF·COF·DOF 중 기준 미달</div>
+              <div class="kpi-label">교체검토 설비</div>
+              <div class="kpi-value" :style="{ color: statusColor('review') }">{{ reviewCount }}<span class="unit">대</span></div>
+              <div class="kpi-sub">POF 기준 경계 구간</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-label">즉시교체 설비</div>
+              <div class="kpi-value" :style="{ color: statusColor('replace') }">{{ replaceCount }}<span class="unit">대</span></div>
+              <div class="kpi-sub">POF 기준 미달</div>
             </div>
             <div class="card kpi">
               <div class="kpi-label">최근 데이터 갱신</div>
@@ -105,7 +121,7 @@ function formatDateTime(value: string | null): string {
           <div class="risk-panel">
             <div class="risk-header">
               <div class="risk-count">{{ store.needsInspectionList.length }}<span class="risk-label">건 점검필요</span></div>
-              <div class="risk-desc">기준 미달 설비를 빨간색으로 표시</div>
+              <div class="risk-desc">교체검토(노랑)·즉시교체(빨강) 설비를 표시</div>
             </div>
             <div class="risk-body">
               <div class="chart-col">
@@ -120,32 +136,35 @@ function formatDateTime(value: string | null): string {
                     :key="entry.item.equipment_id"
                     class="reason-card"
                     :class="{ active: selectedId === entry.item.equipment_id, hovered: hoveredId === entry.item.equipment_id }"
+                    :style="reasonCardStyle(entry.item, selectedId === entry.item.equipment_id)"
                     :data-equipment-id="entry.item.equipment_id"
                     @click="selectCard(entry.item.equipment_id)"
                   >
                     <div class="reason-row">
                       <span class="reason-name">{{ entry.item.transformer_name }}</span>
-                      <span class="reason-score">종합점수 {{ entry.item.total_score.toFixed(1) }}</span>
+                      <span class="reason-score" :style="{ color: statusColor(entry.item.status) }">
+                        {{ statusLabel(entry.item.status) }} · 종합점수 {{ entry.item.total_score.toFixed(1) }}
+                      </span>
                     </div>
                     <div class="reason-meta">{{ entry.item.factory_code }} · {{ entry.item.voltage.toLocaleString() }}V</div>
 
                     <div class="axis-grid">
                       <div class="axis-col">
-                        <div class="axis-head" :class="{ fail: entry.item.pof < 20 }">POF <b>{{ entry.item.pof }}</b></div>
+                        <div class="axis-head">POF <b>{{ entry.item.pof }}</b></div>
                         <div v-for="reason in entry.reasons.pof" :key="reason.label" class="axis-reason">
                           {{ reason.label }} <span class="neg">{{ reason.value }}</span>
                         </div>
                         <div v-if="entry.reasons.pof.length === 0" class="axis-empty">감점 없음</div>
                       </div>
                       <div class="axis-col">
-                        <div class="axis-head" :class="{ fail: entry.item.cof < 30 }">COF <b>{{ entry.item.cof }}</b></div>
+                        <div class="axis-head">COF <b>{{ entry.item.cof }}</b></div>
                         <div v-for="reason in entry.reasons.cof" :key="reason.label" class="axis-reason">
                           {{ reason.label }} <span class="neg">{{ reason.value }}</span>
                         </div>
                         <div v-if="entry.reasons.cof.length === 0" class="axis-empty">감점 없음</div>
                       </div>
                       <div class="axis-col">
-                        <div class="axis-head" :class="{ fail: entry.item.dof < 20 }">DOF <b>{{ entry.item.dof }}</b></div>
+                        <div class="axis-head">DOF <b>{{ entry.item.dof }}</b></div>
                         <div v-for="reason in entry.reasons.dof" :key="reason.label" class="axis-reason">
                           {{ reason.label }} <span class="neg">{{ reason.value }}</span>
                         </div>
@@ -276,7 +295,7 @@ function formatDateTime(value: string | null): string {
 }
 .kpi-row {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -301,12 +320,6 @@ function formatDateTime(value: string | null): string {
 .kpi-value.small {
   font-size: 20px;
 }
-.kpi-value.normal {
-  color: #3e8e8e;
-}
-.kpi-value.flagged {
-  color: #c4392b;
-}
 .unit {
   font-size: 14px;
   color: #8891a0;
@@ -319,7 +332,7 @@ function formatDateTime(value: string | null): string {
 }
 .risk-panel {
   background: #fff;
-  border: 1px solid #f0cfc9;
+  border: 1px solid #e2e5ea;
   border-radius: 10px;
   overflow: hidden;
   margin-bottom: 28px;
@@ -329,14 +342,14 @@ function formatDateTime(value: string | null): string {
   align-items: baseline;
   gap: 14px;
   padding: 18px 22px;
-  background: #fcf1ef;
-  border-bottom: 1px solid #f0cfc9;
+  background: #f4f5f7;
+  border-bottom: 1px solid #e2e5ea;
 }
 .risk-count {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 30px;
   font-weight: 700;
-  color: #c4392b;
+  color: #1a2230;
 }
 .risk-label {
   font-size: 14px;
@@ -345,7 +358,7 @@ function formatDateTime(value: string | null): string {
 }
 .risk-desc {
   font-size: 12px;
-  color: #96382f;
+  color: #8891a0;
 }
 .risk-body {
   display: grid;
@@ -382,20 +395,18 @@ function formatDateTime(value: string | null): string {
   padding-right: 6px;
 }
 .reason-card {
-  border: 1px solid #f0cfc9;
+  border: 1px solid #e2e5ea;
   border-radius: 8px;
   padding: 12px 14px;
   margin-bottom: 10px;
   cursor: pointer;
 }
 .reason-card.active {
-  border-color: #c4392b;
   border-width: 2px;
   padding: 11px 13px;
-  background: #fff8f7;
+  background: #fafbfc;
 }
 .reason-card.hovered:not(.active) {
-  border-color: #0f8a8a;
   box-shadow: 0 0 0 2px rgba(15, 138, 138, 0.15);
 }
 .reason-row {
@@ -408,7 +419,6 @@ function formatDateTime(value: string | null): string {
 .reason-score {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-weight: 700;
-  color: #c4392b;
 }
 .reason-meta {
   font-size: 11px;
@@ -422,7 +432,7 @@ function formatDateTime(value: string | null): string {
 }
 .axis-col {
   min-width: 0;
-  border-left: 1px solid #f0cfc9;
+  border-left: 1px solid #eef0f3;
   padding-left: 8px;
 }
 .axis-col:first-child {
@@ -435,9 +445,6 @@ function formatDateTime(value: string | null): string {
   font-weight: 600;
   color: #4a5361;
   margin-bottom: 4px;
-}
-.axis-head.fail {
-  color: #c4392b;
 }
 .axis-reason {
   font-size: 10.5px;

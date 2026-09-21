@@ -1,3 +1,5 @@
+export type EquipmentStatus = "normal" | "review" | "replace";
+
 export interface EquipmentSummary {
   equipment_id: number;
   factory_code: string;
@@ -8,13 +10,14 @@ export interface EquipmentSummary {
   cof: number;
   dof: number;
   total_score: number;
-  needs_inspection: boolean;
+  status: EquipmentStatus;
   last_diag_date: string | null;
 }
 
 export interface SummaryKPI {
   total_equipment: number;
-  needs_inspection_count: number;
+  review_count: number;
+  replace_count: number;
   last_updated: string | null;
 }
 
@@ -79,7 +82,7 @@ export interface EquipmentDetail {
   onan_val: number;
   onaf_val: number;
   operation_start_time: string;
-  needs_inspection: boolean;
+  status: EquipmentStatus;
   dga: {
     diag_time: string;
     dga_h2: number;

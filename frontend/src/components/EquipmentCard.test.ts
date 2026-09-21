@@ -13,7 +13,7 @@ const summary: EquipmentSummary = {
   cof: 90,
   dof: 90,
   total_score: 90,
-  needs_inspection: false,
+  status: "normal",
   last_diag_date: "2026-01-01",
 };
 
@@ -24,11 +24,18 @@ describe("EquipmentCard", () => {
     expect(wrapper.text()).toContain("정상");
   });
 
-  it("shows a 점검필요 chip when the equipment needs inspection", () => {
+  it("shows a 교체검토 chip when the equipment is in review status", () => {
     const wrapper = mount(EquipmentCard, {
-      props: { summary: { ...summary, needs_inspection: true } },
+      props: { summary: { ...summary, status: "review" } },
     });
-    expect(wrapper.text()).toContain("점검필요");
+    expect(wrapper.text()).toContain("교체검토");
+  });
+
+  it("shows a 즉시교체 chip when the equipment must be replaced immediately", () => {
+    const wrapper = mount(EquipmentCard, {
+      props: { summary: { ...summary, status: "replace" } },
+    });
+    expect(wrapper.text()).toContain("즉시교체");
   });
 
   it("emits select with the equipment id when clicked", async () => {
