@@ -313,7 +313,7 @@ const replaceCount = computed(() => groupByStatus(props.equipmentList, "replace"
   margin-bottom: 6px;
 }
 .hc-axes {
-  font-size: 10.5px;
+  font-size: 11px;
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   color: #4a5361;
   opacity: 0.85;

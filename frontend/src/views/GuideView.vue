@@ -122,11 +122,11 @@ const dofItems = computed(() => Object.values(DOF_FIELD_LABELS));
   justify-content: space-between;
 }
 .title {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
 }
 .subtitle {
-  font-size: 13px;
+  font-size: 14px;
   color: #8891a0;
   margin-top: 4px;
 }
@@ -158,7 +158,7 @@ const dofItems = computed(() => Object.values(DOF_FIELD_LABELS));
   padding: 24px 28px;
 }
 h2 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   margin: 0 0 8px;
 }
@@ -191,7 +191,7 @@ h2 {
   margin-bottom: 8px;
 }
 .axis-card p {
-  font-size: 12.5px;
+  font-size: 12px;
   color: #4a5361;
   line-height: 1.6;
   margin: 0;
@@ -199,7 +199,7 @@ h2 {
 .axis-card ul {
   margin: 0;
   padding-left: 18px;
-  font-size: 12.5px;
+  font-size: 12px;
   color: #4a5361;
   line-height: 1.8;
 }
@@ -215,7 +215,7 @@ h2 {
 .rule-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 .rule-table th,
 .rule-table td {

@@ -91,11 +91,11 @@ const bars = computed(() => {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
 }
 .axis-tick {
-  font-size: 6.5px;
+  font-size: 7px;
   fill: #b4bac4;
 }
 .bar-count {
-  font-size: 8px;
+  font-size: 8.5px;
   font-weight: 700;
 }
 </style>

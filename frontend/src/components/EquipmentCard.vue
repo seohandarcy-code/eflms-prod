@@ -106,7 +106,7 @@ const color = computed(() => statusColor(props.summary.status));
   grid-template-columns: 34px 1fr 30px;
   gap: 8px;
   align-items: center;
-  font-size: 10.5px;
+  font-size: 11px;
   color: #8891a0;
 }
 .bar-track {

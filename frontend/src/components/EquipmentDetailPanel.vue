@@ -416,7 +416,7 @@ const color = computed(() => (detail.value ? statusColor(detail.value.status) : 
   gap: 1px;
 }
 .compact-label {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
   color: #8891a0;
 }
@@ -492,7 +492,7 @@ const color = computed(() => (detail.value ? statusColor(detail.value.status) : 
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 11.5px;
+  font-size: 11px;
   color: #4a5361;
 }
 .raw-field span {

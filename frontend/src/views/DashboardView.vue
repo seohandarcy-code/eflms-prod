@@ -441,7 +441,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   padding: 24px 20px;
 }
 .rail-hint {
-  font-size: 11.5px;
+  font-size: 11px;
   color: #b4bac4;
   margin-top: -14px;
 }
@@ -489,13 +489,13 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   font-weight: 500;
 }
 .kpi-sub {
-  font-size: 11.5px;
+  font-size: 11px;
   color: #8891a0;
   margin-top: 4px;
 }
 .risk-panel {
   background: #fff;
-  border: 1px solid #e2e5ea;
+  border: 1px solid #f0cfc9;
   border-radius: 10px;
   overflow: hidden;
   margin-bottom: 28px;
@@ -505,14 +505,14 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   align-items: baseline;
   gap: 14px;
   padding: 18px 22px;
-  background: #f4f5f7;
-  border-bottom: 1px solid #e2e5ea;
+  background: #fcf1ef;
+  border-bottom: 1px solid #f0cfc9;
 }
 .risk-count {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 700;
-  color: #1a2230;
+  color: #c4392b;
 }
 .risk-label {
   font-size: 14px;
@@ -521,7 +521,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
 }
 .risk-desc {
   font-size: 12px;
-  color: #8891a0;
+  color: #96382f;
 }
 .risk-body {
   display: grid;
@@ -547,7 +547,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   margin-bottom: 4px;
 }
 .reason-hint {
-  font-size: 10.5px;
+  font-size: 11px;
   color: #b4bac4;
   margin-bottom: 10px;
 }
@@ -591,7 +591,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   color: #c4392b;
 }
 .rt-evidence {
-  font-size: 10px;
+  font-size: 11px;
   color: #4a5361;
   line-height: 1.5;
 }
@@ -648,7 +648,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   margin-bottom: 4px;
 }
 .axis-reason {
-  font-size: 10.5px;
+  font-size: 11px;
   color: #4a5361;
   line-height: 1.5;
   overflow-wrap: break-word;
@@ -658,7 +658,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   border-bottom: 1px dotted #c7ccd3;
 }
 .axis-empty {
-  font-size: 10.5px;
+  font-size: 11px;
   color: #b4bac4;
 }
 .neg {
