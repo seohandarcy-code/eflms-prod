@@ -4,15 +4,18 @@ Vue 3 + TypeScript + Vite + Pinia + Vue Router + Element Plus. 상위 저장소 
 
 ## 실행
 
-로컬/운영 Node 버전을 22 LTS로 통일하기로 했으므로(`.nvmrc` 참고), 시스템에 다른 Node가 깔려 있어도 이 프로젝트는 아래 로컬 바이너리를 사용한다:
+로컬/운영 Node 버전을 22 LTS로 통일하기로 했음(`.nvmrc` 참고). 시스템에 다른 Node 버전이 이미 깔려 있어도 이 프로젝트에서는 22를 써야 함 — `nvm`(nvm-windows 등)으로 버전을 맞추는 걸 권장:
 
 ```bash
 cd frontend
-export PATH="C:\system_work\eflms_dev\.tools\node-v22.23.2-win-x64:$PATH"
+nvm install 22   # 최초 1회 (버전 관리자에 22가 없을 때만)
+nvm use 22
 npm install       # 최초 1회
 cp .env.example .env
 npm run dev
 ```
+
+`nvm-windows` 사용 시 `nvm use`가 심볼릭 링크 생성을 위해 관리자 승인(UAC)을 요구할 수 있음 — Windows 개발자 모드를 켜두면 매번 승인 없이 동작함(설정 > 개인정보 및 보안 > 개발자용).
 
 ## 구조
 

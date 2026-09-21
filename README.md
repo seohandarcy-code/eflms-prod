@@ -12,8 +12,8 @@
 ## 클론
 
 ```bash
-git clone https://github.com/seohandarcy-code/eflms_dev.git
-cd eflms_dev
+git clone https://github.com/seohandarcy-code/eflms-prod.git
+cd eflms-prod
 ```
 
 ## 백엔드 실행

@@ -13,6 +13,8 @@ cp .env.example .env                             # 최초 1회, 값은 로컬에
 
 `GET /healthz` 로 기동 확인.
 
+**주의 — 폴더 이동/이름변경 후 `.venv/Scripts/*.exe`가 깨질 수 있음**: Python venv의 `Scripts/uvicorn.exe` 등 실행 파일은 생성 당시 절대경로를 내부에 캐싱하고 있어서, 프로젝트 폴더를 옮기거나 이름을 바꾸면 에러 메시지 없이 즉시 종료될 수 있다. 이 증상이 보이면 `.venv/Scripts/uvicorn.exe app.main:app` 대신 `.venv/Scripts/python.exe -m uvicorn app.main:app`처럼 **`python -m <모듈>` 형태로 우회**하면 즉시 해결됨(재설치 불필요). 완전히 정리하려면 `.venv` 삭제 후 `python -m venv .venv`로 재생성.
+
 ## 구조
 
 - `app/core/` — 설정(`config.py`, env 기반) · 인증 추상화(`security.py`)
