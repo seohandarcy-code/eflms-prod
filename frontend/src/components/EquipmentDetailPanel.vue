@@ -64,7 +64,7 @@ const color = computed(() => (detail.value ? statusColor(detail.value.status) : 
           <span class="total-score-badge">종합점수: {{ detail.score.total_score.toFixed(1) }}</span>
         </div>
         <div class="chart-title chart-title-1">POF 분포 <span class="muted">· 이 설비가 속한 구간을 강조 표시</span></div>
-        <div class="chart-title chart-title-2">5개년 예측 <span class="muted">· 연 -1점 단순 가정(실제 예측 아님)</span></div>
+        <div class="chart-title chart-title-2">5개년 POF 예측 <span class="muted">· 연 -1점 단순 가정(실제 예측 아님)</span></div>
 
         <div class="left-col">
           <div class="score-bars">
@@ -103,7 +103,7 @@ const color = computed(() => (detail.value ? statusColor(detail.value.status) : 
           <PofDistributionChart :equipment-list="store.equipmentList" :selected-pof="detail.score.pof" :highlight-color="color" />
         </div>
         <div class="chart-cell chart-cell-2">
-          <ScoreProjectionChart :current-score="detail.score.total_score" :color="color" />
+          <ScoreProjectionChart :current-score="detail.score.pof" :color="color" />
         </div>
       </div>
 

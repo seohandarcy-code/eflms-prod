@@ -55,7 +55,7 @@ mock 생성기(ref_data 로직 이식)     ─┐
 ## 프론트엔드
 
 - Vue 3 + Vite + Pinia(상태관리) + Element Plus(UI 컴포넌트).
-- 화면 구성은 [design/Main.dc.html](../design/Main.dc.html)에 확정된 Direction A(관제실형 테이블 + PoF/CoF/DoF 3축 분포도 + 카드형 설비 목록)를 기준으로 한다.
+- [design/Main.dc.html](../design/Main.dc.html)은 최초 승인된 방향(Direction A: 관제실형 테이블 + PoF/CoF/DoF 3축 분포도 + 카드형 설비 목록)을 담은 2026-09-14 시점 목업으로, **그 이후 실제 화면 구현은 목업을 갱신하지 않고 코드에서 직접 반복 개선**해왔다(3단계 정상/교체검토/즉시교체 상태 체계, 검색·정렬·페이지네이션·리스트뷰, 다중선택 필터, 상세 패널 신규 차트 2종, `/guide` 안내 페이지 등 — 자세한 이력은 [ROADMAP.md](ROADMAP.md) Phase 1 참고). 즉 `design/*.dc.html`은 초기 승인 근거를 남긴 기록이고, **현재 화면의 정본은 `frontend/src/views/DashboardView.vue` 등 실제 구현 코드**다.
 
 ## API 문서화
 

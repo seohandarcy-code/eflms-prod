@@ -21,10 +21,10 @@ npm run dev
 
 - `src/router/` — vue-router
 - `src/stores/` — Pinia 스토어
-- `src/views/` — 화면 단위 컴포넌트 (`DashboardView.vue`는 Stage C-5에서 채움)
+- `src/views/` — 화면 단위 컴포넌트 (`DashboardView.vue` 메인 대시보드, `GuideView.vue` — POF/COF/DOF 지표·판정기준 안내 `/guide`)
 - `src/api/client.ts` — axios 인스턴스, `VITE_API_BASE_URL` 사용
 
 ## 컨벤션
 
-- 화면 구성은 `design/Main.dc.html`에 확정된 Direction A를 따른다.
+- `design/Main.dc.html`은 최초 승인 방향(Direction A)을 담은 2026-09-14 시점 목업이며, 그 이후 화면은 목업 갱신 없이 코드에서 직접 반복 개선해왔다(이력은 `docs/ROADMAP.md` 참고). 현재 화면의 정본은 실제 구현 코드(`src/views/`, `src/components/`)다.
 - 시크릿/환경별 값은 `.env`로만 주입한다.

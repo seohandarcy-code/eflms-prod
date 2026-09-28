@@ -185,7 +185,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
         </div>
         <div>
           <div class="title">전기설비 수명관리 시스템</div>
-          <div class="subtitle">각 설비의 POF, COF, DOF 지수를 평가하여 점검 설비 우선 순위를 도출합니다.</div>
+          <div class="subtitle">각 설비의 POF(고장확률), COF(고장영향), DOF(설계/방어수준) 지수를 평가하여 점검 설비 우선 순위를 도출합니다.</div>
         </div>
       </div>
       <div class="filters">
