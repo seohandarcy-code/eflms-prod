@@ -211,6 +211,14 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
           all-label="전체 사업장"
           @update:model-value="store.setFactoryFilters"
         />
+
+        <RouterLink to="/admin" class="admin-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          관리자
+        </RouterLink>
       </aside>
 
       <main class="main">
@@ -475,6 +483,28 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   font-size: 11px;
   color: #b4bac4;
   margin-top: -14px;
+}
+.admin-link {
+  /* .rail이 .main과 같은 높이로 늘어나므로(사이드바 배경을 끝까지 채우기 위함),
+     margin-top:auto만으로는 버튼이 페이지 맨 아래로 밀려 화면 밖으로 벗어난다.
+     position:sticky로 스크롤해도 화면 하단 근처에 계속 보이게 고정한다. */
+  margin-top: auto;
+  position: sticky;
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid #e2e5ea;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a5361;
+  text-decoration: none;
+  background: #fff;
+}
+.admin-link:hover {
+  background: #f4f5f7;
 }
 .main {
   flex: 1;

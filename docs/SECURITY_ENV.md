@@ -19,9 +19,9 @@
 
 | 변수 | 용도 | 비고 |
 |---|---|---|
-| `JWT_SECRET_KEY` | 자체 로그인 토큰 서명 | `AUTH_MODE=local` 전환 시 필요 여부 재검토 — 참고 중인 `a-ims-prod` 패턴은 JWT 서명 없이 프로세스 메모리 전용 opaque 토큰(`secrets.token_urlsafe`)을 씀. 이 방식을 그대로 채택하면 이 변수는 불필요해질 수 있음 |
+| `JWT_SECRET_KEY` | (미사용으로 확정) | `AUTH_MODE=local` 구현 시 `a-ims-prod` 패턴대로 JWT 서명 없이 프로세스 메모리 전용 opaque 토큰(`secrets.token_urlsafe`, `app/auth/state.py`)을 채택함 — 이 변수는 필요 없어짐. SSO(Phase 5 다음 단계) 착수 시 재검토 |
 | `DB_USER` / `DB_PASSWORD` | PostgreSQL 접속 자격증명 | **(계획, Phase 4)** `DB_HOST`와 함께 DSN 조립에 사용. PDEP Secret으로 주입 예정, URL-safe 인코딩 필요 |
-| `ADMIN_BOOTSTRAP_PASSWORD` | 관리자 초기 비밀번호(`AUTH_MODE=local` 로그인용) | **(계획, Phase 5)** 서버 재기동 시 항상 이 값(비어있으면 기본값)으로 리셋됨 — 여러 서버가 같은 잘 알려진 기본값을 공유하지 않도록 서버별로 다르게 주입 |
+| `ADMIN_BOOTSTRAP_PASSWORD` | 관리자 초기 비밀번호(`AUTH_MODE=local` 로그인용) | **(구현 완료, 2026-09-29)** 서버 재기동 시 항상 이 값(비어있으면 기본값 `0000`)으로 리셋됨 — 여러 서버가 같은 잘 알려진 기본값을 공유하지 않도록 서버별로 다르게 주입. `backend/app/auth/state.py` |
 | `SSO_CLIENT_ID` | 사내 SSO(OIDC) 클라이언트 ID | `AUTH_MODE=sso` 전환 시 필요. 단, issuer URL만 발급하고 client_id를 안 주는 사내 브로커 방식이면 비워둘 수 있음(`SSO_BROKER_CONFIGURED = bool(SSO_ISSUER_URL)`) |
 | `SSO_CLIENT_SECRET` | 사내 SSO(OIDC) 클라이언트 시크릿 | 사내 보안팀/SSO 관리자 발급 필요, 위와 동일 이유로 비어있을 수 있음 |
 | `SSO_ISSUER_URL` | 사내 SSO Issuer URL | |

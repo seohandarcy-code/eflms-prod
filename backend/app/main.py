@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import equipment, health
+from app.api.routes import admin, equipment, health
 from app.core.config import get_settings
 from app.db import seed
 from app.db.session import async_session_factory
@@ -32,3 +32,4 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(equipment.router)
+app.include_router(admin.router)

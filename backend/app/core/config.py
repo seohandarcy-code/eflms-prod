@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     auth_mode: str = "none"
     auto_seed_if_empty: bool = False
+    admin_bootstrap_password: str = ""
 
     @model_validator(mode="after")
     def _resolve_database_url(self) -> "Settings":

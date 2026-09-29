@@ -41,7 +41,7 @@
 
 > 마찬가지로 `a-ims-prod`가 이미 로컬 Keycloak으로 전체 생애주기까지 검증한 패턴을 참고. eflms는 현재 `AUTH_MODE=none`만 실제로 동작하고, `local`/`sso`는 자리만 있고 실제로 선택하면 `NotImplementedError`가 남(`backend/app/core/security.py`) — 아래는 이걸 실제로 채우는 순서.
 
-- [ ] **`AUTH_MODE=local` 실제 구현**: 관리자 단일 계정 로그인(메모리 세션, 시도횟수 제한, TTL) — 착수 전 "이 로그인이 지금 무엇을 게이트할지"(예: Phase 2 임포트 이력/오류 리포트 화면) 먼저 결정 필요
+- [x] **`AUTH_MODE=local` 실제 구현(2026-09-29)**: 관리자 단일 계정 로그인(`app/auth/state.py`의 `AdminAuthStore` — 메모리 세션, 시도 5회 실패 시 잠금, TTL). 게이트 대상은 "DB 테이블 조회 관리자 페이지"로 결정(`GET /api/admin/tables`, `/api/admin/tables/{table_name}` — 11개 테이블 화이트리스트, 조회 전용·편집 기능 없음). 프론트: 왼쪽 사이드바 하단에 항상 보이는 "관리자" 버튼 → `/admin` 라우트에서 비밀번호 입력(틀리면 데이터 비노출) → 테이블 목록/페이지네이션 조회(`AdminView.vue`). pytest 3개(로그인 성공/실패/잠금, 화이트리스트 밖 테이블 404, `AUTH_MODE=none`일 때 503) + 브라우저 전체 흐름(로그인 실패→성공→조회→로그아웃) 확인. SSO/사용자 구분(admin/viewer)은 다음 항목(Phase 5 SSO)에서 별도 진행
 - [ ] `AUTH_MODE=sso` — 사내 SSO(OIDC, `authlib`) 연동. `allowed_users` DB 테이블 기반 접근 제어(IdP 인증 성공 ≠ 접근 허용, 관리자가 등록한 계정만 로그인 가능) + 브레이크글래스 계정 목록(`SSO_ADMIN_ALLOWLIST`, 락아웃 방지) + admin/viewer 2단계 권한(설비유형별 세분화 필요 여부는 착수 시점에 재검토)
 - [ ] `SSO_ALLOW_LOCAL_LOGIN` — 개발 중 듀얼모드: 브로커가 client_id를 아직 발급하지 않은 단계에서도 `AUTH_MODE=sso`에서 로컬 비밀번호 로그인을 같이 열어 관리자가 먼저 접근권한을 등록해둘 수 있게 함(기본값 false)
 - [ ] `SSO_BROKER_CONFIGURED = bool(SSO_ISSUER_URL)` — client_id/secret 없이 issuer URL만 발급하는 사내 브로커 방식 대응(로컬 Keycloak 같은 범용 멀티테넌트 IdP와 다른 모델일 수 있음, 실제 브로커 방식 확인 필요)
