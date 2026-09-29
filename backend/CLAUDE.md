@@ -58,6 +58,40 @@ cd backend
 - 앱을 `DATABASE_URL`로 PostgreSQL을 가리키게 기동(`AUTO_SEED_IF_EMPTY=true`와 함께 쓰면 편함) → `/healthz`·`/api/summary`·`/api/equipment`까지 SQLite 때와 동일하게 동작 확인.
 - 실제 PDEP 배포 시 버전은 PostgreSQL 17을 목표로 함(`CLAUDE.md` 기술스택 표 참고) — 이번 로컬 검증은 14로 진행했으나, `DATABASE_URL`/SQLAlchemy Core 수준에서 버전 차이로 인한 문제는 없을 것으로 예상(실제 17 전환 시 재확인 권장).
 
+## 로컬 Keycloak으로 SSO 검증하기 (로컬 검증 완료, 2026-09-29)
+
+기본 개발 흐름은 계속 `AUTH_MODE=local`(비밀번호 로그인)이다 — 아래는 `AUTH_MODE=sso`를 로컬에서 검증/재현하고 싶을 때만 필요. Docker 없이(이 컴퓨터엔 미설치, PostgreSQL 때와 같은 네이티브 우선 원칙) JDK 17 + Keycloak 독립 서버로 진행한다.
+
+**설치**
+```powershell
+winget install --id EclipseAdoptium.Temurin.17.JDK --accept-package-agreements --accept-source-agreements
+# https://github.com/keycloak/keycloak/releases 에서 keycloak-26.x.x.zip 다운로드 후 C:\tools\keycloak-26.x.x 에 압축 해제
+```
+
+**기동**
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.x.x-hotspot"
+$env:KEYCLOAK_ADMIN = "admin"; $env:KEYCLOAK_ADMIN_PASSWORD = "admin"
+cd C:\tools\keycloak-26.x.x
+bin\kc.bat start-dev --http-port=8180
+```
+
+**realm/client/테스트 계정 생성** — Admin REST API(`http://127.0.0.1:8180/admin/realms/...`)로 realm `eflms`, confidential 클라이언트 `eflms-backend`(redirect URI에 `nginx`/`backend` 양쪽 콜백 주소 모두 등록: `http://127.0.0.1:8080/api/admin/sso/callback`, `http://127.0.0.1:8000/api/admin/sso/callback`), 브레이크글래스 계정(`eflms.admin@...`) + 테스트 계정(`eflms.test1~4@...`)을 생성한다. 클라이언트 시크릿은 `/admin/realms/eflms/clients/{uuid}/client-secret`로 조회.
+
+**`backend/.env` 설정**
+```
+AUTH_MODE=sso
+SSO_ISSUER_URL=http://127.0.0.1:8180/realms/eflms
+SSO_CLIENT_ID=eflms-backend
+SSO_CLIENT_SECRET=<위에서 조회한 값>
+SSO_ADMIN_ALLOWLIST=eflms.admin@company.local
+SSO_ALLOW_LOCAL_LOGIN=true
+```
+
+**검증 시나리오(전부 확인됨)**: 브레이크글래스 계정 로그인 → `allowed_users`에 자동 admin 등록 확인 → "접근 권한 관리" 탭에서 테스트 계정을 일반 사용자로 등록 → 그 계정으로 로그인(테이블 조회는 되고 "접근 권한 관리" 탭은 안 보임) → 미등록 계정으로 로그인 시도("등록되지 않은 계정입니다" 확인) → 마지막 admin은 강등/삭제 불가 확인. Keycloak 자체 로그인 세션은 브라우저에 남아있어 재테스트 시 다른 계정으로 확인하려면 `http://127.0.0.1:8180/realms/eflms/protocol/openid-connect/logout`으로 먼저 로그아웃해야 함(우리 앱 로그아웃과는 별개).
+
+**실제로 겪은 버그**: `nginx/nginx.conf.template`이 `proxy_set_header Host $host;`를 쓰고 있었는데, nginx의 `$host`는 포트를 뺀 호스트명만 담는다(`$http_host`가 포트 포함). 이 때문에 백엔드가 `request.url_for()`로 만드는 SSO redirect_uri에서 포트가 통째로 빠져(`http://127.0.0.1/...`) Keycloak이 "Invalid parameter: redirect_uri"로 거부했다 — `$http_host`로 교체해 해결.
+
 ## 컨벤션
 
 - 시크릿은 `.env`로만 주입, 코드에 하드코딩 금지

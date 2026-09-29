@@ -45,7 +45,9 @@
 - [x] **`AUTH_MODE=sso` 코드 구현(Stage 6-1, 6-2, 2026-09-29)**: `allowed_users` DB 테이블(`sso_id`/`name`/`team`/`is_admin`, 마이그레이션 `3d49abc45e95`) + `app/auth/access_store.py`(CRUD, 마지막 admin 삭제/강등 방지 `LastAdminError`) + `app/auth/oidc.py`(`authlib`, `SSO_BROKER_CONFIGURED = bool(SSO_ISSUER_URL)`) + `GET /api/admin/sso/login`·`/sso/callback`(IdP 인증 성공 ≠ 접근 허용 — `allowed_users`에 등록된 `sso_id`만 세션 발급) + 브레이크글래스(`SSO_ADMIN_ALLOWLIST` → `upsert_bootstrap_admin`) + `require_session`(등록된 사람이면 테이블 조회 가능) / `require_admin`(is_admin 세션만 접근권한 관리 가능) 권한 분리 + `/api/admin/access-users` CRUD
 - [x] **`SSO_ALLOW_LOCAL_LOGIN` 듀얼모드(2026-09-29)**: `AUTH_MODE=sso`여도 이 값이 true면 기존 비밀번호 로그인(`/api/admin/login`)이 함께 열림 — 브로커 client_id 발급 전 개발 부트스트랩용. `GET /api/admin/auth-config`(비인증 공개) 신설로 프론트가 로그인 방식을 판단
 - [x] **프론트 "접근 권한 관리" 화면(2026-09-29)**: `/admin`에 탭 추가(테이블 조회 / 접근 권한 관리, admin 세션에만 노출) — `AccessUsersPanel.vue`(등록/수정/삭제, 인라인 편집). SSO 콜백은 `/admin#token=...&role=...&name=...` URL 프래그먼트로 돌아오는 걸 `AdminView.vue`가 마운트 시 소비. pytest 총 23개 통과 + 브라우저로 전체 CRUD 확인 — 등록→수정(팀/admin 지정)→**마지막 관리자 강등 차단 확인**→**마지막 관리자 삭제 차단 확인**까지 실제 UI에서 재현됨
-- [ ] 로컬 Keycloak으로 전체 생애주기 검증(등록→로그인 가능→삭제→로그인 불가→재등록), 이후 PDEP 실제 SSO 브로커 연동
+- [x] **로컬 Keycloak으로 전체 생애주기 검증 완료(2026-09-29) — Stage 6 종료**: JDK 17 + Keycloak 26.7.4 독립 서버(Docker 미사용, `C:\tools\keycloak-26.7.4`)로 realm `eflms` + client `eflms-backend` + 브레이크글래스/테스트 계정 생성. 브레이크글래스 로그인→자동 admin 등록, 일반 계정 등록 후 로그인(테이블 조회 가능·접근권한 탭은 안 보임), 미등록 계정 로그인 거부, 마지막 admin 강등/삭제 차단까지 전부 실브라우저로 재현. 재현 절차는 `backend/CLAUDE.md` "로컬 Keycloak으로 SSO 검증하기" 참고.
+  - **검증 중 실제 버그 2개 발견해서 수정**: ① `nginx/nginx.conf.template`이 `Host $host`(포트 제외)를 써서 SSO redirect_uri에서 포트가 빠지는 문제 → `$http_host`로 수정(`docs/ROADMAP.md` Phase 4 nginx 항목과 연관). ② SSO 콜백 실패 시(미등록 계정 등) raw JSON 에러가 그대로 노출되던 문제 → `/admin#error=코드`로 리다이렉트해 프론트가 읽을 수 있는 메시지로 표시하도록 개선. 이 과정에서 `SSO_BROKER_CONFIGURED`가 모듈 import 시점에 고정되는 특성 때문에 테스트가 로컬 `.env` 내용에 오염되는 문제도 발견해 `monkeypatch.setattr`로 수정(a-ims-prod가 동일 이유로 겪은 문제와 일치)
+  - 이후 남은 건 실제 PDEP SSO 브로커 연동(Stage 7, 사내 담당자 확인 필요)뿐
 
 ## 보류 중 (마지막 디자인 고도화 단계에서 재검토)
 

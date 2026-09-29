@@ -109,18 +109,24 @@ async def sso_callback(
     session: AsyncSession = Depends(get_session),
     auth_store: AdminAuthStore = Depends(get_auth_store),
 ):
-    if not SSO_BROKER_CONFIGURED:
-        raise HTTPException(status_code=503, detail="SSO가 설정되지 않았습니다(SSO_ISSUER_URL 없음)")
     settings = get_settings()
+
+    # 콜백은 브라우저 리다이렉트 도중이라, 실패해도 raw JSON을 보여주지 않고 항상
+    # /admin으로 되돌려보낸다 — 프론트가 #error=코드를 보고 이해할 수 있는 메시지를 띄운다.
+    def error_redirect(code: str) -> RedirectResponse:
+        return RedirectResponse(f"{settings.frontend_base_url}/admin#error={code}")
+
+    if not SSO_BROKER_CONFIGURED:
+        return error_redirect("sso_not_configured")
 
     try:
         token = await oauth.sso.authorize_access_token(request)
     except OAuthError as exc:
         logger.warning("SSO 콜백 인증 거부: %s", exc)
-        raise HTTPException(status_code=401, detail="SSO 인증에 실패했습니다") from exc
-    except Exception as exc:
+        return error_redirect("auth_failed")
+    except Exception:
         logger.exception("SSO 콜백 처리 중 오류(브로커 통신 실패 등)")
-        raise HTTPException(status_code=502, detail="SSO 브로커 통신에 실패했습니다") from exc
+        return error_redirect("broker_error")
 
     claims = token.get("userinfo") or {}
     sso_id = claims.get(settings.sso_user_id_claim)
@@ -130,7 +136,7 @@ async def sso_callback(
             settings.sso_user_id_claim,
             list(claims.keys()),
         )
-        raise HTTPException(status_code=401, detail="필요한 사용자 식별 정보를 받지 못했습니다")
+        return error_redirect("missing_claim")
 
     if sso_id in settings.sso_admin_allowlist_list:
         user = await access_store.upsert_bootstrap_admin(session, sso_id)
@@ -139,7 +145,7 @@ async def sso_callback(
 
     if user is None:
         logger.info("미등록 계정의 로그인 시도: sso_id=%s", sso_id)
-        raise HTTPException(status_code=403, detail="등록되지 않은 계정입니다")
+        return error_redirect("not_registered")
 
     session_token, _ = auth_store.issue_session(is_admin=user.is_admin)
     logger.info("SSO 로그인 성공: sso_id=%s role=%s", sso_id, "admin" if user.is_admin else "user")

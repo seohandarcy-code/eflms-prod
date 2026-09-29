@@ -9,6 +9,15 @@ const auth = useAuthStore();
 const authConfig = ref<AuthConfig | null>(null);
 const password = ref("");
 const tab = ref<"tables" | "access">("tables");
+const ssoError = ref<string | null>(null);
+
+const SSO_ERROR_MESSAGES: Record<string, string> = {
+  sso_not_configured: "SSO가 설정되지 않았습니다.",
+  auth_failed: "SSO 인증에 실패했습니다.",
+  broker_error: "SSO 브로커 통신에 실패했습니다. 잠시 후 다시 시도해주세요.",
+  missing_claim: "필요한 사용자 식별 정보를 받지 못했습니다.",
+  not_registered: "등록되지 않은 계정입니다. 관리자에게 등록을 요청해주세요.",
+};
 
 const tables = ref<string[]>([]);
 const selectedTable = ref<string | null>(null);
@@ -16,10 +25,18 @@ const tablePage = ref<TablePage | null>(null);
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
 
-// SSO 콜백은 /admin#token=...&role=...&name=...으로 돌아온다(쿼리스트링이 아닌
-// URL 프래그먼트라 서버 로그/리퍼러에 안 남음). 페이지 로드 시 1회만 읽고 지운다.
+// SSO 콜백은 /admin#token=...&role=...&name=... (성공) 또는 /admin#error=코드 (실패)로
+// 돌아온다(쿼리스트링이 아닌 URL 프래그먼트라 서버 로그/리퍼러에 안 남음). 페이지 로드
+// 시 1회만 읽고 지운다.
 function consumeSsoCallbackHash() {
   const hash = window.location.hash;
+  if (hash.startsWith("#error=")) {
+    const params = new URLSearchParams(hash.slice(1));
+    const code = params.get("error") ?? "";
+    ssoError.value = SSO_ERROR_MESSAGES[code] ?? `SSO 로그인에 실패했습니다. (${code})`;
+    history.replaceState(null, "", window.location.pathname);
+    return;
+  }
   if (!hash.startsWith("#token=")) return;
   const params = new URLSearchParams(hash.slice(1));
   const token = params.get("token");
@@ -115,6 +132,7 @@ onMounted(async () => {
           </form>
         </template>
 
+        <div v-if="ssoError" class="login-error">{{ ssoError }}</div>
         <div v-if="auth.error" class="login-error">{{ auth.error }}</div>
       </div>
 
