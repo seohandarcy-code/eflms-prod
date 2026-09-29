@@ -47,6 +47,17 @@ cd backend
 2. **날짜 형식** — 지금은 `YYYY-MM-DD` 고정(`import_service.py`의 `_cast_value`). 실제 파일이 다른 형식(`YYYY.MM.DD` 등)이면 그 함수의 date 분기만 수정.
 3. **실행 시 `--file`을 실제 파일 경로로** — `python -m app.db.import_data --file <실제파일경로> --ef-code EF1`. 인코딩(UTF-8/CP949)은 자동으로 시도하므로 별도 설정 불필요.
 
+## PostgreSQL로 전환해서 개발하기 (로컬 검증 완료, 2026-09-29)
+
+기본 개발 흐름은 계속 SQLite다 — 아래는 로컬에서 PostgreSQL 전환을 검증/재현하고 싶을 때만 필요.
+
+- Windows에 PostgreSQL 14 네이티브 설치(`winget install --id PostgreSQL.PostgreSQL.14`), 이 프로젝트 전용 role/db(`eflms_dev`/`eflms_dev`, 테스트용 `eflms_dev_test`)를 별도로 생성 — `postgres` 슈퍼유저를 앱 접속에 그대로 쓰지 않는다.
+- `app/core/config.py`가 이미 `DATABASE_URL` 우선 → `DB_HOST` 조합 → SQLite 폴백 순서를 지원하므로, 코드 변경 없이 `.env`의 `DATABASE_URL`만 `postgresql+asyncpg://...`로 바꾸면 전환된다.
+- `alembic upgrade head`를 PostgreSQL 대상으로 실행 → 코드 변경 없이 테이블 정상 생성 확인.
+- `backend/tests/conftest.py`가 `DATABASE_URL`이 이미 설정돼 있으면 그 값을 존중하도록 되어 있음(테스트마다 스키마를 새로 만들어 SQLite 임시 파일 방식과 동일한 격리 수준 유지) — `DATABASE_URL=postgresql+asyncpg://eflms_dev:<비밀번호>@127.0.0.1:5432/eflms_dev_test .venv/Scripts/python -m pytest` 로 기존 스위트 9개를 그대로 PostgreSQL 대상으로 실행해 통과 확인(평소 `pytest`는 여전히 SQLite 임시 파일을 자동으로 씀 — 기본 경험 변화 없음).
+- 앱을 `DATABASE_URL`로 PostgreSQL을 가리키게 기동(`AUTO_SEED_IF_EMPTY=true`와 함께 쓰면 편함) → `/healthz`·`/api/summary`·`/api/equipment`까지 SQLite 때와 동일하게 동작 확인.
+- 실제 PDEP 배포 시 버전은 PostgreSQL 17을 목표로 함(`CLAUDE.md` 기술스택 표 참고) — 이번 로컬 검증은 14로 진행했으나, `DATABASE_URL`/SQLAlchemy Core 수준에서 버전 차이로 인한 문제는 없을 것으로 예상(실제 17 전환 시 재확인 권장).
+
 ## 컨벤션
 
 - 시크릿은 `.env`로만 주입, 코드에 하드코딩 금지

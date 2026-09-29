@@ -4,6 +4,7 @@
 
 - SQLAlchemy(async) + Alembic 마이그레이션을 처음부터 사용. SQL 문법은 SQLite/PostgreSQL 모두에서 동작하는 표준 범위만 사용(SQLite 전용 함수 지양).
 - 연결 문자열은 `DATABASE_URL` env 하나로 결정한다. 개발: `sqlite+aiosqlite:///...`, 운영(추후): `postgresql+asyncpg://...`. DB를 바꿔도 애플리케이션 코드는 변경하지 않는다.
+- **(계획, Phase 4)** `DATABASE_URL` 하나뿐 아니라 `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USER`/`DB_PASSWORD` 조합도 지원하도록 확장 예정 — 사내 유사 프로젝트 `a-ims-prod`의 `_build_database_url()` 패턴 참고: ① `DATABASE_URL`이 있으면 그대로 사용 ② 없고 `DB_HOST`가 있으면 위 5개 값으로 DSN을 조립(PDEP이 ConfigMap=host/port/name, Secret=user/password로 나눠 주입하는 경우에 대응) ③ 둘 다 없으면 SQLite로 폴백. 사람이 완성된 DSN을 직접 관리하는 로컬 개발과, host/port/자격증명이 분리돼 주입되는 실제 배포 환경을 동시에 지원한다.
 - Repository/Service 계층으로 라우터와 ORM 세부 구현을 분리한다.
 
 ## 데이터 모델
@@ -31,7 +32,12 @@
 
 - `AuthProvider` 인터페이스로 추상화. 지금은 무인증(또는 더미 로그인)으로 시작하되, FastAPI 의존성 자리(`get_current_user`류)만 미리 만들어 둔다.
 - 토큰 클레임은 OIDC 클레임(`sub`, `email`, `roles`)과 유사하게 맞춰서, 추후 사내 SSO(OIDC) 연동 시 프론트/백엔드 변경을 최소화한다.
-- `AUTH_MODE` env로 `none`(지금) → `local` → `sso` 전환.
+- `AUTH_MODE` env로 `none`(지금, 유일하게 실제로 동작하는 값) → `local` → `sso` 전환. 지금은 `local`/`sso`를 선택하면 `NotImplementedError`가 나는 자리 확보 상태(`backend/app/core/security.py`).
+- **(계획, Phase 5)** 사내 유사 프로젝트 `a-ims-prod`가 이미 로컬 Keycloak으로 전체 생애주기까지 검증한 패턴을 그대로 채택 예정:
+  - `local`: 관리자 단일 계정, 메모리 세션(TTL) + 로그인 시도횟수 제한/잠금.
+  - `sso`: OIDC(`authlib`). IdP 인증 성공이 곧 접근 허용은 아님 — `allowed_users` DB 테이블에 등록된 계정만 세션이 발급됨(관리자가 화면에서 직접 등록/삭제). `SSO_ADMIN_ALLOWLIST`(env)에 매칭되는 계정은 로그인마다 admin 권한이 자동 복구되는 브레이크글래스 — 전체 락아웃 방지용 안전망.
+  - `SSO_ALLOW_LOCAL_LOGIN`: 개발 중 듀얼모드 — 브로커가 client_id를 아직 발급하지 않은 단계에서도 `sso` 모드에서 로컬 비밀번호 로그인을 같이 열어, 관리자가 먼저 들어가 SSO 계정을 등록해둘 수 있게 함(기본값 false).
+  - `SSO_BROKER_CONFIGURED = bool(SSO_ISSUER_URL)`: `SSO_CLIENT_ID`/`SSO_CLIENT_SECRET` 없이 issuer URL만 발급하는 사내 브로커 방식에도 대응(authlib이 빈 client_secret/client_id를 이미 지원함을 소스로 확인됨).
 
 ## 데이터 적재 파이프라인 (시드 · 임포트 공용)
 
@@ -66,6 +72,15 @@ mock 생성기(ref_data 로직 이식)     ─┐
 
 - 지금(로컬 개발)은 `CORS_ORIGINS`에 `http://localhost:5173`(Vite dev server)만 허용한다.
 - 사내 devops 플랫폼에 배포될 때는 실제 도메인으로 `CORS_ORIGINS` 값만 교체한다(콤마로 여러 오리진 구분 가능) — 코드 변경 없이 env만으로 대응.
+- **(계획, Phase 4)** Nginx가 프론트/백엔드를 동일 origin에서 서빙하게 되면(아래 "배포" 참고) `CORS_ORIGINS` 자체가 불필요해질 수 있음 — 실제 배포 구조 확정 후 재검토.
+
+## 배포 (Nginx/K8s) — 계획, Phase 4
+
+- 사내 유사 프로젝트 `a-ims-prod`(PDEP/K8s 배포까지 설계·로컬 검증한 레포)의 구조를 참고.
+- **Nginx 역할은 정적 파일 서빙 + `/api` 내부 리버스 프록시로 한정**한다. TLS 종료·외부 라우팅은 Nginx가 아니라 사내 **PDEP Ingress**가 담당(이미 사내 devops 플랫폼 사용을 전제하고 있음, 위 CORS 정책 참고).
+- Dockerfile은 멀티스테이지로 구성 예정: 프론트 빌드 → Nginx 이미지, 백엔드 빌드 → Python 슬림 이미지.
+- 로컬 개발에서도 운영과 동일하게 Nginx를 거치는 구조를 재현하기 위해, backend(uvicorn)+frontend(vite)+nginx를 한 번에 띄우는 스크립트를 마련한다(미뤄뒀던 "`run` 스킬"을 이 시점에 이 형태로 정의).
+- PostgreSQL(실제 DB) 사용을 전제로 하므로, `a-ims-prod`가 SQLite 파일 동시쓰기 문제로 뒀던 "백엔드 Replica=1 고정" 제약은 eflms엔 해당 없음 — 대신 Alembic 마이그레이션이 여러 replica에서 동시 실행되지 않도록 하는 절차가 별도로 필요하다.
 
 ## 로깅 & 헬스체크
 

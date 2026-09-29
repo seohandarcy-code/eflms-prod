@@ -43,7 +43,7 @@
 
 - 커스텀 서브에이전트는 아직 불필요. 화면/UI 작업은 `design` 스킬, 차트·시각화는 `dataviz` 스킬을 사용한다.
 - 반복적인 다단계 작업(예: 시드 재실행 + 검증)이 Stage C 구현 중 실제로 생기면, 그때 전용 스킬이나 `/loop` 활용을 다시 검토한다.
-- **`run` 스킬**: Stage C에서 `backend/`(uvicorn)와 `frontend/`(vite dev server) 폴더가 생기면, 둘을 함께 기동하는 방법을 프로젝트 전용 `run` 스킬로 정의해서 매번 "서버 켜줘" 할 때 반복 설명이 필요 없게 한다.
+- **개발 서버 기동**: `scripts/start-dev.ps1`(backend+frontend+nginx 동시 기동, `nginx/nginx.conf.template`이 정적서빙+`/api` 프록시 담당) / `scripts/stop-dev.ps1`(종료) — "서버 켜줘" 요청 시 이 스크립트를 사용한다(2026-09-29 Stage 4에서 정의). 포트는 `backend/.env`(`BACKEND_PORT`)·`frontend/.env`(`VITE_PORT`)·`nginx/.env`(`NGINX_PORT`)가 유일한 원본이며, 두 스크립트가 `scripts/_ports.ps1`을 공유해서 읽으므로 항상 서로 일치한다.
 - 코드 변경 후에는 `/code-review`로 점검하는 것을 기본으로 하며, 이 프로젝트에서 특히 아래 규칙을 지킨다(리뷰 시 우선 확인):
   - 시크릿을 코드에 하드코딩하지 않는다 — 항상 `.env`를 통해서만 주입한다.
   - 라우터/화면 코드에서 DB에 직접 쿼리하지 않는다 — 반드시 repository/service 계층을 경유한다.

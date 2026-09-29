@@ -26,12 +26,26 @@
 
 ## Phase 4 — 인프라 전환
 
-- PostgreSQL로 전환 (`DATABASE_URL`만 변경)
-- 스냅샷 → 이력(시계열) 구조 전환: 각 입력 도메인 테이블의 `equipment_id` UNIQUE 제약 완화 + "최신값" 조회 뷰 추가
+> 사내 유사 프로젝트 `a-ims-prod`(SQLite→PostgreSQL 전환 + Nginx/K8s 배포를 이미 검증한 레포)의 구동 방식을 참고해 아래 순서로 진행. 단계별 실행 계획은 2026-09-29 세션에서 Stage 0~7로 합의됨(각 Stage 종료 시 검증 후 다음 단계 진행).
+
+- [x] **DB 접속 설정 우선순위 로직 도입** (`backend/app/core/config.py`): `DATABASE_URL` 있으면 그대로 사용 → 없고 `DB_HOST` 있으면 `DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD` 조합으로 DSN 자동 조립(PDEP의 ConfigMap=host/port, Secret=user/password 분리 관리에 대응) → 둘 다 없으면 SQLite 폴백(fresh clone 기본 동작 유지)
+- [x] (선택, opt-in) `AUTO_SEED_IF_EMPTY=true`일 때만 기동 시 DB가 비어있으면 mock 시드 자동 실행 — 기본값 false, 운영/공유 환경 동작에 영향 없음
+- [x] PostgreSQL로 로컬 실전환 검증(2026-09-29, PostgreSQL 14로 진행 — role/db 분리 생성, `alembic upgrade head` 대상 확인, 기존 pytest 스위트 9개를 Postgres 대상으로 재실행해 통과 확인, 앱 기동까지 확인) — 검증 후에도 기본 개발 흐름은 SQLite 유지. 재현 절차는 `backend/CLAUDE.md` "PostgreSQL로 전환해서 개발하기" 참고. 실제 PDEP 목표 버전(17)으로의 재확인은 남아있음
+- [x] Nginx 로컬 구성(2026-09-29): `nginx/nginx.conf.template` 신설 — 정적 파일 서빙(vite dev server 프록시) + `/api`·`/healthz` 내부 리버스 프록시만 담당(TLS 종료·외부 라우팅은 사내 PDEP Ingress가 처리 예정). `scripts/start-dev.ps1`/`stop-dev.ps1`로 backend+frontend+nginx 동시 기동/종료 정의(미뤄뒀던 "`run` 스킬"의 실체). 검증 중 두 가지 실제 버그를 고쳤다: ① 이 시스템의 vite가 `localhost`를 IPv6(`::1`)로 바인드해 nginx의 IPv4 프록시가 502를 내던 문제 → `vite.config.ts`에 `server.host: '127.0.0.1'` 고정, ② 프론트가 `VITE_API_BASE_URL`로 백엔드 절대 URL(`http://localhost:8000`)을 직접 호출해 nginx `/api` 프록시를 우회하던 문제 → 상대경로(`VITE_API_BASE_URL` 비움) + vite dev proxy(`/api`, `/healthz` → 8000)로 전환, nginx·vite 직접 접속 두 경로 모두 동일 코드로 동작하게 됨. 브라우저로 `:8080`(nginx 경유) 대시보드 정상 렌더링 확인, pytest 9개/vitest 10개 전부 통과
+- [x] 포트 커스터마이즈(2026-09-29): 처음엔 `start-dev.ps1`이 포트를 하드코딩하고 `stop-dev.ps1`만 환경변수를 지원해 서로 어긋나는 문제가 있었음(실제로 재현해서 확인) → `backend/.env`의 `BACKEND_PORT`, `frontend/.env`의 `VITE_PORT`, `nginx/.env`의 `NGINX_PORT`를 유일한 원본으로 삼도록 통일. `scripts/_ports.ps1`(start/stop 공용 파싱 로직)이 세 파일을 읽고, `nginx.conf`는 `nginx.conf.template`에서 매 실행 시 값을 채워 생성(런타임 산출물, git 미포함), `vite.config.ts`는 `frontend/.env`(자기 포트)와 `backend/.env`(프록시 타겟)를 직접 읽음. 9001/9002/9003 커스텀 조합으로 start→브라우저 확인→stop→포트 해제, 기본값(8000/5173/8080) 회귀까지 전부 재현 검증
+- [ ] 스냅샷 → 이력(시계열) 구조 전환: 각 입력 도메인 테이블의 `equipment_id` UNIQUE 제약 완화 + "최신값" 조회 뷰 추가
+- [ ] PostgreSQL 전환 후 Alembic 마이그레이션이 여러 backend replica에서 동시 실행되지 않도록 하는 절차 확정
+- [ ] PDEP 실연동 준비 체크리스트 문서화(접속정보·Secret 관리 방식은 사내 담당자 확인 필요, K8s 매니페스트 초안) — 실제 접속정보/시크릿 값은 `.env`/사내 Secret 관리로만 주입
 
 ## Phase 5 — 인증
 
-- 사내 SSO(OIDC) 연동, `AUTH_MODE=sso` 전환
+> 마찬가지로 `a-ims-prod`가 이미 로컬 Keycloak으로 전체 생애주기까지 검증한 패턴을 참고. eflms는 현재 `AUTH_MODE=none`만 실제로 동작하고, `local`/`sso`는 자리만 있고 실제로 선택하면 `NotImplementedError`가 남(`backend/app/core/security.py`) — 아래는 이걸 실제로 채우는 순서.
+
+- [ ] **`AUTH_MODE=local` 실제 구현**: 관리자 단일 계정 로그인(메모리 세션, 시도횟수 제한, TTL) — 착수 전 "이 로그인이 지금 무엇을 게이트할지"(예: Phase 2 임포트 이력/오류 리포트 화면) 먼저 결정 필요
+- [ ] `AUTH_MODE=sso` — 사내 SSO(OIDC, `authlib`) 연동. `allowed_users` DB 테이블 기반 접근 제어(IdP 인증 성공 ≠ 접근 허용, 관리자가 등록한 계정만 로그인 가능) + 브레이크글래스 계정 목록(`SSO_ADMIN_ALLOWLIST`, 락아웃 방지) + admin/viewer 2단계 권한(설비유형별 세분화 필요 여부는 착수 시점에 재검토)
+- [ ] `SSO_ALLOW_LOCAL_LOGIN` — 개발 중 듀얼모드: 브로커가 client_id를 아직 발급하지 않은 단계에서도 `AUTH_MODE=sso`에서 로컬 비밀번호 로그인을 같이 열어 관리자가 먼저 접근권한을 등록해둘 수 있게 함(기본값 false)
+- [ ] `SSO_BROKER_CONFIGURED = bool(SSO_ISSUER_URL)` — client_id/secret 없이 issuer URL만 발급하는 사내 브로커 방식 대응(로컬 Keycloak 같은 범용 멀티테넌트 IdP와 다른 모델일 수 있음, 실제 브로커 방식 확인 필요)
+- [ ] 로컬 Keycloak으로 전체 생애주기 검증(등록→로그인 가능→삭제→로그인 불가→재등록), 이후 PDEP 실제 SSO 브로커 연동
 
 ## 보류 중 (마지막 디자인 고도화 단계에서 재검토)
 

@@ -27,6 +27,11 @@ Thumbs.db
 # Locally-fetched tool binaries (e.g. project-pinned Node 22 LTS)
 .tools/
 
+# Nginx local dev runtime artifacts (scripts/start-dev.ps1 generates these from nginx.conf.template)
+nginx/logs/
+nginx/temp/
+nginx/nginx.conf
+
 # Design canvas build output (regenerated from */*.dc.html + canvas.json)
 design/eflms-dashboard-directions.html
 design/alternatives/eflms-alternatives-reference.html

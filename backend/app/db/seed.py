@@ -5,7 +5,7 @@
 import argparse
 import asyncio
 
-from sqlalchemy import delete
+from sqlalchemy import delete, func, select
 
 from app.db.models import (
     DesignAttribute,
@@ -40,6 +40,11 @@ _RESET_ORDER = [
     Equipment,
     EquipmentType,
 ]
+
+
+async def is_empty(session) -> bool:
+    count = await session.scalar(select(func.count()).select_from(Equipment))
+    return count == 0
 
 
 async def _reset(session) -> None:
