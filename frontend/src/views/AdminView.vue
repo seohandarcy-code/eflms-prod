@@ -1,16 +1,35 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { fetchAdminTablePage, fetchAdminTables, type TablePage } from "../api/admin";
+import { onMounted, ref } from "vue";
+import AccessUsersPanel from "../components/AccessUsersPanel.vue";
+import { fetchAdminTablePage, fetchAdminTables, fetchAuthConfig, ssoLoginUrl, type AuthConfig, type TablePage } from "../api/admin";
 import { useAuthStore } from "../stores/auth";
 
 const auth = useAuthStore();
 
+const authConfig = ref<AuthConfig | null>(null);
 const password = ref("");
+const tab = ref<"tables" | "access">("tables");
+
 const tables = ref<string[]>([]);
 const selectedTable = ref<string | null>(null);
 const tablePage = ref<TablePage | null>(null);
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
+
+// SSO 콜백은 /admin#token=...&role=...&name=...으로 돌아온다(쿼리스트링이 아닌
+// URL 프래그먼트라 서버 로그/리퍼러에 안 남음). 페이지 로드 시 1회만 읽고 지운다.
+function consumeSsoCallbackHash() {
+  const hash = window.location.hash;
+  if (!hash.startsWith("#token=")) return;
+  const params = new URLSearchParams(hash.slice(1));
+  const token = params.get("token");
+  const role = params.get("role") ?? "user";
+  const name = params.get("name");
+  if (token) {
+    auth.setSessionFromCallback(token, role, name);
+  }
+  history.replaceState(null, "", window.location.pathname);
+}
 
 async function onLoginSubmit() {
   const ok = await auth.login(password.value);
@@ -49,11 +68,16 @@ async function onLogout() {
   tables.value = [];
   selectedTable.value = null;
   tablePage.value = null;
+  tab.value = "tables";
 }
 
-if (auth.isAuthenticated) {
-  loadTables();
-}
+onMounted(async () => {
+  consumeSsoCallbackHash();
+  authConfig.value = await fetchAuthConfig().catch(() => null);
+  if (auth.isAuthenticated) {
+    await loadTables();
+  }
+});
 </script>
 
 <template>
@@ -71,6 +95,7 @@ if (auth.isAuthenticated) {
         </div>
       </div>
       <div class="header-actions">
+        <span v-if="auth.isAuthenticated && auth.name" class="user-badge">{{ auth.name }}<span v-if="auth.isAdmin" class="admin-tag">admin</span></span>
         <button v-if="auth.isAuthenticated" type="button" class="logout-btn" @click="onLogout">로그아웃</button>
         <RouterLink to="/" class="back-link">← 대시보드로</RouterLink>
       </div>
@@ -79,64 +104,80 @@ if (auth.isAuthenticated) {
     <main class="body">
       <div v-if="!auth.isAuthenticated" class="login-card">
         <h2>관리자 로그인</h2>
-        <form @submit.prevent="onLoginSubmit">
-          <input v-model="password" type="password" placeholder="비밀번호" autofocus />
-          <button type="submit" :disabled="auth.loading">{{ auth.loading ? "확인 중..." : "로그인" }}</button>
-        </form>
+
+        <a v-if="authConfig?.auth_mode === 'sso'" :href="ssoLoginUrl()" class="sso-btn">회사 계정으로 로그인</a>
+
+        <template v-if="authConfig?.local_login_available">
+          <div v-if="authConfig?.auth_mode === 'sso'" class="local-login-divider">또는 관리자 비밀번호로</div>
+          <form @submit.prevent="onLoginSubmit">
+            <input v-model="password" type="password" placeholder="비밀번호" autofocus />
+            <button type="submit" :disabled="auth.loading">{{ auth.loading ? "확인 중..." : "로그인" }}</button>
+          </form>
+        </template>
+
         <div v-if="auth.error" class="login-error">{{ auth.error }}</div>
       </div>
 
-      <div v-else class="admin-body">
-        <aside class="table-list">
-          <div class="table-list-label">테이블</div>
-          <button
-            v-for="name in tables"
-            :key="name"
-            type="button"
-            class="table-item"
-            :class="{ active: name === selectedTable }"
-            @click="selectTable(name)"
-          >
-            {{ name }}
-          </button>
-        </aside>
+      <div v-else class="admin-body-wrap">
+        <div v-if="auth.isAdmin" class="tabs">
+          <button type="button" :class="{ active: tab === 'tables' }" @click="tab = 'tables'">테이블 조회</button>
+          <button type="button" :class="{ active: tab === 'access' }" @click="tab = 'access'">접근 권한 관리</button>
+        </div>
 
-        <section class="table-view">
-          <div v-if="!selectedTable" class="empty">왼쪽에서 조회할 테이블을 선택하세요.</div>
-          <div v-else-if="tableLoading" class="empty">불러오는 중...</div>
-          <div v-else-if="tableError" class="empty error">{{ tableError }}</div>
-          <template v-else-if="tablePage">
-            <div class="table-view-header">
-              <span class="table-name">{{ tablePage.table_name }}</span>
-              <span class="table-total">총 {{ tablePage.total }}건</span>
-            </div>
-            <div class="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th v-for="col in tablePage.columns" :key="col">{{ col }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(row, i) in tablePage.rows" :key="i">
-                    <td v-for="col in tablePage.columns" :key="col">{{ row[col] }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="pagination">
-              <button type="button" :disabled="tablePage.page <= 1" @click="goToPage(tablePage.page - 1)">이전</button>
-              <span>{{ tablePage.page }} / {{ Math.max(1, Math.ceil(tablePage.total / tablePage.page_size)) }}</span>
-              <button
-                type="button"
-                :disabled="tablePage.page * tablePage.page_size >= tablePage.total"
-                @click="goToPage(tablePage.page + 1)"
-              >
-                다음
-              </button>
-            </div>
-          </template>
-        </section>
+        <AccessUsersPanel v-if="tab === 'access' && auth.isAdmin" />
+
+        <div v-else class="admin-body">
+          <aside class="table-list">
+            <div class="table-list-label">테이블</div>
+            <button
+              v-for="name in tables"
+              :key="name"
+              type="button"
+              class="table-item"
+              :class="{ active: name === selectedTable }"
+              @click="selectTable(name)"
+            >
+              {{ name }}
+            </button>
+          </aside>
+
+          <section class="table-view">
+            <div v-if="!selectedTable" class="empty">왼쪽에서 조회할 테이블을 선택하세요.</div>
+            <div v-else-if="tableLoading" class="empty">불러오는 중...</div>
+            <div v-else-if="tableError" class="empty error">{{ tableError }}</div>
+            <template v-else-if="tablePage">
+              <div class="table-view-header">
+                <span class="table-name">{{ tablePage.table_name }}</span>
+                <span class="table-total">총 {{ tablePage.total }}건</span>
+              </div>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th v-for="col in tablePage.columns" :key="col">{{ col }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, i) in tablePage.rows" :key="i">
+                      <td v-for="col in tablePage.columns" :key="col">{{ row[col] }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="pagination">
+                <button type="button" :disabled="tablePage.page <= 1" @click="goToPage(tablePage.page - 1)">이전</button>
+                <span>{{ tablePage.page }} / {{ Math.max(1, Math.ceil(tablePage.total / tablePage.page_size)) }}</span>
+                <button
+                  type="button"
+                  :disabled="tablePage.page * tablePage.page_size >= tablePage.total"
+                  @click="goToPage(tablePage.page + 1)"
+                >
+                  다음
+                </button>
+              </div>
+            </template>
+          </section>
+        </div>
       </div>
     </main>
   </div>
@@ -186,6 +227,21 @@ if (auth.isAuthenticated) {
   align-items: center;
   gap: 10px;
 }
+.user-badge {
+  font-size: 13px;
+  color: #4a5361;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.admin-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #0f8a8a;
+  border: 1px solid #0f8a8a;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
 .back-link,
 .logout-btn {
   font-size: 13px;
@@ -222,6 +278,21 @@ if (auth.isAuthenticated) {
   font-weight: 700;
   margin: 0 0 16px;
 }
+.sso-btn {
+  display: block;
+  padding: 9px 12px;
+  border-radius: 6px;
+  background: #0f8a8a;
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+}
+.local-login-divider {
+  font-size: 11px;
+  color: #b4bac4;
+  margin: 14px 0 10px;
+}
 .login-card form {
   display: flex;
   flex-direction: column;
@@ -251,6 +322,30 @@ if (auth.isAuthenticated) {
   margin-top: 12px;
   font-size: 12px;
   color: #c4392b;
+}
+.admin-body-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tabs {
+  display: flex;
+  gap: 6px;
+}
+.tabs button {
+  padding: 8px 16px;
+  border: 1px solid #e2e5ea;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a5361;
+  cursor: pointer;
+}
+.tabs button.active {
+  background: #0f8a8a;
+  border-color: #0f8a8a;
+  color: #fff;
 }
 .admin-body {
   display: flex;

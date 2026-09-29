@@ -13,6 +13,23 @@ async def test_sso_login_disabled_without_issuer_url(client, monkeypatch):
         get_settings.cache_clear()
 
 
+async def test_local_login_blocked_in_sso_mode_unless_allowed(client, monkeypatch):
+    monkeypatch.setenv("AUTH_MODE", "sso")
+    monkeypatch.setenv("ADMIN_BOOTSTRAP_PASSWORD", "test-pw")
+    get_settings.cache_clear()
+    try:
+        resp = await client.post("/api/admin/login", json={"password": "test-pw"})
+        assert resp.status_code == 503
+
+        monkeypatch.setenv("SSO_ALLOW_LOCAL_LOGIN", "true")
+        get_settings.cache_clear()
+
+        resp = await client.post("/api/admin/login", json={"password": "test-pw"})
+        assert resp.status_code == 200
+    finally:
+        get_settings.cache_clear()
+
+
 async def test_sso_callback_disabled_without_issuer_url(client, monkeypatch):
     monkeypatch.setenv("AUTH_MODE", "sso")
     get_settings.cache_clear()

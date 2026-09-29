@@ -11,6 +11,12 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     token: str
     expires_in: int
+    is_admin: bool
+
+
+class AuthConfigResponse(BaseModel):
+    auth_mode: str
+    local_login_available: bool
 
 
 class TableListResponse(BaseModel):

@@ -11,7 +11,7 @@
 | `CORS_ORIGINS` | `http://localhost:5173` | 프론트 개발 서버. 콤마(`,`)로 여러 오리진 구분 가능. 배포 시에는 실제 사내 도메인 목록으로 값만 교체(코드 변경 없음) |
 | `AUTH_MODE` | `none` | `none` → `local`(구현 완료) → `sso`(코드 구현 완료, 로컬 Keycloak 검증 대기) |
 | `DB_HOST` / `DB_PORT` / `DB_NAME` | *(비어있음)* | **(구현 완료, Phase 4)** `DATABASE_URL`이 없을 때 이 값들로 PostgreSQL DSN을 자동 조립(`docs/ARCHITECTURE.md` "DB 연결 및 확장" 참고). 셋 다 없으면 SQLite로 폴백. PDEP ConfigMap으로 주입 예정 |
-| `SSO_ALLOW_LOCAL_LOGIN` | `false` | **(계획, 아직 미구현)** `AUTH_MODE=sso`에서도 로컬 비밀번호 로그인을 함께 열어두는 개발용 듀얼모드 스위치 — Stage 6-3에서 구현 예정. 공유 서버에서 켤 경우 `ADMIN_BOOTSTRAP_PASSWORD`를 기본값에서 반드시 변경할 것 |
+| `SSO_ALLOW_LOCAL_LOGIN` | `false` | **(구현 완료, 2026-09-29)** `AUTH_MODE=sso`에서도 로컬 비밀번호 로그인을 함께 열어두는 개발용 듀얼모드 스위치. 공유 서버에서 켤 경우 `ADMIN_BOOTSTRAP_PASSWORD`를 기본값에서 반드시 변경할 것 |
 | `SESSION_COOKIE_SECURE` | `false` | **(구현 완료, 2026-09-29)** OAuth state/nonce 세션 쿠키에 Secure 플래그 부여 여부(`backend/app/main.py`의 `SessionMiddleware`). 실제 HTTPS 배포에서 `true` |
 | `FRONTEND_BASE_URL` | *(비어있음)* | **(구현 완료, 2026-09-29)** PDEP이 프론트/백엔드 도메인을 분리하는 경우에만 필요(SSO 콜백 리다이렉트 대상 지정, `backend/app/api/routes/admin.py`). 같은 origin이면 비워둠 |
 

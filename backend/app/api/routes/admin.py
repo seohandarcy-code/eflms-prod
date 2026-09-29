@@ -16,6 +16,7 @@ from app.schemas.admin import (
     AllowedUserCreate,
     AllowedUserOut,
     AllowedUserUpdate,
+    AuthConfigResponse,
     LoginRequest,
     LoginResponse,
     TableListResponse,
@@ -28,17 +29,34 @@ logger = logging.getLogger("eflms.admin")
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
+@router.get("/auth-config", response_model=AuthConfigResponse)
+def auth_config() -> AuthConfigResponse:
+    """비인증 공개 엔드포인트 — 프론트가 비밀번호 폼/SSO 버튼 중 뭘 보여줄지 결정하는 데 씀."""
+    settings = get_settings()
+    local_login_available = settings.auth_mode == "local" or (
+        settings.auth_mode == "sso" and settings.sso_allow_local_login
+    )
+    return AuthConfigResponse(auth_mode=settings.auth_mode, local_login_available=local_login_available)
+
+
 @router.post("/login", response_model=LoginResponse)
 def login(body: LoginRequest, auth_store: AdminAuthStore = Depends(get_auth_store)) -> LoginResponse:
-    if get_settings().auth_mode == "none":
-        raise HTTPException(status_code=503, detail="관리자 기능이 비활성화돼 있습니다(AUTH_MODE=none)")
+    settings = get_settings()
+    # local 모드는 항상 허용. sso 모드는 SSO_ALLOW_LOCAL_LOGIN=true일 때만 허용 —
+    # 브로커가 client_id를 아직 발급하지 않은 개발 단계에서 관리자가 먼저 비밀번호로
+    # 들어가 "접근 권한 관리"에 SSO 계정을 등록해둘 수 있게 하는 부트스트랩 경로.
+    local_login_allowed = settings.auth_mode == "local" or (
+        settings.auth_mode == "sso" and settings.sso_allow_local_login
+    )
+    if not local_login_allowed:
+        raise HTTPException(status_code=503, detail="관리자 비밀번호 로그인이 비활성화돼 있습니다")
     try:
         token, expires_in = auth_store.login(body.password)
     except AccountLockedError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
     except InvalidCredentialsError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
-    return LoginResponse(token=token, expires_in=expires_in)
+    return LoginResponse(token=token, expires_in=expires_in, is_admin=auth_store.get_is_admin(token))
 
 
 @router.post("/logout")
