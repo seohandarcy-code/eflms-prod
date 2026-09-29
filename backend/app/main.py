@@ -1,7 +1,9 @@
+import secrets
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.routes import admin, equipment, health
 from app.core.config import get_settings
@@ -28,6 +30,15 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# SSO 로그인 리다이렉트가 왕복하는 짧은 시간 동안만 쓰이는 OAuth state/nonce 저장용
+# (로그인 자체의 세션이 아님 — 그건 AdminAuthStore가 별도 관리). 로컬 dev에서
+# SESSION_SECRET_KEY를 비워두면 기동마다 임의 값을 생성해도 문제없다.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.session_secret_key or secrets.token_urlsafe(32),
+    https_only=settings.session_cookie_secure,
 )
 
 app.include_router(health.router)

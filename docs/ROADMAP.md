@@ -42,9 +42,9 @@
 > 마찬가지로 `a-ims-prod`가 이미 로컬 Keycloak으로 전체 생애주기까지 검증한 패턴을 참고. eflms는 현재 `AUTH_MODE=none`만 실제로 동작하고, `local`/`sso`는 자리만 있고 실제로 선택하면 `NotImplementedError`가 남(`backend/app/core/security.py`) — 아래는 이걸 실제로 채우는 순서.
 
 - [x] **`AUTH_MODE=local` 실제 구현(2026-09-29)**: 관리자 단일 계정 로그인(`app/auth/state.py`의 `AdminAuthStore` — 메모리 세션, 시도 5회 실패 시 잠금, TTL). 게이트 대상은 "DB 테이블 조회 관리자 페이지"로 결정(`GET /api/admin/tables`, `/api/admin/tables/{table_name}` — 11개 테이블 화이트리스트, 조회 전용·편집 기능 없음). 프론트: 왼쪽 사이드바 하단에 항상 보이는 "관리자" 버튼 → `/admin` 라우트에서 비밀번호 입력(틀리면 데이터 비노출) → 테이블 목록/페이지네이션 조회(`AdminView.vue`). pytest 3개(로그인 성공/실패/잠금, 화이트리스트 밖 테이블 404, `AUTH_MODE=none`일 때 503) + 브라우저 전체 흐름(로그인 실패→성공→조회→로그아웃) 확인. SSO/사용자 구분(admin/viewer)은 다음 항목(Phase 5 SSO)에서 별도 진행
-- [ ] `AUTH_MODE=sso` — 사내 SSO(OIDC, `authlib`) 연동. `allowed_users` DB 테이블 기반 접근 제어(IdP 인증 성공 ≠ 접근 허용, 관리자가 등록한 계정만 로그인 가능) + 브레이크글래스 계정 목록(`SSO_ADMIN_ALLOWLIST`, 락아웃 방지) + admin/viewer 2단계 권한(설비유형별 세분화 필요 여부는 착수 시점에 재검토)
+- [x] **`AUTH_MODE=sso` 코드 구현(Stage 6-1, 6-2, 2026-09-29)**: `allowed_users` DB 테이블(`sso_id`/`name`/`team`/`is_admin`, 마이그레이션 `3d49abc45e95`) + `app/auth/access_store.py`(CRUD, 마지막 admin 삭제/강등 방지 `LastAdminError`) + `app/auth/oidc.py`(`authlib`, `SSO_BROKER_CONFIGURED = bool(SSO_ISSUER_URL)`) + `GET /api/admin/sso/login`·`/sso/callback`(IdP 인증 성공 ≠ 접근 허용 — `allowed_users`에 등록된 `sso_id`만 세션 발급) + 브레이크글래스(`SSO_ADMIN_ALLOWLIST` → `upsert_bootstrap_admin`) + `require_session`(등록된 사람이면 테이블 조회 가능) / `require_admin`(is_admin 세션만 접근권한 관리 가능) 권한 분리 + `/api/admin/access-users` CRUD. pytest 4개 추가(SSO 미설정 시 503, 세션 권한 분리, CRUD) — 전체 22개 통과. **아직 안 된 것**: `SSO_ALLOW_LOCAL_LOGIN` 듀얼모드, 프론트 "접근 권한 관리" 화면, 로컬 Keycloak 실제 연동 검증
 - [ ] `SSO_ALLOW_LOCAL_LOGIN` — 개발 중 듀얼모드: 브로커가 client_id를 아직 발급하지 않은 단계에서도 `AUTH_MODE=sso`에서 로컬 비밀번호 로그인을 같이 열어 관리자가 먼저 접근권한을 등록해둘 수 있게 함(기본값 false)
-- [ ] `SSO_BROKER_CONFIGURED = bool(SSO_ISSUER_URL)` — client_id/secret 없이 issuer URL만 발급하는 사내 브로커 방식 대응(로컬 Keycloak 같은 범용 멀티테넌트 IdP와 다른 모델일 수 있음, 실제 브로커 방식 확인 필요)
+- [ ] 프론트 "접근 권한 관리" 화면 — `/admin`에 탭 추가(`AUTH_MODE=sso`일 때만 노출), `allowed_users` 등록/수정/삭제
 - [ ] 로컬 Keycloak으로 전체 생애주기 검증(등록→로그인 가능→삭제→로그인 불가→재등록), 이후 PDEP 실제 SSO 브로커 연동
 
 ## 보류 중 (마지막 디자인 고도화 단계에서 재검토)

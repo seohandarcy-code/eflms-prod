@@ -20,6 +20,18 @@ class Settings(BaseSettings):
     auto_seed_if_empty: bool = False
     admin_bootstrap_password: str = ""
 
+    # AUTH_MODE=sso 전용 — Stage 6, docs/ARCHITECTURE.md "인증" 참고.
+    sso_issuer_url: str = ""
+    sso_client_id: str = ""
+    sso_client_secret: str = ""
+    sso_redirect_uri: str = ""
+    sso_admin_allowlist: str = ""
+    sso_user_id_claim: str = "email"
+    sso_allow_local_login: bool = False
+    session_secret_key: str = ""
+    session_cookie_secure: bool = False
+    frontend_base_url: str = ""
+
     @model_validator(mode="after")
     def _resolve_database_url(self) -> "Settings":
         """DATABASE_URL 우선 -> DB_HOST 조합(PostgreSQL) -> SQLite 폴백.
@@ -41,6 +53,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def sso_admin_allowlist_list(self) -> list[str]:
+        return [item.strip() for item in self.sso_admin_allowlist.split(",") if item.strip()]
 
 
 @lru_cache
