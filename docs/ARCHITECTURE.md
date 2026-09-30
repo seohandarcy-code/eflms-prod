@@ -33,7 +33,7 @@
 - `AuthProvider` 인터페이스로 추상화. 지금은 무인증(또는 더미 로그인)으로 시작하되, FastAPI 의존성 자리(`get_current_user`류)만 미리 만들어 둔다.
 - 토큰 클레임은 OIDC 클레임(`sub`, `email`, `roles`)과 유사하게 맞춰서, 추후 사내 SSO(OIDC) 연동 시 프론트/백엔드 변경을 최소화한다.
 - `AUTH_MODE` env로 `none` → `local`(구현 완료, 2026-09-29) → `sso`(계획) 전환. `sso`를 선택하면 아직 `NotImplementedError`가 나는 자리 확보 상태(`backend/app/core/security.py` — 참고로 이 `get_current_user`/`AUTH_MODE` 일반 인증 자리와, 아래 `local` 모드로 실제 구현한 관리자 로그인은 서로 다른 코드 경로다. 일반 대시보드는 여전히 무인증 공개이며, `local`은 오직 `/admin`(DB 테이블 조회 전용 화면)만 게이트한다).
-- **`local`(구현 완료)**: 관리자 단일 계정, 메모리 세션(TTL 8시간) + 로그인 시도 5회 실패 시 5분 잠금(`backend/app/auth/state.py`의 `AdminAuthStore`, a-ims-prod 패턴 그대로 채택). JWT 서명 없이 opaque 토큰(`secrets.token_urlsafe`)만 사용. 게이트 대상은 `GET/POST /api/admin/*`(로그인/로그아웃/테이블 목록·조회, `require_admin` 의존성) — 편집 기능 없음, 화이트리스트 11개 테이블 조회 전용.
+- **`local`(구현 완료)**: 관리자 단일 계정, 메모리 세션(TTL 8시간) + 로그인 시도 5회 실패 시 5분 잠금(`backend/app/auth/state.py`의 `AdminAuthStore`, a-ims-prod 패턴 그대로 채택). JWT 서명 없이 opaque 토큰(`secrets.token_urlsafe`)만 사용. 게이트 대상은 `GET/POST /api/admin/*`(로그인/로그아웃/테이블 목록·조회, `require_admin` 의존성) — 편집 기능 없음, 화이트리스트 12개 테이블 조회 전용.
 - **(계획, Phase 5 다음 단계)** `sso`: OIDC(`authlib`). IdP 인증 성공이 곧 접근 허용은 아님 — `allowed_users` DB 테이블에 등록된 계정만 세션이 발급됨(관리자가 화면에서 직접 등록/삭제). `SSO_ADMIN_ALLOWLIST`(env)에 매칭되는 계정은 로그인마다 admin 권한이 자동 복구되는 브레이크글래스 — 전체 락아웃 방지용 안전망.
   - `SSO_ALLOW_LOCAL_LOGIN`: 개발 중 듀얼모드 — 브로커가 client_id를 아직 발급하지 않은 단계에서도 `sso` 모드에서 로컬 비밀번호 로그인을 같이 열어, 관리자가 먼저 들어가 SSO 계정을 등록해둘 수 있게 함(기본값 false).
   - `SSO_BROKER_CONFIGURED = bool(SSO_ISSUER_URL)`: `SSO_CLIENT_ID`/`SSO_CLIENT_SECRET` 없이 issuer URL만 발급하는 사내 브로커 방식에도 대응(authlib이 빈 client_secret/client_id를 이미 지원함을 소스로 확인됨).
