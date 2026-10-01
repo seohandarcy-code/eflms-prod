@@ -30,7 +30,15 @@ Thumbs.db
 # Nginx local dev runtime artifacts (scripts/start-dev.ps1 generates these from nginx.conf.template)
 nginx/logs/
 nginx/temp/
-nginx/nginx.conf
+nginx/nginx.generated.conf
+
+# Local dev server logs (scripts/start-dev.ps1 redirects stdout/stderr here)
+backend/uvicorn.log
+frontend/vite.log
+
+# SSO internal CA cert (SSO_CA_BUNDLE_PATH) — only the folder's README is tracked
+backend/certs/*
+!backend/certs/README.md
 
 # Design canvas build output (regenerated from */*.dc.html + canvas.json)
 design/eflms-dashboard-directions.html

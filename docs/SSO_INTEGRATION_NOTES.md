@@ -1,6 +1,6 @@
 # SSO(OIDC) 연동 작업 회고 — 다른 프로젝트 참고용
 
-> 이 문서는 eflms-prod 저장소에서 진행한 SSO 연동 작업(2026-09-29~30)을 다른 작업 폴더/프로젝트에서도
+> 이 문서는 eflms-prod 저장소에서 진행한 SSO 연동 작업(2026-09-29~10-01)을 다른 작업 폴더/프로젝트에서도
 > 참고할 수 있도록 정리한 것이다. 코드 자체는 이 저장소(`backend/app/auth/`, `backend/app/api/routes/admin.py`,
 > `frontend/src/views/AdminView.vue` 등)에 있고, 여기서는 **패턴과 실제로 겪은 문제들**을 정리한다.
 
@@ -61,6 +61,28 @@ client_id/secret은 따로 안 준다"는 모델을 쓴다(로컬 Keycloak 같�
 `authlib`은 `client_secret`이 비면 `token_endpoint_auth_method`를 자동으로 `"none"`으로 바꾸고,
 `client_id`가 비면 ID 토큰의 `aud` 클레임 검증 자체를 건너뛰므로 코드 변경 없이 대응 가능
 (라이브러리 소스로 확인함). 실제 연동 전 사내 브로커가 어느 모델인지 확인 필요.
+
+### 2.6 사내 CA 인증서 신뢰 (실제 브로커 연동 전 미리 준비)
+
+사내 SSO 브로커(ADFS 등)가 사내 전용 CA가 발급한 인증서를 쓰면, Windows/브라우저는 시스템
+인증서 저장소를 통해 그 CA를 신뢰하지만 Python(`httpx`/`certifi`)은 별도 번들을 쓰기 때문에
+`SSL: CERTIFICATE_VERIFY_FAILED`로 SSO 관련 네트워크 호출(discovery/토큰교환/userinfo)이
+전부 실패할 수 있다. `authlib`의 `OAuth.register(..., client_kwargs={"verify": <CA 번들 경로>})`가
+이 세 호출 전부에 한 번에 적용되는 정확한 주입 지점이다(`client_kwargs`가 내부 httpx 클라이언트
+생성자에 그대로 전달됨, `authlib.integrations.httpx_client.utils.HTTPX_CLIENT_KWARGS`에 포함된
+공식 지원 키로 확인). `SSO_CA_BUNDLE_PATH`(비어있으면 미적용) env로 노출하고, 상대경로는
+backend 루트 기준으로 해석. 로컬은 `backend/certs/`(gitignore 대상, README만 커밋)에 파일을
+두고, 실 배포는 K8s Secret을 Volume mount해서 그 절대경로를 넘긴다 — 코드는 "경로에 파일이
+있으면 읽는다"만 알면 되므로 환경별 분기가 없다.
+
+### 2.7 SSO 에러 진단 배너 — 서버 로그 없이도 원인 파악
+
+실제 브로커에 처음 붙일 때는 한 번에 성공하지 않는 게 정상인데, 콜백/로그인 라우트가 실패를
+그냥 "SSO 브로커 통신에 실패했습니다" 같은 뭉뚱그린 메시지로만 보여주면 매번 서버 로그 파일을
+열어 원인을 찾아야 한다. 예외를 잡는 지점에서 `f"{type(exc).__name__}: {exc}"`(300자로 자르고
+URL 인코딩)를 에러 리다이렉트에 `&detail=...`로 같이 실어 보내고, 로그인 화면이 그 값을 배너
+아래 작게 보여주게 하면 훨씬 빨리 원인을 좁힐 수 있다. 토큰/자격증명이 아니라 순수
+예외 타입+메시지라 노출해도 안전하다고 판단했다.
 
 ## 3. 로컬 검증 방법 (Docker 없이, 네이티브 설치 우선)
 
@@ -148,26 +170,55 @@ Keycloak이 "Update Account Information"(`VERIFY_PROFILE`) 화면을 끼워 넣�
 검증 스크립트를 짤 계획이라면 계정 생성 시 `firstName`/`lastName`을 미리 채워서 이 단계를
 건너뛰게 하는 게 편하다.
 
-## 5. 이 프로젝트에서의 최종 상태 / 아직 안 한 것
+### 4.6 (SSO 버그는 아니지만 디버깅 중 드러난 문제) 로컬 dev 스크립트가 로그를 안 남김
+
+`start-dev.ps1`이 백엔드/프론트를 `-WindowStyle Hidden`으로 띄우는데, stdout/stderr를 어디로도
+안 보내서 SSO 콜백 실패 원인을 확인하려면 매번 수동으로 프로세스를 따로 띄워야 했다. `cmd.exe /c
+"... > 로그파일 2>&1"` 형태로 감싸서 백엔드/프론트 로그를 파일로 남기도록 고쳤다(`Get-Content
+<로그파일> -Wait -Tail 20`으로 실시간 확인 가능). Windows에서 리다이렉트된 stdout/stderr는
+콘솔이 아니라서 Python이 로캘 코드페이지(cp949 등)로 쓸 수 있어 한글 로그가 깨지는 문제도
+같이 생기는데, `PYTHONIOENCODING=utf-8`을 기동 전에 설정해서 막았다. 덤으로 vite에
+`--strictPort`를 추가해 지정 포트가 이미 쓰이고 있으면 조용히 다른 포트로 안 넘어가고 에러로
+실패하게 해서, nginx 프록시 타겟과 실제 포트가 어긋나는 걸 조기에 발견하게 했다.
+
+## 5. 참고 레포(`a-ims-prod`)의 후속 업데이트에서 반영한 것 / 안 한 것 (2026-10-01)
+
+참고 레포가 실제 사내 ADFS 연동을 시도하면서 추가로 겪은 문제들 중, eflms에 반영한 것과 범위가
+안 맞아서 제외한 것:
+
+- ✅ 반영: `SSO_CA_BUNDLE_PATH`(§2.6), 에러 진단 배너(§2.7), dev 스크립트 로그 파일화(§4.6)
+- ⬜ 제외 — `SSO_SILENT_LOGIN_ENABLED`(조용한 자동 재인증 `prompt=none`을 끄는 스위치): eflms는
+  애초에 조용한 자동 재인증 기능 자체를 만들지 않았다(처음부터 "고급 기능"으로 보류). 이 스위치가
+  적용될 대상이 없다 — 나중에 그 기능을 추가하게 되면 그때 같이 검토.
+- ⬜ 제외 — `SSO_GUEST_MODE_ON_LOGIN_FAILURE`(SSO 실패 시 앱 전체를 조회전용 게스트 모드로 폴백):
+  a-ims-prod는 `AUTH_MODE=sso`일 때 앱 전체를 로그인 게이트 뒤에 두는 구조라 나온 안정화 기간
+  임시방편이다. eflms 대시보드는 애초에 항상 공개라 "게이트가 걸려있다가 실패 시 풀어준다"는
+  전제 자체가 없고, `/admin`에 억지로 적용하면 오히려 접근 통제(§2.2) 취지에 어긋난다.
+
+## 6. 이 프로젝트에서의 최종 상태 / 아직 안 한 것
 
 - ✅ `AUTH_MODE=local`(비밀번호) / `AUTH_MODE=sso`(OIDC) 둘 다 실제 동작, 로컬 Keycloak으로 전체 생애주기 검증 완료
 - ✅ 관리자 화면(조회 전용 DB 테이블 뷰어) 로그인 게이트 + 접근 권한 관리 CRUD
+- ✅ 사내 CA 인증서 신뢰, SSO 에러 진단 배너 — 실제 브로커 연동 전 미리 준비(§2.6, §2.7)
 - ⬜ **실제 사내 SSO 브로커 연동** — 로컬 Keycloak과 실제 브로커가 issuer URL만 주는 모델인지, client_id/secret도 주는 범용 모델인지부터 사내 SSO 담당자 확인 필요
 - ⬜ 완전한 로그아웃(OIDC RP-Initiated Logout, `end_session_endpoint` 호출) — 지금은 우리 앱 로그아웃이 IdP 세션까지 끊지 않음(4.4 참고). 필요해지면 추가
 - ⬜ 이 관리자 화면 외의 일반 대시보드까지 SSO로 게이트하는 것 — 현재 의도적으로 범위 밖(§1 참고)
+- ⬜ 조용한 자동 재인증(silent re-auth) — 처음부터 범위 밖으로 보류(§5 참고)
 
-## 6. 관련 파일 (이 저장소 기준)
+## 7. 관련 파일 (이 저장소 기준)
 
 | 역할 | 파일 |
 |---|---|
 | 세션 저장소 | `backend/app/auth/state.py` |
 | 접근 허용 목록 CRUD | `backend/app/auth/access_store.py` |
-| OIDC 클라이언트 등록 | `backend/app/auth/oidc.py` |
-| 라우터(로그인/콜백/접근관리) | `backend/app/api/routes/admin.py` |
+| OIDC 클라이언트 등록 + CA 번들 신뢰 | `backend/app/auth/oidc.py` |
+| 라우터(로그인/콜백/접근관리, 에러 진단 배너) | `backend/app/api/routes/admin.py` |
 | 세션 검증 의존성 | `backend/app/api/deps.py` (`require_session` / `require_admin`) |
 | DB 모델 | `backend/app/db/models/auth.py` |
-| 프론트 로그인/탭 UI | `frontend/src/views/AdminView.vue`, `frontend/src/components/AccessUsersPanel.vue` |
+| 프론트 로그인/탭 UI(에러 배너 포함) | `frontend/src/views/AdminView.vue`, `frontend/src/components/AccessUsersPanel.vue` |
 | 프론트 인증 상태 | `frontend/src/stores/auth.ts` |
+| 로컬 dev 기동 스크립트(로그 파일화) | `scripts/start-dev.ps1` |
+| 내부 CA 인증서 자리 | `backend/certs/README.md` |
 | env 카탈로그 | `docs/SECURITY_ENV.md` |
 | 재현 절차(로컬 Keycloak) | `backend/CLAUDE.md` "로컬 Keycloak으로 SSO 검증하기" |
 | 작업 이력(커밋 단위) | `docs/ROADMAP.md` Phase 5 |

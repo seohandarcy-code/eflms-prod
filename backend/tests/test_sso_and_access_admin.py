@@ -16,8 +16,10 @@ async def test_sso_login_disabled_without_issuer_url(client, monkeypatch):
     monkeypatch.setattr(admin_routes, "SSO_BROKER_CONFIGURED", False)
     get_settings.cache_clear()
     try:
-        resp = await client.get("/api/admin/sso/login")
-        assert resp.status_code == 503
+        # /sso/login도 콜백과 동일한 원칙 — raw 오류 대신 로그인 화면으로 돌려보낸다.
+        resp = await client.get("/api/admin/sso/login", follow_redirects=False)
+        assert resp.status_code == 307
+        assert "#error=sso_not_configured" in resp.headers["location"]
     finally:
         get_settings.cache_clear()
 
@@ -50,6 +52,30 @@ async def test_sso_callback_disabled_without_issuer_url(client, monkeypatch):
         resp = await client.get("/api/admin/sso/callback", follow_redirects=False)
         assert resp.status_code == 307
         assert "#error=sso_not_configured" in resp.headers["location"]
+    finally:
+        get_settings.cache_clear()
+
+
+async def test_sso_callback_broker_unreachable_includes_diagnostic_detail(client, monkeypatch):
+    monkeypatch.setenv("AUTH_MODE", "sso")
+    monkeypatch.setattr(admin_routes, "SSO_BROKER_CONFIGURED", True)
+
+    class _FakeSsoClient:
+        async def authorize_access_token(self, request):
+            raise RuntimeError("connection timed out")
+
+    class _FakeOAuth:
+        sso = _FakeSsoClient()
+
+    monkeypatch.setattr(admin_routes, "oauth", _FakeOAuth())
+    get_settings.cache_clear()
+    try:
+        resp = await client.get("/api/admin/sso/callback", follow_redirects=False)
+        assert resp.status_code == 307
+        location = resp.headers["location"]
+        assert "#error=broker_unreachable" in location
+        # 토큰/자격증명이 아니라 예외 타입+메시지만 — 서버 로그 없이도 원인을 알 수 있게
+        assert "detail=RuntimeError%3A+connection+timed+out" in location
     finally:
         get_settings.cache_clear()
 

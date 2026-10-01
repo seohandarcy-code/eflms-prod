@@ -1,4 +1,5 @@
 import logging
+import urllib.parse
 
 from authlib.integrations.base_client.errors import OAuthError
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
@@ -90,17 +91,35 @@ async def get_table(
 # --- SSO(OIDC) ---
 
 
+def _exc_detail(exc: Exception) -> str:
+    """예외 타입/메시지를 진단 배너용으로 잘라 URL-safe하게 인코딩한다.
+
+    토큰/자격증명이 아니라 순수 네트워크·TLS 진단 메시지라 노출해도 안전하다
+    (a-ims-prod가 실제 ADFS 연동 중 이 정보 없이는 매번 서버 로그를 직접 봐야
+    했던 문제를 겪고 추가한 패턴).
+    """
+    return urllib.parse.quote_plus(f"{type(exc).__name__}: {exc}"[:300])
+
+
 @router.get("/sso/login")
 async def sso_login(request: Request):
-    if not SSO_BROKER_CONFIGURED:
-        raise HTTPException(status_code=503, detail="SSO가 설정되지 않았습니다(SSO_ISSUER_URL 없음)")
     settings = get_settings()
+    if not SSO_BROKER_CONFIGURED:
+        return RedirectResponse(f"{settings.frontend_base_url}/admin#error=sso_not_configured")
     redirect_uri = settings.sso_redirect_uri or str(request.url_for("sso_callback"))
     try:
         return await oauth.sso.authorize_redirect(request, redirect_uri)
     except Exception as exc:
-        logger.exception("SSO 로그인 시작 실패")
-        raise HTTPException(status_code=502, detail="SSO 브로커에 연결하지 못했습니다") from exc
+        # 리다이렉트 URL을 만들기 전에 authlib이 SSO_ISSUER_URL의
+        # .well-known/openid-configuration을 백엔드가 직접 실시간으로 fetch한다 —
+        # 브로커에 도달 못하거나(DNS/네트워크/타임아웃) 비정상 응답이면 여기서
+        # 예외가 그대로 터진다. 이 버튼은 브라우저 navigation 전용이라 JSON 에러
+        # 바디를 읽을 소비자가 없으므로, raw 502 대신 로그인 화면으로 되돌려
+        # 보내 에러 배너로 보여준다.
+        logger.warning("SSO 로그인 시작 실패: %s: %s", type(exc).__name__, exc)
+        return RedirectResponse(
+            f"{settings.frontend_base_url}/admin#error=broker_unreachable&detail={_exc_detail(exc)}"
+        )
 
 
 @router.get("/sso/callback", name="sso_callback")
@@ -113,8 +132,11 @@ async def sso_callback(
 
     # 콜백은 브라우저 리다이렉트 도중이라, 실패해도 raw JSON을 보여주지 않고 항상
     # /admin으로 되돌려보낸다 — 프론트가 #error=코드를 보고 이해할 수 있는 메시지를 띄운다.
-    def error_redirect(code: str) -> RedirectResponse:
-        return RedirectResponse(f"{settings.frontend_base_url}/admin#error={code}")
+    def error_redirect(code: str, detail: str | None = None) -> RedirectResponse:
+        url = f"{settings.frontend_base_url}/admin#error={code}"
+        if detail:
+            url += f"&detail={detail}"
+        return RedirectResponse(url)
 
     if not SSO_BROKER_CONFIGURED:
         return error_redirect("sso_not_configured")
@@ -124,9 +146,12 @@ async def sso_callback(
     except OAuthError as exc:
         logger.warning("SSO 콜백 인증 거부: %s", exc)
         return error_redirect("auth_failed")
-    except Exception:
-        logger.exception("SSO 콜백 처리 중 오류(브로커 통신 실패 등)")
-        return error_redirect("broker_error")
+    except Exception as exc:
+        # OAuthError가 아닌 실패(토큰/JWKS 엔드포인트 네트워크 오류 등) — IdP가
+        # 로그인을 "거부"한 게 아니라 브로커에 도달조차 못한 경우라 구분해서
+        # 알려준다(/sso/login의 authorize_redirect 예외 처리와 같은 원칙).
+        logger.warning("SSO 콜백 중 브로커 통신 실패: %s: %s", type(exc).__name__, exc)
+        return error_redirect("broker_unreachable", _exc_detail(exc))
 
     claims = token.get("userinfo") or {}
     sso_id = claims.get(settings.sso_user_id_claim)

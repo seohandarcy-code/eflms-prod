@@ -9,11 +9,12 @@
 | `APP_ENV` | `development` | 실행 환경 구분 |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./eflms.db` | 운영 전환 시 `postgresql+asyncpg://...`로 값만 교체 |
 | `CORS_ORIGINS` | `http://localhost:5173` | 프론트 개발 서버. 콤마(`,`)로 여러 오리진 구분 가능. 배포 시에는 실제 사내 도메인 목록으로 값만 교체(코드 변경 없음) |
-| `AUTH_MODE` | `none` | `none` → `local`(구현 완료) → `sso`(코드 구현 완료, 로컬 Keycloak 검증 대기) |
+| `AUTH_MODE` | `none` | `none` → `local`(구현 완료) → `sso`(로컬 Keycloak 전체 생애주기 검증 완료) |
 | `DB_HOST` / `DB_PORT` / `DB_NAME` | *(비어있음)* | **(구현 완료, Phase 4)** `DATABASE_URL`이 없을 때 이 값들로 PostgreSQL DSN을 자동 조립(`docs/ARCHITECTURE.md` "DB 연결 및 확장" 참고). 셋 다 없으면 SQLite로 폴백. PDEP ConfigMap으로 주입 예정 |
 | `SSO_ALLOW_LOCAL_LOGIN` | `false` | **(구현 완료, 2026-09-29)** `AUTH_MODE=sso`에서도 로컬 비밀번호 로그인을 함께 열어두는 개발용 듀얼모드 스위치. 공유 서버에서 켤 경우 `ADMIN_BOOTSTRAP_PASSWORD`를 기본값에서 반드시 변경할 것 |
 | `SESSION_COOKIE_SECURE` | `false` | **(구현 완료, 2026-09-29)** OAuth state/nonce 세션 쿠키에 Secure 플래그 부여 여부(`backend/app/main.py`의 `SessionMiddleware`). 실제 HTTPS 배포에서 `true` |
 | `FRONTEND_BASE_URL` | *(비어있음)* | **(구현 완료, 2026-09-29)** PDEP이 프론트/백엔드 도메인을 분리하는 경우에만 필요(SSO 콜백 리다이렉트 대상 지정, `backend/app/api/routes/admin.py`). 같은 origin이면 비워둠 |
+| `SSO_CA_BUNDLE_PATH` | *(비어있음)* | **(구현 완료, 2026-10-01, Stage 6-6)** 사내 CA가 발급한 인증서를 쓰는 SSO 브로커(ADFS 등)에 연결할 때 필요 — Python(`httpx`)이 Windows와 달리 사내 CA를 기본적으로 신뢰하지 않아 `SSL: CERTIFICATE_VERIFY_FAILED`로 실패하는 걸 막음(`a-ims-prod`가 실제 ADFS 연동 중 겪은 문제). 상대경로면 `backend/` 기준으로 해석(`backend/app/core/config.py`의 `sso_ca_bundle_resolved_path`). PEM이 아닌 것 같으면 기동 시 경고 로그. 로컬은 `backend/certs/`(gitignore 대상)에 두고, 실 배포는 K8s Secret을 Volume mount로 연결 |
 
 ## 시크릿 (이름만 예약, 값은 아직 없음 — 발급/생성은 추후 단계)
 

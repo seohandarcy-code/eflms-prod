@@ -10,11 +10,15 @@ const authConfig = ref<AuthConfig | null>(null);
 const password = ref("");
 const tab = ref<"tables" | "access">("tables");
 const ssoError = ref<string | null>(null);
+// 예외 타입/메시지 — 토큰/자격증명이 아니라 순수 진단 정보라 화면에 그대로 보여줘도
+// 안전하다. 서버 로그를 직접 열어보지 않아도 실제 SSO 브로커 연동 시 원인을 바로
+// 알 수 있게 한다(a-ims-prod가 ADFS 연동 중 겪은 문제를 보고 추가한 패턴).
+const ssoErrorDetail = ref<string | null>(null);
 
 const SSO_ERROR_MESSAGES: Record<string, string> = {
   sso_not_configured: "SSO가 설정되지 않았습니다.",
   auth_failed: "SSO 인증에 실패했습니다.",
-  broker_error: "SSO 브로커 통신에 실패했습니다. 잠시 후 다시 시도해주세요.",
+  broker_unreachable: "SSO 브로커 통신에 실패했습니다. 잠시 후 다시 시도해주세요.",
   missing_claim: "필요한 사용자 식별 정보를 받지 못했습니다.",
   not_registered: "등록되지 않은 계정입니다. 관리자에게 등록을 요청해주세요.",
 };
@@ -34,6 +38,7 @@ function consumeSsoCallbackHash() {
     const params = new URLSearchParams(hash.slice(1));
     const code = params.get("error") ?? "";
     ssoError.value = SSO_ERROR_MESSAGES[code] ?? `SSO 로그인에 실패했습니다. (${code})`;
+    ssoErrorDetail.value = params.get("detail");
     history.replaceState(null, "", window.location.pathname);
     return;
   }
@@ -132,7 +137,10 @@ onMounted(async () => {
           </form>
         </template>
 
-        <div v-if="ssoError" class="login-error">{{ ssoError }}</div>
+        <div v-if="ssoError" class="login-error">
+          {{ ssoError }}
+          <div v-if="ssoErrorDetail" class="login-error-detail">{{ ssoErrorDetail }}</div>
+        </div>
         <div v-if="auth.error" class="login-error">{{ auth.error }}</div>
       </div>
 
@@ -340,6 +348,14 @@ onMounted(async () => {
   margin-top: 12px;
   font-size: 12px;
   color: #c4392b;
+}
+.login-error-detail {
+  margin-top: 4px;
+  font-size: 11px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: #96382f;
+  opacity: 0.85;
+  word-break: break-all;
 }
 .admin-body-wrap {
   display: flex;
