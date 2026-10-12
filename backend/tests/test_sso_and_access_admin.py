@@ -58,6 +58,9 @@ async def test_sso_callback_disabled_without_issuer_url(client, monkeypatch):
 
 async def test_sso_callback_broker_unreachable_includes_diagnostic_detail(client, monkeypatch):
     monkeypatch.setenv("AUTH_MODE", "sso")
+    # 이 테스트는 discovery 기반(authlib) 경로를 검증한다 — SSO_FLOW_MODE 기본값이
+    # implicit_form_post로 바뀐 뒤에도 auth_code로 명시해야 oauth.sso 모킹이 실제로 타게 된다.
+    monkeypatch.setenv("SSO_FLOW_MODE", "auth_code")
     monkeypatch.setattr(admin_routes, "SSO_BROKER_CONFIGURED", True)
 
     class _FakeSsoClient:

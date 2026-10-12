@@ -78,9 +78,12 @@ bin\kc.bat start-dev --http-port=8180
 
 **realm/client/테스트 계정 생성** — Admin REST API(`http://127.0.0.1:8180/admin/realms/...`)로 realm `eflms`, confidential 클라이언트 `eflms-backend`(redirect URI에 `nginx`/`backend` 양쪽 콜백 주소 모두 등록: `http://127.0.0.1:8080/api/admin/sso/callback`, `http://127.0.0.1:8000/api/admin/sso/callback`), 브레이크글래스 계정(`eflms.admin@...`) + 테스트 계정(`eflms.test1~4@...`)을 생성한다. 클라이언트 시크릿은 `/admin/realms/eflms/clients/{uuid}/client-secret`로 조회.
 
-**`backend/.env` 설정**
+**`backend/.env` 설정** — `SSO_FLOW_MODE` 기본값이 `implicit_form_post`(discovery 미지원
+자체 브로커 경유)라서, 로컬 Keycloak(discovery 지원 범용 OIDC IdP) 검증 시에는
+`auth_code`로 **명시적으로** 바꿔야 한다(Stage 6-7, 2026-10-06):
 ```
 AUTH_MODE=sso
+SSO_FLOW_MODE=auth_code
 SSO_ISSUER_URL=http://127.0.0.1:8180/realms/eflms
 SSO_CLIENT_ID=eflms-backend
 SSO_CLIENT_SECRET=<위에서 조회한 값>

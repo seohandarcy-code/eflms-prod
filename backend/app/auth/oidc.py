@@ -7,10 +7,15 @@ authlib은 client_secret이 비면 token_endpoint_auth_method를 자동으로 "n
 """
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
+from urllib.parse import urlencode
 
+import httpx
+import jwt
 from authlib.integrations.starlette_client import OAuth
+from jwt.algorithms import RSAAlgorithm
 
 from app.core.config import get_settings
 
@@ -68,4 +73,51 @@ if SSO_BROKER_CONFIGURED:
         client_id=_settings.sso_client_id or None,
         client_secret=_settings.sso_client_secret or None,
         client_kwargs=client_kwargs,
+    )
+
+
+# --- SSO_FLOW_MODE=implicit_form_post(기본값) 전용 — discovery 미지원 자체 브로커 ---
+#
+# 이 방식의 브로커는 discovery(.well-known/openid-configuration)를 지원하지
+# 않는다. {SSO_ISSUER_URL}/oidc/form-authorize로 인가 요청을 보내면
+# /sso/callback에 id_token을 POST(form_post)로 바로 돌려주고(토큰 교환
+# 엔드포인트 없음), {SSO_ISSUER_URL}/oidc/jwks로 서명을 직접 검증한다. 추측으로
+# response_type/response_mode/nonce/scope 같은 "이론상 표준" 파라미터를
+# 추가하지 않는다 — 실제 브로커가 받는 조합이 확인되기 전까지는 최소 조합만 쓴다.
+
+
+def build_broker_authorize_url(redirect_uri: str) -> str:
+    """브로커 인가 URL을 조립한다 — discovery 없이 직접 만든다."""
+    params = urlencode({"client_id": _settings.sso_client_id, "redirect_uri": redirect_uri})
+    return f"{_settings.sso_issuer_url.rstrip('/')}/oidc/form-authorize?{params}"
+
+
+def verify_broker_id_token(id_token: str) -> dict:
+    """{SSO_ISSUER_URL}/oidc/jwks로 서명을 검증하고 클레임을 반환한다.
+
+    RS256/verify_aud=False로 검증한다 — 이 방식의 브로커가 실제로 발급하는 aud
+    값이 client_id와 다를 수 있다. nonce 검증은 하지 않는다 —
+    build_broker_authorize_url()이 애초에 nonce를 보내지 않아 비교할 대상이
+    없다. 서명 검증 실패 시 jwt.ExpiredSignatureError/jwt.InvalidTokenError를
+    그대로 전파한다 — 호출부(app/api/routes/admin.py)가 "로그인 거부"로 처리한다.
+    """
+    jwks_url = f"{_settings.sso_issuer_url.rstrip('/')}/oidc/jwks"
+    ca_bundle_path = _settings.sso_ca_bundle_resolved_path
+    verify = str(ca_bundle_path) if ca_bundle_path else True
+    resp = httpx.get(jwks_url, verify=verify, timeout=10.0)
+    resp.raise_for_status()
+    jwks = resp.json()
+
+    # kid가 있으면 매칭해서 안전하게 간다(여러 키가 섞여 있어도 안전) — kid가
+    # 없는 토큰/브로커면 첫 키로 폴백한다.
+    unverified_header = jwt.get_unverified_header(id_token)
+    kid = unverified_header.get("kid")
+    key_dict = next((k for k in jwks["keys"] if k.get("kid") == kid), jwks["keys"][0])
+    public_key = RSAAlgorithm.from_jwk(json.dumps(key_dict))
+
+    return jwt.decode(
+        id_token,
+        key=public_key,
+        algorithms=["RS256"],
+        options={"verify_signature": True, "verify_exp": True, "verify_aud": False},
     )

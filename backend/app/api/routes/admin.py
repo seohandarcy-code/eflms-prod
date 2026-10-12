@@ -1,6 +1,7 @@
 import logging
 import urllib.parse
 
+import jwt
 from authlib.integrations.base_client.errors import OAuthError
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_admin, require_session
 from app.auth import access_store
 from app.auth.access_store import LastAdminError
-from app.auth.oidc import SSO_BROKER_CONFIGURED, oauth
+from app.auth.oidc import SSO_BROKER_CONFIGURED, build_broker_authorize_url, oauth, verify_broker_id_token
 from app.auth.state import AccountLockedError, AdminAuthStore, InvalidCredentialsError, get_auth_store
 from app.core.config import get_settings
 from app.db.session import get_session
@@ -107,6 +108,10 @@ async def sso_login(request: Request):
     if not SSO_BROKER_CONFIGURED:
         return RedirectResponse(f"{settings.frontend_base_url}/admin#error=sso_not_configured")
     redirect_uri = settings.sso_redirect_uri or str(request.url_for("sso_callback"))
+    if settings.sso_flow_mode == "implicit_form_post":
+        # discovery 미지원 자체 브로커 — URL 조립 자체는 네트워크 호출이 없어
+        # 실패할 일이 없다(app/auth/oidc.py의 build_broker_authorize_url()).
+        return RedirectResponse(build_broker_authorize_url(redirect_uri))
     try:
         return await oauth.sso.authorize_redirect(request, redirect_uri)
     except Exception as exc:
@@ -122,7 +127,7 @@ async def sso_login(request: Request):
         )
 
 
-@router.get("/sso/callback", name="sso_callback")
+@router.api_route("/sso/callback", methods=["GET", "POST"], name="sso_callback")
 async def sso_callback(
     request: Request,
     session: AsyncSession = Depends(get_session),
@@ -141,19 +146,37 @@ async def sso_callback(
     if not SSO_BROKER_CONFIGURED:
         return error_redirect("sso_not_configured")
 
-    try:
-        token = await oauth.sso.authorize_access_token(request)
-    except OAuthError as exc:
-        logger.warning("SSO 콜백 인증 거부: %s", exc)
-        return error_redirect("auth_failed")
-    except Exception as exc:
-        # OAuthError가 아닌 실패(토큰/JWKS 엔드포인트 네트워크 오류 등) — IdP가
-        # 로그인을 "거부"한 게 아니라 브로커에 도달조차 못한 경우라 구분해서
-        # 알려준다(/sso/login의 authorize_redirect 예외 처리와 같은 원칙).
-        logger.warning("SSO 콜백 중 브로커 통신 실패: %s: %s", type(exc).__name__, exc)
-        return error_redirect("broker_unreachable", _exc_detail(exc))
+    if settings.sso_flow_mode == "implicit_form_post":
+        # discovery 미지원 자체 브로커 — GET이 아니라 POST로 id_token을 form
+        # body에 실어 보낸다(authorization code 교환 단계 자체가 없음,
+        # app/auth/oidc.py의 verify_broker_id_token() 참고).
+        form = await request.form()
+        id_token = str(form.get("id_token", ""))
+        try:
+            claims = verify_broker_id_token(id_token)
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError) as exc:
+            logger.warning("SSO 콜백 인증 거부: %s", exc)
+            return error_redirect("auth_failed")
+        except Exception as exc:
+            # JWKS 조회 네트워크 실패 등 — auth_code 모드의 일반 Exception
+            # 분기와 같은 원칙으로 "브로커 통신 실패"로 구분한다.
+            logger.warning("SSO 콜백 중 브로커 통신 실패: %s: %s", type(exc).__name__, exc)
+            return error_redirect("broker_unreachable", _exc_detail(exc))
+    else:
+        try:
+            token = await oauth.sso.authorize_access_token(request)
+        except OAuthError as exc:
+            logger.warning("SSO 콜백 인증 거부: %s", exc)
+            return error_redirect("auth_failed")
+        except Exception as exc:
+            # OAuthError가 아닌 실패(토큰/JWKS 엔드포인트 네트워크 오류 등) — IdP가
+            # 로그인을 "거부"한 게 아니라 브로커에 도달조차 못한 경우라 구분해서
+            # 알려준다(/sso/login의 authorize_redirect 예외 처리와 같은 원칙).
+            logger.warning("SSO 콜백 중 브로커 통신 실패: %s: %s", type(exc).__name__, exc)
+            return error_redirect("broker_unreachable", _exc_detail(exc))
 
-    claims = token.get("userinfo") or {}
+        claims = token.get("userinfo") or {}
+
     sso_id = claims.get(settings.sso_user_id_claim)
     if not sso_id:
         logger.warning(

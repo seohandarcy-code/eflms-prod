@@ -84,6 +84,39 @@ URL 인코딩)를 에러 리다이렉트에 `&detail=...`로 같이 실어 보�
 아래 작게 보여주게 하면 훨씬 빨리 원인을 좁힐 수 있다. 토큰/자격증명이 아니라 순수
 예외 타입+메시지라 노출해도 안전하다고 판단했다.
 
+### 2.8 `SSO_FLOW_MODE` — discovery 미지원 자체 브로커 대응 (2026-10-02~10-06)
+
+로컬 Keycloak으로 검증한 OIDC 흐름(authlib, discovery 기반 authorization code flow)과
+실제 사내 브로커가 쓰는 방식이 근본적으로 다르다는 걸 실제 연동 중에 발견했다 — 브로커는
+discovery(`.well-known/openid-configuration`) 자체를 지원하지 않고, 인가 요청을 보내면
+콜백에 `id_token`을 POST(form_post)로 바로 돌려준다(토큰 교환 엔드포인트 없음).
+
+선택 기준은 **"로컬이냐 운영이냐"가 아니라 "IdP가 OIDC discovery를 지원하느냐"**다 —
+로컬 Keycloak 검증과 "브로커 없이 ADFS에 직접 연결"은 둘 다 discovery를 지원하는 IdP라
+같은 코드 경로(`auth_code`)를 공유한다(ADFS는 Microsoft 표준 OIDC 구현이라 discovery를
+지원하는 걸 a-ims-prod가 실제로 확인함, 2026-10-06). discovery 미지원 자체 브로커만
+`implicit_form_post`(기본값)로 별도 처리한다:
+
+```python
+# backend/app/auth/oidc.py
+def build_broker_authorize_url(redirect_uri: str) -> str:
+    params = urlencode({"client_id": settings.sso_client_id, "redirect_uri": redirect_uri})
+    return f"{settings.sso_issuer_url.rstrip('/')}/oidc/form-authorize?{params}"
+
+def verify_broker_id_token(id_token: str) -> dict:
+    # {SSO_ISSUER_URL}/oidc/jwks를 직접 조회해 PyJWT로 RS256 서명을 검증한다.
+    # kid가 있으면 매칭, 없으면(또는 안 맞으면) 첫 키로 폴백. verify_aud=False —
+    # 이 방식의 브로커가 발급하는 aud 값이 client_id와 다를 수 있다. nonce 검증은
+    # 안 한다 — 인가 요청 자체가 nonce를 안 보내 비교할 대상이 없다.
+    ...
+```
+
+`/sso/login`·`/sso/callback`은 `SSO_FLOW_MODE`로 분기하되, 클레임을 받은 이후(allowed_users
+대조, role 판정, 세션 발급, 에러 배너) 로직은 두 모드가 완전히 공유한다 — 콜백은 GET(`auth_code`)과
+POST(`implicit_form_post`, form_post) 둘 다 받아야 한다(`@router.api_route(..., methods=["GET", "POST"])`).
+단위테스트는 합성 RSA 키쌍(`cryptography`)으로 유효/만료/서명불일치/kid매칭 폴백을 검증하고,
+통합테스트는 실제 POST 콜백 경로를 끝까지 태운다(`backend/tests/test_sso_implicit_form_post.py`).
+
 ## 3. 로컬 검증 방법 (Docker 없이, 네이티브 설치 우선)
 
 ```powershell
@@ -181,6 +214,23 @@ Keycloak이 "Update Account Information"(`VERIFY_PROFILE`) 화면을 끼워 넣�
 `--strictPort`를 추가해 지정 포트가 이미 쓰이고 있으면 조용히 다른 포트로 안 넘어가고 에러로
 실패하게 해서, nginx 프록시 타겟과 실제 포트가 어긋나는 걸 조기에 발견하게 했다.
 
+### 4.7 (아직 안 겪음, 미리 적어둠) `redirect_uri`가 `http://`면 브라우저가 콜백 자동 제출을 막을 수 있음
+
+a-ims-prod가 실제 사내 브로커(`implicit_form_post`, form_post 응답)로 연동하면서 겪음:
+브로커 로그인 페이지는 HTTPS인데 `SSO_REDIRECT_URI`가 `http://<방화벽 IP>:<포트>`라서,
+브라우저가 "제출하려는 정보가 안전하지 않음"(mixed content)으로 콜백 자동 제출(form_post)을
+막았다. 앱 내부는 HTTP로 둬도 되지만, 브라우저가 최종 접속하는 콜백 주소는(브로커든 그
+뒤의 IdP든) HTTPS를 요구하는 것으로 보인다.
+
+eflms는 아직 실제 브로커 접속 정보가 없어 이 문제를 겪을 단계가 아니다 — 실제 연동
+착수 시 `SSO_REDIRECT_URI`를 HTTPS로 확보할 수 있는지 미리 확인할 것. 공인 HTTPS
+콜백 주소를 못 구하는 상황이 생기면, a-ims-prod가 로컬 nginx에 자체 서명 인증서를
+붙이는 스크립트(`setup-local-https.ps1`, 조건부 HTTPS nginx 블록 + 인증서 없으면
+100% 기존 HTTP-only 동작 유지)를 만들어 직접 검증까지 마친 적이 있다 — 다만 사용자가
+이미 정식 HTTPS 콜백 주소를 준비해둔 상태였음이 확인돼 커밋 8분 만에 되돌렸다(코드가
+잘못돼서가 아니라 그 상황에서 불필요해져서). 필요해지면 그 커밋 히스토리를 참고 패턴으로
+복원해 쓸 수 있다 — 지금 eflms에 선제적으로 포팅하지는 않는다(§5 참고).
+
 ## 5. 참고 레포(`a-ims-prod`)의 후속 업데이트에서 반영한 것 / 안 한 것 (2026-10-01)
 
 참고 레포가 실제 사내 ADFS 연동을 시도하면서 추가로 겪은 문제들 중, eflms에 반영한 것과 범위가
@@ -195,11 +245,28 @@ Keycloak이 "Update Account Information"(`VERIFY_PROFILE`) 화면을 끼워 넣�
   임시방편이다. eflms 대시보드는 애초에 항상 공개라 "게이트가 걸려있다가 실패 시 풀어준다"는
   전제 자체가 없고, `/admin`에 억지로 적용하면 오히려 접근 통제(§2.2) 취지에 어긋난다.
 
+### 5.1 2026-10-02~10-06 라운드 — 실제 브로커 연동 중 discovery 미지원 발견
+
+- ✅ 반영(Stage 6-7): `SSO_FLOW_MODE`(§2.8) — `implicit_form_post`(기본값, discovery 미지원
+  자체 브로커) / `auth_code`(discovery 지원 IdP 직접 연결, 로컬 Keycloak **또는** 브로커 없이
+  ADFS 직접 연결 둘 다 해당). a-ims-prod는 이걸 처음에 "`auth_code`=로컬 Keycloak 전용,
+  실제 운영 대상 아님"으로 문서화했다가 2026-10-06에 "브로커 없이 ADFS 직접 연결도
+  `auth_code`"로 정정했는데, eflms는 처음부터 "discovery 지원 여부" 기준으로 문서화해서
+  같은 정정 과정을 겪지 않았다(`backend/.env.example`, `docs/SECURITY_ENV.md`,
+  `backend/app/core/config.py`의 `sso_flow_mode` 주석 참고).
+- ⬜ 제외 — 로컬 nginx 자체 서명 인증서 HTTPS(`setup-local-https.ps1`): §4.7 참고. a-ims-prod가
+  만들어서 직접 검증까지 마쳤지만 결국 안 쓰고 되돌린 기능이고, eflms는 아직 실제 브로커
+  접속 정보 자체가 없어 이 문제에 부딪힐 단계가 아니다. 실제 연동 중 공인 HTTPS 콜백 주소를
+  못 구하는 상황이 실제로 생기면 그때 그 커밋 히스토리를 참고해 포팅을 재검토한다.
+
 ## 6. 이 프로젝트에서의 최종 상태 / 아직 안 한 것
 
 - ✅ `AUTH_MODE=local`(비밀번호) / `AUTH_MODE=sso`(OIDC) 둘 다 실제 동작, 로컬 Keycloak으로 전체 생애주기 검증 완료
 - ✅ 관리자 화면(조회 전용 DB 테이블 뷰어) 로그인 게이트 + 접근 권한 관리 CRUD
 - ✅ 사내 CA 인증서 신뢰, SSO 에러 진단 배너 — 실제 브로커 연동 전 미리 준비(§2.6, §2.7)
+- ✅ `SSO_FLOW_MODE`(discovery 미지원 자체 브로커 대응, `implicit_form_post`/`auth_code`) — 실제
+  브로커 접속 정보 없이 합성 RSA 키쌍으로 단위/통합테스트까지 검증 완료(§2.8). **실제 브로커로는
+  아직 검증 전** — SSO_ISSUER_URL/SSO_CLIENT_ID 등 실제 값이 있어야 가능
 - ⬜ **실제 사내 SSO 브로커 연동** — 로컬 Keycloak과 실제 브로커가 issuer URL만 주는 모델인지, client_id/secret도 주는 범용 모델인지부터 사내 SSO 담당자 확인 필요
 - ⬜ 완전한 로그아웃(OIDC RP-Initiated Logout, `end_session_endpoint` 호출) — 지금은 우리 앱 로그아웃이 IdP 세션까지 끊지 않음(4.4 참고). 필요해지면 추가
 - ⬜ 이 관리자 화면 외의 일반 대시보드까지 SSO로 게이트하는 것 — 현재 의도적으로 범위 밖(§1 참고)
@@ -212,7 +279,8 @@ Keycloak이 "Update Account Information"(`VERIFY_PROFILE`) 화면을 끼워 넣�
 | 세션 저장소 | `backend/app/auth/state.py` |
 | 접근 허용 목록 CRUD | `backend/app/auth/access_store.py` |
 | OIDC 클라이언트 등록 + CA 번들 신뢰 | `backend/app/auth/oidc.py` |
-| 라우터(로그인/콜백/접근관리, 에러 진단 배너) | `backend/app/api/routes/admin.py` |
+| 라우터(로그인/콜백/접근관리, 에러 진단 배너, `SSO_FLOW_MODE` 분기) | `backend/app/api/routes/admin.py` |
+| `SSO_FLOW_MODE` 단위/통합테스트(합성 RSA 키쌍) | `backend/tests/test_sso_implicit_form_post.py` |
 | 세션 검증 의존성 | `backend/app/api/deps.py` (`require_session` / `require_admin`) |
 | DB 모델 | `backend/app/db/models/auth.py` |
 | 프론트 로그인/탭 UI(에러 배너 포함) | `frontend/src/views/AdminView.vue`, `frontend/src/components/AccessUsersPanel.vue` |

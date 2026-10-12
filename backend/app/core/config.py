@@ -24,6 +24,15 @@ class Settings(BaseSettings):
     admin_bootstrap_password: str = ""
 
     # AUTH_MODE=sso 전용 — Stage 6, docs/ARCHITECTURE.md "인증" 참고.
+    # SSO 연동 방식 선택 기준은 "로컬이냐 운영이냐"가 아니라 "IdP가 OIDC discovery를
+    # 지원하느냐"다 — implicit_form_post(기본값)는 discovery 미지원 자체 브로커
+    # 경유(/oidc/form-authorize + /oidc/jwks, app/auth/oidc.py의
+    # build_broker_authorize_url()/verify_broker_id_token() 참고), auth_code는
+    # discovery 지원 IdP 직접 연결(authlib, authorization code flow) — 로컬
+    # Keycloak 검증과 브로커 없이 ADFS에 직접 붙는 경우 둘 다 여기 해당한다
+    # (ADFS는 Microsoft 표준 OIDC 구현이라 discovery를 지원함). 클레임을 받은
+    # 이후(allowed_users 대조, role 판정, 세션 발급) 로직은 두 모드가 공유한다.
+    sso_flow_mode: str = "implicit_form_post"
     sso_issuer_url: str = ""
     sso_client_id: str = ""
     sso_client_secret: str = ""
