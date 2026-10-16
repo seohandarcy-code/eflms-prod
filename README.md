@@ -54,7 +54,7 @@ cp .env.example .env
 
 - `.env`는 값을 로컬에 맞게 조정(기본값으로도 로컬 실행은 가능) — 자세한 항목은 아래 "환경변수 설정" 참고.
 - `alembic upgrade head`가 DB 스키마(`backend/eflms.db`, SQLite)를 만듦.
-- `app.db.seed --rows 30`은 화면을 바로 확인할 수 있도록 **mock(가짜) 데이터**를 30건 채워 넣음 — 실제 운영 데이터는 아래 "데이터 리셋 & 사내 입력파일(.dat) 로드" 참고.
+- `app.db.seed --rows 30`은 화면을 바로 확인할 수 있도록 등록된 설비유형마다 **mock(가짜) 데이터**를 30건씩 채워 넣음 — 실제 운영 데이터는 아래 "데이터 리셋 & 사내 입력파일(.dat) 로드" 참고.
 - 기동 확인: `http://localhost:8000/healthz`
 - **주의(폴더 이동/이름변경 후)**: `.venv/Scripts/uvicorn.exe`처럼 실행 파일을 직접 실행하면 생성 당시 경로가 캐싱돼 있어 조용히 실패할 수 있음 — 항상 `python -m uvicorn ...`처럼 `python -m <모듈>` 형태로 실행할 것. 자세한 내용은 [backend/CLAUDE.md](backend/CLAUDE.md) 참고.
 
@@ -94,7 +94,7 @@ DB/인증 구조에 대한 자세한 설명은 [docs/ARCHITECTURE.md](docs/ARCHI
 
 ## 관리자 로그인 / DB 테이블 조회 화면
 
-대시보드 왼쪽 사이드바 하단에 항상 보이는 "관리자" 버튼(클릭 전까지 데이터 비노출) → `/admin`에서 로그인하면, 시스템이 쓰는 DB 테이블(총 13개)을 조회 전용으로 볼 수 있다(편집 기능 없음).
+대시보드 왼쪽 사이드바 하단에 항상 보이는 "관리자" 버튼(클릭 전까지 데이터 비노출) → `/admin`에서 로그인하면, 시스템이 쓰는 DB 테이블(총 19개)을 조회 전용으로 볼 수 있다(편집 기능 없음).
 
 - **`AUTH_MODE=local`(기본 추천, 개발용)**: 비밀번호 로그인(`ADMIN_BOOTSTRAP_PASSWORD`, 기본값 `0000`)만으로 활성화됨. `AUTH_MODE=none`(기본값)이면 이 기능 자체가 비활성화된다.
 - **`AUTH_MODE=sso`**: 사내 SSO(OIDC) 로그인으로 전환, "접근 권한 관리" 탭에서 계정별 접근 허용/관리자 권한을 관리할 수 있음 — 자세한 내용은 위 "Secret 설정"의 SSO 링크 참고.
@@ -102,31 +102,42 @@ DB/인증 구조에 대한 자세한 설명은 [docs/ARCHITECTURE.md](docs/ARCHI
 
 ## 데이터 리셋 & 사내 입력파일(.dat) 로드
 
+모든 명령은 **설비유형(`--ef-code`) 단위**로 동작한다 — 한 유형을 지우거나 교체해도 다른 유형의 데이터는 그대로 남는다(예: EF1 실데이터는 두고 EF2 mock만 다시 만들기). `all`은 등록된 모든 유형을 각각 처리한다.
+
 **Mock 데이터 재시딩(초기화 후 다시 채우기)**
 ```bash
 cd backend
-.venv/Scripts/python -m app.db.seed --rows 30 --reset   # Windows
-.venv/bin/python -m app.db.seed --rows 30 --reset        # macOS/Linux
+.venv/Scripts/python -m app.db.seed --rows 30 --reset                # 전체 유형(기본값 all)
+.venv/Scripts/python -m app.db.seed --ef-code EF1 --rows 30 --reset  # EF1만
 ```
-`--reset`을 빼면 기존 데이터에 추가로 쌓인다.
+`--reset`을 빼면 기존 데이터에 추가로 쌓인다. macOS/Linux는 `.venv/bin/python`.
 
-**기동 시 자동 시딩(로컬 개발 편의용)**: `backend/.env`에 `AUTO_SEED_IF_EMPTY=true`를 설정하면, 설비 테이블이 비어있을 때만 기동 시 mock 30건이 자동으로 채워진다(기본값 false — 이미 데이터가 있으면 아무 일도 안 함, `alembic upgrade head`는 여전히 미리 실행돼 있어야 함).
+**유형 단위 삭제**
+```bash
+.venv/Scripts/python -m app.db.reset --ef-code EF1   # EF1 설비와 딸린 데이터만 삭제 (all도 가능)
+```
+`equipment_type`(마스터)과 `allowed_users`(접근 권한)는 지우지 않는다.
+
+**기동 시 자동 시딩(로컬 개발 편의용)**: `backend/.env`에 `AUTO_SEED_IF_EMPTY=true`를 설정하면, 기동할 때 **비어 있는 설비유형만** mock 30건으로 채운다(기본값 false — 데이터가 있는 유형은 건드리지 않음, `alembic upgrade head`는 여전히 미리 실행돼 있어야 함).
 
 **DB 완전 초기화**: SQLite 사용 중이면 `backend/eflms.db` 파일을 삭제하고 `alembic upgrade head`를 다시 실행하면 빈 스키마부터 새로 시작한다.
 
 **실제 사내 입력파일(.dat, 탭구분) 반영**:
 ```bash
 cd backend
-.venv/Scripts/python -m app.db.import_data --file <파일경로> --ef-code EF1
+.venv/Scripts/python -m app.db.import_data --file <파일경로> --ef-code EF1 --replace
 ```
+- `--replace`: 해당 유형의 기존 데이터(mock 포함)를 지우고 파일 내용으로 **교체**한다. 빼면 추가/갱신(upsert)만 한다.
+- 파일 하나가 트랜잭션 하나다 — 값 오류가 한 행이라도 있거나 반영 도중 실패하면 아무것도 바뀌지 않는다(`--replace`로 지운 것도 되돌아감).
+- 파일 안 `EF_code` 값이 `--ef-code`와 다르거나 등록되지 않은 유형이면 거부한다.
 
 먼저 아래처럼 샘플 파일로 바로 실행해볼 수 있음(mock 스키마 기준으로 만든 100행짜리 연습용 파일, 실제 회사 파일 아님):
 
 ```bash
-.venv/Scripts/python -m app.db.import_data --file sample_data/sample_valid.dat --ef-code EF1
+.venv/Scripts/python -m app.db.import_data --file sample_data/ef1/sample_valid.dat --ef-code EF1
 ```
 
-`backend/sample_data/`에는 이 정상 케이스 외에 오류/미등록컬럼 케이스 파일도 있고(`sample_with_errors.dat`, `sample_with_extra_columns.dat`), `python scripts/generate_sample_dat.py`로 재생성 가능. 컬럼명이 실제 파일과 다르거나 날짜 형식이 다를 때 무엇을 고쳐야 하는지는 [backend/CLAUDE.md](backend/CLAUDE.md)의 "운영 데이터 임포트" 섹션에 정리되어 있음.
+`backend/sample_data/<유형>/`(예: `ef1/`)에는 이 정상 케이스 외에 오류/미등록컬럼 케이스 파일도 있고(`sample_with_errors.dat`, `sample_with_extra_columns.dat`), `python scripts/generate_sample_dat.py --ef-code EF1`로 재생성 가능. 컬럼명이 실제 파일과 다르거나 날짜 형식이 다를 때 무엇을 고쳐야 하는지는 [backend/CLAUDE.md](backend/CLAUDE.md)의 "운영 데이터 임포트" 섹션에 정리되어 있음.
 
 ## 테스트
 

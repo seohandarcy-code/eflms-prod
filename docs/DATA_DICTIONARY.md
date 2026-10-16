@@ -5,7 +5,7 @@
 | 설비유형 | 원본(참고자료, 수정 금지) | 시스템 계산기 |
 |---|---|---|
 | EF1 변압기 | `ref_data/schema_eflms.py` | `backend/app/equipment_types/ef1_transformer.py` |
-| EF2 GIS | `ref_data/schema_eflms_gis.py` | `backend/app/equipment_types/ef2_gis.py` (Stage 8-3 예정) |
+| EF2 GIS | `ref_data/schema_eflms_gis.py` | `backend/app/equipment_types/ef2_gis.py` |
 
 ## 공통 테이블
 
@@ -44,9 +44,9 @@
 4. DoF 구성요소(예비화/자동전환/보호·알람/설계보강 항목들) → `dof_minus` → `dof = 100 + dof_minus`
 5. `total_score = 0.5*pof + 0.3*cof + 0.2*dof`
 
-## EF2(GIS) — Stage 8 도입 예정
+## EF2(GIS) — Stage 8-3 구현(2026-10-16, 마이그레이션 `b3f7d2a8c615`)
 
-출처: `ref_data/schema_eflms_gis.py`(2026-10-16 수정본). 시스템 계산기는 **원본 공식을 그대로** 옮긴다(아래 "원본 그대로 유지하는 판단" 참고). 원본에 섞여 있는 `dtype: "string"`은 `str`로 통일한다.
+출처: `ref_data/schema_eflms_gis.py`(2026-10-16 수정본). 시스템 계산기(`ef2_gis.py`)는 **원본 공식을 그대로** 옮겼다(아래 "원본 그대로 유지하는 판단" 참고) — `backend/tests/test_ef2_gis.py`가 같은 입력으로 원본과 전 계산 컬럼을 대조한다. 원본에 섞여 있는 `dtype: "string"`은 `str`로 통일했다.
 
 ### 공통 테이블 매핑
 
@@ -69,6 +69,8 @@
 화면의 "최근 진단일"은 EF2에서 `gis_sf6_reading.diag_time`을 쓴다(EF1은 `dga_reading.diag_time`).
 
 ### 입력 허용값 (임포트 검증 — 범위 밖이면 행 오류로 파일 전체 반영 안 함)
+
+`ef2_gis.INPUT_COLUMNS`의 `choices`/`min`/`max`/`required`로 선언돼 있고, `app/services/import_service.py`의 `_check_allowed`가 검사한다(허용값을 선언하지 않은 EF1은 검사 대상 아님).
 
 허용값은 mock 생성 범위가 아니라 **공식에 정의된 값 전체**다. mock 생성기는 원본 generator 범위(일부러 좁혀둔 범위)를 그대로 쓰되, 생성값도 이 검증을 통과해야 한다.
 
@@ -111,7 +113,7 @@
 | 음수 점수 | 실데이터에선 PoF 약 -67, DoF -33까지 이론상 가능(mock 범위에선 PoF 18~98, CoF 40~99, DoF 39~100) | 계산값은 원본대로 저장(엑셀과 일치), 차트 표시만 0~100으로 클램프. 상태 판정엔 영향 없음 |
 | 상태 판정 | — | EF1과 같은 `classify_status` 기준 |
 
-mock 범위에선 감점이 한 번도 발생하지 않는 분기가 7개 있다(`cb_op_num`, `leakage_curr`, `sf6`, `elec_room`, `in_line`, `ato`, `tbm`) — 이 분기들은 Stage 8-3에서 입력값을 직접 지정하는 정답값 단위테스트로 검증한다.
+mock 범위에선 감점이 한 번도 발생하지 않는 분기가 7개 있다(`cb_op_num`, `leakage_curr`, `sf6`, `elec_room`, `in_line`, `ato`, `tbm`) — 이 분기들은 입력값을 직접 지정하는 정답값 단위테스트(`test_ef2_gis.py`의 `BRANCHES`)로 검증한다.
 
 ## 미확정/자동 캡처 컬럼
 

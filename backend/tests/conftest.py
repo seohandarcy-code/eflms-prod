@@ -48,6 +48,7 @@ async def client(session_factory):
         for _ in range(3):
             row = calculate(generate_input_row())
             await ingest_row(row, session)
+        await session.commit()  # Stage 8-2부터 ingest_row는 commit하지 않는다
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

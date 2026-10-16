@@ -20,6 +20,8 @@
 - 입력: `transformer_spec`(정격용량), `dga_reading`, `furan_reading`, `dielectric_test`, `oil_test`, `load_condition`, `periodic_inspection`, `design_attribute` (컬럼 상세는 [DATA_DICTIONARY.md](DATA_DICTIONARY.md) 참고)
 - 계산: `transformer_score_detail` — EF1 전용 세부 감점 breakdown 전부(다른 설비유형이 생기면 `ef2_score_detail`처럼 별도 테이블을 추가하고 기존 테이블/코드는 건드리지 않는다)
 
+**EF2(GIS) 전용 도메인 테이블**(Stage 8-3) — 입력: `gis_operation`, `gis_diagnosis`, `gis_sf6_reading`, `gis_consequence_attribute`, `gis_design_attribute` / 계산: `gis_score_detail`. 계산기 `backend/app/equipment_types/ef2_gis.py`.
+
 **설비유형 확장 원칙**: EF2~EF22가 추가될 때는 새 도메인 테이블 + 새 계산기 모듈을 추가할 뿐, `equipment_type`/`equipment`/`score_snapshot` 공통 레이어와 기존 EF1 코드는 변경하지 않는다(개방-폐쇄 원칙).
 
 ## 계산 로직 — "설비 타입 계산기 레지스트리"
@@ -33,7 +35,7 @@
 - `AuthProvider` 인터페이스로 추상화. 지금은 무인증(또는 더미 로그인)으로 시작하되, FastAPI 의존성 자리(`get_current_user`류)만 미리 만들어 둔다.
 - 토큰 클레임은 OIDC 클레임(`sub`, `email`, `roles`)과 유사하게 맞춰서, 추후 사내 SSO(OIDC) 연동 시 프론트/백엔드 변경을 최소화한다.
 - `AUTH_MODE` env로 `none` → `local`(구현 완료, 2026-09-29) → `sso`(계획) 전환. `sso`를 선택하면 아직 `NotImplementedError`가 나는 자리 확보 상태(`backend/app/core/security.py` — 참고로 이 `get_current_user`/`AUTH_MODE` 일반 인증 자리와, 아래 `local` 모드로 실제 구현한 관리자 로그인은 서로 다른 코드 경로다. 일반 대시보드는 여전히 무인증 공개이며, `local`은 오직 `/admin`(DB 테이블 조회 전용 화면)만 게이트한다).
-- **`local`(구현 완료)**: 관리자 단일 계정, 메모리 세션(TTL 8시간) + 로그인 시도 5회 실패 시 5분 잠금(`backend/app/auth/state.py`의 `AdminAuthStore`, a-ims-prod 패턴 그대로 채택). JWT 서명 없이 opaque 토큰(`secrets.token_urlsafe`)만 사용. 게이트 대상은 `GET/POST /api/admin/*`(로그인/로그아웃/테이블 목록·조회, `require_admin` 의존성) — 편집 기능 없음, 화이트리스트 13개 테이블 조회 전용(Stage 8-1에 `transformer_spec` 추가).
+- **`local`(구현 완료)**: 관리자 단일 계정, 메모리 세션(TTL 8시간) + 로그인 시도 5회 실패 시 5분 잠금(`backend/app/auth/state.py`의 `AdminAuthStore`, a-ims-prod 패턴 그대로 채택). JWT 서명 없이 opaque 토큰(`secrets.token_urlsafe`)만 사용. 게이트 대상은 `GET/POST /api/admin/*`(로그인/로그아웃/테이블 목록·조회, `require_admin` 의존성) — 편집 기능 없음, 화이트리스트 19개 테이블 조회 전용(Stage 8-1에 `transformer_spec`, 8-3에 `gis_*` 6개 추가).
 - **(계획, Phase 5 다음 단계)** `sso`: OIDC(`authlib`). IdP 인증 성공이 곧 접근 허용은 아님 — `allowed_users` DB 테이블에 등록된 계정만 세션이 발급됨(관리자가 화면에서 직접 등록/삭제). `SSO_ADMIN_ALLOWLIST`(env)에 매칭되는 계정은 로그인마다 admin 권한이 자동 복구되는 브레이크글래스 — 전체 락아웃 방지용 안전망.
   - `SSO_ALLOW_LOCAL_LOGIN`: 개발 중 듀얼모드 — 브로커가 client_id를 아직 발급하지 않은 단계에서도 `sso` 모드에서 로컬 비밀번호 로그인을 같이 열어, 관리자가 먼저 들어가 SSO 계정을 등록해둘 수 있게 함(기본값 false).
   - `SSO_BROKER_CONFIGURED = bool(SSO_ISSUER_URL)`: `SSO_CLIENT_ID`/`SSO_CLIENT_SECRET` 없이 issuer URL만 발급하는 사내 브로커 방식에도 대응(authlib이 빈 client_secret/client_id를 이미 지원함을 소스로 확인됨).
@@ -48,14 +50,15 @@ mock 생성기(ref_data 로직 이식)     ─┐
                                               └───────────────────────────▶ score_snapshot / *_score_detail 갱신
 ```
 
-- **공용 매퍼** `ingest_row(row: dict, session)` — mock 시드와 실제 파일 임포트가 동일 함수를 사용.
-- **시드 스크립트** `backend/app/db/seed.py` — mock 생성기로 flat dict를 만들어 `ingest_row` 호출 (`--rows`, `--reset`).
+- **공용 매퍼** `ingest_row(row: dict, session)` — mock 시드와 실제 파일 임포트가 동일 함수를 사용. 공통 테이블(`equipment_type`/`equipment`/`score_snapshot`)만 직접 다루고, 유형 전용 테이블은 `row["EF_code"]`로 찾은 설비유형 모듈의 `ingest_domain()`에 맡긴다(Stage 8-2, `app/equipment_types/registry.py`). **commit하지 않는다** — 호출자가 파일/배치 단위로 한 번 commit.
+- **설비유형 단위 운영**(Stage 8-2): 시드·리셋·임포트 모두 `--ef-code`(또는 `all`) 단위. 유형 리셋은 그 유형 설비와 딸린 행만 지운다(`app/services/dataset_service.py`) — 한 유형을 mock으로 다시 만들거나 실데이터로 교체해도 다른 유형은 그대로다.
+- **시드 스크립트** `backend/app/db/seed.py` — mock 생성기로 flat dict를 만들어 `ingest_row` 호출 (`--ef-code`, `--rows`, `--reset`). 유형 삭제만 할 때는 `app/db/reset.py`.
 - **파일 임포트** `backend/app/services/import_service.py` — 사내 입력 파일(탭 구분 텍스트, `.dat`)을 파싱해 flat dict로 만든 뒤 동일 파이프라인 호출. 실행은 CLI로 웹서버 기동과 분리(`python -m app.db.import_data --file ... --ef-code EF1`).
   - **인코딩**: UTF-8을 우선 시도하고 실패 시 CP949(EUC-KR)로 폴백 — 사내에서 받는 파일이 두 인코딩을 오갈 수 있음을 전제.
   - **컬럼 매칭**: 파일 헤더를 `name`(영문)과 매칭한다(사내 입력파일은 영문 헤더로만 옴을 확인함). `label`(한글)은 각 항목이 무엇인지 설명하는 문서/화면 표시용 메타데이터일 뿐, 매칭에는 쓰지 않는다. 매칭된 컬럼은 정의된 dtype으로 값 검증.
   - **미등록 컬럼**: 실패시키지 않고 `equipment_extra_attribute`(equipment_id, column_name, value, inferred_type, source_file, imported_at)에 자동 저장(타입은 int→float→date→string 순으로 추론) + 임포트 후 "미등록 컬럼 발견" 리포트. 정식 컬럼 승격은 수동(스키마 마이그레이션)으로만 진행.
-  - **검증 실패 정책**: 파일 내 일부 행에 오류가 있으면 전체 임포트를 중단하고 문제 행을 상세 리포트로 표시(부분 반영 금지).
-  - **임포트 단위**: 파일 1건 = 해당 EF_code 설비들의 전체 입력 스냅샷을 통째로 갱신.
+  - **검증 실패 정책**: 파일 내 일부 행에 오류가 있으면 전체 임포트를 중단하고 문제 행을 상세 리포트로 표시(부분 반영 금지). 검증 통과 후 반영 도중 실패해도 파일 전체 rollback(파일 1건 = 트랜잭션 1건). 행의 `EF_code`가 `--ef-code`와 다르면 거부.
+  - **임포트 단위**: 파일 1건 = 해당 EF_code 설비들의 입력 스냅샷. `--replace`면 같은 트랜잭션에서 그 유형 기존 데이터를 지우고 파일 내용으로 교체(원래 의도한 "통째로 갱신"), 빼면 upsert(추가·갱신)만 — Stage 8-2 이전 코드는 문서와 달리 upsert만 했었다.
 
 ## 프론트엔드
 

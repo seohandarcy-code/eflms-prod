@@ -10,6 +10,8 @@ from app.api.routes import admin, equipment, health
 from app.core.config import get_settings
 from app.db import seed
 from app.db.session import async_session_factory
+from app.equipment_types.registry import registered_codes
+from app.services.dataset_service import is_type_empty
 
 settings = get_settings()
 
@@ -22,9 +24,12 @@ async def lifespan(app: FastAPI):
     # 앱 로거엔 INFO 핸들러가 없어서, uvicorn 실행 시 항상 출력되는 uvicorn.error 로거를 쓴다.
     logging.getLogger("uvicorn.error").info("EFLMS auth config: %s", settings.auth_summary())
     if settings.auto_seed_if_empty:
+        # 설비유형별로 비어 있는 유형만 채운다 — EF1 실데이터가 있어도 빈 유형은 mock으로 채워짐.
         async with async_session_factory() as session:
-            if await seed.is_empty(session):
-                await seed.main(rows=30, do_reset=False)
+            for ef_code in registered_codes():
+                if await is_type_empty(session, ef_code):
+                    await seed.seed_type(session, ef_code, rows=30, reset=False)
+                    await session.commit()
     yield
 
 

@@ -1,20 +1,49 @@
 """EF1(변압기) 설비유형 계산기.
 
 `ref_data/schema_eflms.py`의 INPUT_COLUMNS/CALCULATED_COLUMNS 로직을 그대로 이식했다.
-다른 설비유형(EF2~)이 추가되면 이 파일과 같은 패턴으로 별도 모듈을 추가하고,
-이 파일은 변경하지 않는다.
+다른 설비유형(EF2~)은 이 파일과 같은 패턴으로 별도 모듈을 추가하고 registry.py에 등록한다
+(app/equipment_types/base.py의 EquipmentTypeModule 인터페이스).
 
 공개 인터페이스:
 - generate_input_row() -> dict      : mock 입력 1건 생성 (시드용)
 - calculate(input_row) -> dict      : 입력 dict 하나로 전체 계산 컬럼을 산출
+- ingest_domain(row, equipment_id, session) : EF1 전용 테이블 upsert (Stage 8-2에 ingest.py에서 이동)
 """
 import itertools
 import math
 import random
 from datetime import date, timedelta
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models import (
+    DesignAttribute,
+    DgaReading,
+    DielectricTest,
+    FuranReading,
+    LoadCondition,
+    OilTest,
+    PeriodicInspection,
+    TransformerScoreDetail,
+    TransformerSpec,
+)
+
 EF_CODE = "EF1"
 EF_NAME = "변압기"
+# 입력 행의 이 컬럼이 공통 equipment.equipment_name으로 들어간다(사내 입력파일 헤더는 그대로).
+NAME_FIELD = "transformer_name"
+# 유형 단위 리셋 시 지울 EF1 전용 테이블(모두 equipment_id FK).
+DOMAIN_TABLES = [
+    TransformerScoreDetail,
+    TransformerSpec,
+    DgaReading,
+    FuranReading,
+    DielectricTest,
+    OilTest,
+    LoadCondition,
+    PeriodicInspection,
+    DesignAttribute,
+]
 
 # ------------------------------------------------------------------
 # 1. INPUT COLUMNS
@@ -485,3 +514,171 @@ def calculate(input_row: dict) -> dict:
     for col in CALCULATED_COLUMNS:
         row[col["name"]] = col["formula"](row)
     return row
+
+
+# ------------------------------------------------------------------
+# 3. DB 적재 (EF1 전용 테이블)
+# ------------------------------------------------------------------
+async def ingest_domain(row: dict, equipment_id: int, session: AsyncSession) -> None:
+    """calculate()가 만든 flat dict에서 EF1 전용 테이블들에 upsert한다. commit하지 않는다.
+    공통 테이블(equipment/score_snapshot)은 app/services/ingest.py가 담당한다."""
+    await session.merge(
+        TransformerSpec(
+            equipment_id=equipment_id,
+            updated_at=row["today"],
+            onan_val=row["ONAN_val"],
+            onaf_val=row["ONAF_val"],
+        )
+    )
+
+    await session.merge(
+        DgaReading(
+            equipment_id=equipment_id,
+            diag_time=row["dga_diag_time"],
+            dga_h2=row["dga_h2"],
+            dga_c2h2=row["dga_c2h2"],
+            dga_c2h4=row["dga_c2h4"],
+            dga_c2h6=row["dga_c2h6"],
+            dga_ch4=row["dga_ch4"],
+            dga_c3h8=row["dga_c3h8"],
+            dga_co=row["dga_co"],
+            dga_co2=row["dga_co2"],
+            dga_o2=row["dga_o2"],
+            dga_n2=row["dga_n2"],
+            dga_fluc=row["dga_fluc"],
+        )
+    )
+
+    await session.merge(
+        FuranReading(
+            equipment_id=equipment_id,
+            diag_time=row["furan_diag_time"],
+            furan_5h2f=row["furan_5H2F"],
+            furan_2fol=row["furan_2FOL"],
+            furan_2fal=row["furan_2FAL"],
+            furan_2acf=row["furan_2ACF"],
+            furan_5m2f=row["furan_5M2F"],
+        )
+    )
+
+    await session.merge(
+        DielectricTest(
+            equipment_id=equipment_id,
+            measured_at=row["today"],
+            dielec_str_te_1=row["dielec_str_te_1"],
+            dielec_str_te_2=row["dielec_str_te_2"],
+            dielec_str_te_3=row["dielec_str_te_3"],
+            dielec_str_te_4=row["dielec_str_te_4"],
+            dielec_str_te_5=row["dielec_str_te_5"],
+            dielec_str_te_6=row["dielec_str_te_6"],
+        )
+    )
+
+    await session.merge(
+        OilTest(
+            equipment_id=equipment_id,
+            measured_at=row["today"],
+            acid_measure_val=row["acid_measure_val"],
+            moisture_rslt=row["moisture_rslt"],
+        )
+    )
+
+    await session.merge(
+        LoadCondition(
+            equipment_id=equipment_id,
+            measured_at=row["today"],
+            load_percent=row["load_percent"],
+            coil_max_temp=row["coil_max_temp"],
+        )
+    )
+
+    await session.merge(
+        PeriodicInspection(
+            equipment_id=equipment_id,
+            measured_at=row["today"],
+            part_discharge_diag=row["part_discharge_diag"],
+            oltc_96t_diag=row["oltc_96T_diag"],
+            oltc_rslt=row["oltc_rslt"],
+            oltc_type=row["oltc_type"],
+            thermal_img_temp=row["thermal_img_temp"],
+            noise_diag=row["noise_diag"],
+        )
+    )
+
+    await session.merge(
+        DesignAttribute(
+            equipment_id=equipment_id,
+            updated_at=row["today"],
+            fire_vul_type=row["fire_vul_type"],
+            fire_spread_loc=row["fire_spread_loc"],
+            emerge_response_1s=row["emerge_response_1s"],
+            redundancy=row["redundancy"],
+            ato=row["ato"],
+            online_og_chk=row["online_og_chk"],
+            offline_safety_chk=row["offline_safety_chk"],
+            sec_num=row["sec_num"],
+            alarm_num=row["alarm_num"],
+            insul_1st_lvup=row["insul_1st_lvup"],
+            high_insul_adt=row["high_insul_adt"],
+            double_insul=row["double_insul"],
+            install_55k=row["55k_install"],
+            sfra_test=row["sfra_test"],
+            rip_install=row["rip_install"],
+            vacuum_set=row["vacuum_set"],
+        )
+    )
+
+    await session.merge(
+        TransformerScoreDetail(
+            equipment_id=equipment_id,
+            today=row["today"],
+            operation_year=row["operation_year"],
+            age_minus=row["age_minus"],
+            dga_tcg=row["dga_tcg"],
+            dga_diag=row["dga_diag"],
+            dga_minus=row["dga_minus"],
+            load_minus=row["load_minus"],
+            temp_minus=row["temp_minus"],
+            dielec_str_te_avg=row["dielec_str_te_avg"],
+            dielec_str_te_diag=row["dielec_str_te_diag"],
+            dielec_str_te_minus=row["dielec_str_te_minus"],
+            acid_measure_desc=row["acid_measure_desc"],
+            acid_measure_minus=row["acid_measure_minus"],
+            moisture_desc=row["moisture_desc"],
+            moisture_minus=row["moisture_minus"],
+            furan_total=row["furan_total"],
+            furan_total_per_year=row["furan_total_per_year"],
+            furan_desc=row["furan_desc"],
+            furan_minus=row["furan_minus"],
+            part_discharge_minus=row["part_discharge_minus"],
+            oltc_96t_minus=row["oltc_96T_minus"],
+            oltc_diag=row["oltc_diag"],
+            oltc_minus=row["oltc_minus"],
+            thermal_img_minus=row["thermal_img_minus"],
+            noise_minus=row["noise_minus"],
+            first_voltage=row["1st_voltage"],
+            first_voltage_minus=row["1st_voltage_minus"],
+            capa_times_load=row["capa_times_load"],
+            productivity_minus=row["productivity_minus"],
+            fire_minus=row["fire_minus"],
+            fire_spread_minus=row["fire_spread_minus"],
+            emerge_response_minus=row["emerge_response_minus"],
+            rep_cost=row["rep_cost"],
+            rep_cost_minus=row["rep_cost_minus"],
+            rep_time=row["rep_time"],
+            rep_time_minus=row["rep_time_minus"],
+            redundancy_minus=row["redundancy_minus"],
+            ato_minus=row["ato_minus"],
+            online_og_minus=row["online_og_minus"],
+            offline_safety_minus=row["offline_safety_minus"],
+            sec_minus=row["sec_minus"],
+            alarm_minus=row["alarm_minus"],
+            winding_minus=row["winding_minus"],
+            prod_life_minus=row["prod_life_minus"],
+            connect_part_minus=row["connect_part_minus"],
+            temp_inc_limit_minus=row["temp_inc_limit_minus"],
+            test_reliability_minus=row["test_reliability_minus"],
+            bushing_minus=row["bushing_minus"],
+            oltc2_minus=row["oltc2_minus"],
+        )
+    )

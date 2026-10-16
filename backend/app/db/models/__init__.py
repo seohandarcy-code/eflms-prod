@@ -1,6 +1,14 @@
 from app.db.models.auth import AllowedUser
 from app.db.models.equipment import Equipment, EquipmentType
 from app.db.models.extra import EquipmentExtraAttribute
+from app.db.models.gis import (
+    GisConsequenceAttribute,
+    GisDesignAttribute,
+    GisDiagnosis,
+    GisOperation,
+    GisScoreDetail,
+    GisSf6Reading,
+)
 from app.db.models.readings import (
     DesignAttribute,
     DielectricTest,
@@ -28,4 +36,10 @@ __all__ = [
     "TransformerSpec",
     "ScoreSnapshot",
     "TransformerScoreDetail",
+    "GisOperation",
+    "GisDiagnosis",
+    "GisSf6Reading",
+    "GisConsequenceAttribute",
+    "GisDesignAttribute",
+    "GisScoreDetail",
 ]

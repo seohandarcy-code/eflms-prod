@@ -32,6 +32,12 @@ from app.schemas.equipment import (
 )
 
 
+# Stage 8-3 임시 안전장치: 목록/KPI/상세 조회는 아직 EF1 테이블(DGA 등)에 묶여 있어, EF2 데이터가
+# 들어오면 KPI엔 집계되는데 목록엔 안 보이고 상세는 500이 난다. 8-4에서 유형별 조회로 바꾸기
+# 전까지 조회 범위를 EF1로 명시적으로 제한한다(화면 동작은 그대로).
+_VIEWABLE_EF_CODE = "EF1"
+
+
 def classify_status(pof: int, cof: int, dof: int) -> EquipmentStatus:
     """정상/교체검토/즉시교체 3단계 판정.
 
@@ -55,6 +61,7 @@ async def list_equipment(session: AsyncSession, factory_code: str | None = None)
         select(Equipment, ScoreSnapshot, DgaReading.diag_time)
         .join(ScoreSnapshot, ScoreSnapshot.equipment_id == Equipment.equipment_id)
         .join(DgaReading, DgaReading.equipment_id == Equipment.equipment_id)
+        .where(Equipment.ef_code == _VIEWABLE_EF_CODE)
     )
     if factory_code:
         stmt = stmt.where(Equipment.factory_code == factory_code)
@@ -82,7 +89,7 @@ async def list_equipment(session: AsyncSession, factory_code: str | None = None)
 
 async def get_equipment_detail(session: AsyncSession, equipment_id: int) -> EquipmentDetail | None:
     equipment = await session.get(Equipment, equipment_id)
-    if equipment is None:
+    if equipment is None or equipment.ef_code != _VIEWABLE_EF_CODE:
         return None
 
     spec = await session.get(TransformerSpec, equipment_id)
@@ -121,7 +128,11 @@ async def get_equipment_detail(session: AsyncSession, equipment_id: int) -> Equi
 
 
 async def get_summary(session: AsyncSession) -> SummaryKPI:
-    stmt = select(ScoreSnapshot.pof, ScoreSnapshot.cof, ScoreSnapshot.dof, ScoreSnapshot.computed_at)
+    stmt = (
+        select(ScoreSnapshot.pof, ScoreSnapshot.cof, ScoreSnapshot.dof, ScoreSnapshot.computed_at)
+        .join(Equipment, Equipment.equipment_id == ScoreSnapshot.equipment_id)
+        .where(Equipment.ef_code == _VIEWABLE_EF_CODE)
+    )
     rows = (await session.execute(stmt)).all()
     total = len(rows)
     statuses = [classify_status(pof, cof, dof) for pof, cof, dof, _ in rows]

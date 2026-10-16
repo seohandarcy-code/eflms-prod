@@ -24,6 +24,12 @@ ALLOWED_TABLES: list[str] = [
     "load_condition",
     "periodic_inspection",
     "design_attribute",
+    "gis_score_detail",
+    "gis_operation",
+    "gis_diagnosis",
+    "gis_sf6_reading",
+    "gis_consequence_attribute",
+    "gis_design_attribute",
     "equipment_extra_attribute",
 ]
 
