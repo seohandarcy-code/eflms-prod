@@ -78,9 +78,9 @@ bin\kc.bat start-dev --http-port=8180
 
 **realm/client/테스트 계정 생성** — Admin REST API(`http://127.0.0.1:8180/admin/realms/...`)로 realm `eflms`, confidential 클라이언트 `eflms-backend`(redirect URI에 `nginx`/`backend` 양쪽 콜백 주소 모두 등록: `http://127.0.0.1:8080/api/admin/sso/callback`, `http://127.0.0.1:8000/api/admin/sso/callback`), 브레이크글래스 계정(`eflms.admin@...`) + 테스트 계정(`eflms.test1~4@...`)을 생성한다. 클라이언트 시크릿은 `/admin/realms/eflms/clients/{uuid}/client-secret`로 조회.
 
-**`backend/.env` 설정** — `SSO_FLOW_MODE` 기본값이 `implicit_form_post`(discovery 미지원
-자체 브로커 경유)라서, 로컬 Keycloak(discovery 지원 범용 OIDC IdP) 검증 시에는
-`auth_code`로 **명시적으로** 바꿔야 한다(Stage 6-7, 2026-10-06):
+**`backend/.env` 설정** — 로컬 Keycloak은 discovery 지원 IdP라 `SSO_FLOW_MODE=auth_code`
+경로를 탄다. 2026-10-16(Stage 6-8)부터 `auth_code`가 기본값이라 생략해도 되지만 명시해두면
+헷갈리지 않는다. 모드별 설정은 `app/auth/SSO_MODES.md` 참고:
 ```
 AUTH_MODE=sso
 SSO_FLOW_MODE=auth_code
@@ -94,6 +94,12 @@ SSO_ALLOW_LOCAL_LOGIN=true
 **검증 시나리오(전부 확인됨)**: 브레이크글래스 계정 로그인 → `allowed_users`에 자동 admin 등록 확인 → "접근 권한 관리" 탭에서 테스트 계정을 일반 사용자로 등록 → 그 계정으로 로그인(테이블 조회는 되고 "접근 권한 관리" 탭은 안 보임) → 미등록 계정으로 로그인 시도("등록되지 않은 계정입니다" 확인) → 마지막 admin은 강등/삭제 불가 확인. Keycloak 자체 로그인 세션은 브라우저에 남아있어 재테스트 시 다른 계정으로 확인하려면 `http://127.0.0.1:8180/realms/eflms/protocol/openid-connect/logout`으로 먼저 로그아웃해야 함(우리 앱 로그아웃과는 별개).
 
 **실제로 겪은 버그**: `nginx/nginx.conf.template`이 `proxy_set_header Host $host;`를 쓰고 있었는데, nginx의 `$host`는 포트를 뺀 호스트명만 담는다(`$http_host`가 포트 포함). 이 때문에 백엔드가 `request.url_for()`로 만드는 SSO redirect_uri에서 포트가 통째로 빠져(`http://127.0.0.1/...`) Keycloak이 "Invalid parameter: redirect_uri"로 거부했다 — `$http_host`로 교체해 해결.
+
+## 인증 모드 설정 (`AUTH_MODE` / `SSO_FLOW_MODE`)
+
+모드별 의미·설정 예시·반영 확인법은 [`app/auth/SSO_MODES.md`](app/auth/SSO_MODES.md)에 정리. 요점만:
+- `AUTH_MODE`(`none`/`local`/`sso`), `SSO_FLOW_MODE`(`auth_code` 기본 / `implicit_form_post`)는 허용값 외·빈 값이면 **기동 실패**.
+- 실제 적용값은 `uvicorn.log`의 `EFLMS auth config:` 한 줄로 확인. `.env`를 고쳐도 반영이 안 되면 셸에 같은 이름의 빈 환경변수가 남아있는지(`Test-Path Env:SSO_FLOW_MODE`) 먼저 본다.
 
 ## 컨벤션
 

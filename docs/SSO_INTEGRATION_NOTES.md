@@ -95,7 +95,7 @@ discovery(`.well-known/openid-configuration`) 자체를 지원하지 않고, 인
 로컬 Keycloak 검증과 "브로커 없이 ADFS에 직접 연결"은 둘 다 discovery를 지원하는 IdP라
 같은 코드 경로(`auth_code`)를 공유한다(ADFS는 Microsoft 표준 OIDC 구현이라 discovery를
 지원하는 걸 a-ims-prod가 실제로 확인함, 2026-10-06). discovery 미지원 자체 브로커만
-`implicit_form_post`(기본값)로 별도 처리한다:
+`implicit_form_post`로 별도 처리한다(2026-10-16부터 기본값은 `auth_code` — §2.9):
 
 ```python
 # backend/app/auth/oidc.py
@@ -116,6 +116,28 @@ def verify_broker_id_token(id_token: str) -> dict:
 POST(`implicit_form_post`, form_post) 둘 다 받아야 한다(`@router.api_route(..., methods=["GET", "POST"])`).
 단위테스트는 합성 RSA 키쌍(`cryptography`)으로 유효/만료/서명불일치/kid매칭 폴백을 검증하고,
 통합테스트는 실제 POST 콜백 경로를 끝까지 태운다(`backend/tests/test_sso_implicit_form_post.py`).
+
+### 2.9 모드 설정값이 "안 읽히는" 문제 대비 — 기동 실패 + 빈 env 경고 + 기동 요약 로그 (2026-10-16)
+
+a-ims-prod가 PDEP ConfigMap에 `SSO_FLOW_MODE=auth_code`를 넣었는데도 파드가 계속 브로커 모드로
+동작했고, 같은 증상이 로컬에서도 재현됐다(브라우저가 ADFS `/adfs/oauth2/authorize`가 아니라 우리
+코드가 조립한 `{SSO_ISSUER_URL}/oidc/form-authorize`로 나감 → 설정값이 안 읽혔다는 결정적 증거).
+유력 원인은 **OS 환경에 같은 이름의 빈 변수가 남아 있으면 `.env` 값이 조용히 무시되는 동작**
+(python-dotenv `override=False`, eflms의 pydantic-settings도 OS env 우선이라 똑같이 해당).
+a-ims-prod는 이후 `auth_code`(ADFS 직접 연결)로 **실서버 연동에 성공**했다.
+
+eflms에 반영한 것(Stage 6-8):
+- 기본값을 `auth_code`로 변경 — 운영 목표가 ADFS 직접 연결로 정해졌고, 설정 전달이 또 실패해도
+  올바른 경로로 떨어지게 하는 안전망(a-ims-prod와 동일).
+- `AUTH_MODE`/`SSO_FLOW_MODE`를 `Literal` + 정규화(strip/lower)로 — 오타·빈 값이면 **기동 실패**.
+  a-ims-prod는 경고만 남기지만, eflms 쪽 원래 코드는 `== "implicit_form_post"` 비교라 오타가 조용히
+  `auth_code` 분기로 떨어지는 구조였다. 파드가 아예 안 뜨는 편이 훨씬 빨리 발견된다.
+- 빈 OS 환경변수 경고(a-ims-prod `dd1c5d6` 포팅) — 모드·자격 선택값 4개만 대상.
+- 기동 시 `EFLMS auth config: ...` 요약 한 줄(eflms 추가분) — a-ims-prod가 며칠 쓴 진단을 로그 한 줄로.
+
+다른 프로젝트에 이식할 때 교훈: **모드 스위치는 "허용값 아니면 기동 실패" + "적용값을 기동 로그에
+출력"을 처음부터 넣어둔다.** 설정 전달 경로(ConfigMap→envFrom→프로세스, 셸 잔존 변수, `.env`)가 여러 겹이라
+"값이 들어갔다고 믿는 것"과 "프로세스가 실제로 본 값"이 다를 수 있다. 상세: `backend/app/auth/SSO_MODES.md`.
 
 ## 3. 로컬 검증 방법 (Docker 없이, 네이티브 설치 우선)
 
@@ -259,6 +281,12 @@ eflms는 아직 실제 브로커 접속 정보가 없어 이 문제를 겪을 �
   접속 정보 자체가 없어 이 문제에 부딪힐 단계가 아니다. 실제 연동 중 공인 HTTPS 콜백 주소를
   못 구하는 상황이 실제로 생기면 그때 그 커밋 히스토리를 참고해 포팅을 재검토한다.
 
+### 5.2 2026-10-13~10-15 라운드 — ADFS 직접 연결 실서버 성공, 설정 미반영 문제
+
+- ✅ 반영(Stage 6-8): `SSO_FLOW_MODE` 기본값 `implicit_form_post` → `auth_code`(`2ae2e76`), 빈 OS
+  환경변수 경고(`dd1c5d6`) — §2.9. eflms는 여기에 모드 값 기동 실패 검증과 기동 요약 로그를 더했다.
+- 참고: OIDC 로직(`oidc.py`)은 a-ims-prod와 사실상 동일해서 이번 라운드에 코드 변경 필요 없음.
+
 ## 6. 이 프로젝트에서의 최종 상태 / 아직 안 한 것
 
 - ✅ `AUTH_MODE=local`(비밀번호) / `AUTH_MODE=sso`(OIDC) 둘 다 실제 동작, 로컬 Keycloak으로 전체 생애주기 검증 완료
@@ -267,7 +295,8 @@ eflms는 아직 실제 브로커 접속 정보가 없어 이 문제를 겪을 �
 - ✅ `SSO_FLOW_MODE`(discovery 미지원 자체 브로커 대응, `implicit_form_post`/`auth_code`) — 실제
   브로커 접속 정보 없이 합성 RSA 키쌍으로 단위/통합테스트까지 검증 완료(§2.8). **실제 브로커로는
   아직 검증 전** — SSO_ISSUER_URL/SSO_CLIENT_ID 등 실제 값이 있어야 가능
-- ⬜ **실제 사내 SSO 브로커 연동** — 로컬 Keycloak과 실제 브로커가 issuer URL만 주는 모델인지, client_id/secret도 주는 범용 모델인지부터 사내 SSO 담당자 확인 필요
+- ✅ 모드 설정값 방어(기동 실패 검증, 빈 env 경고, 기동 요약 로그), 기본값 `auth_code`(§2.9)
+- ⬜ **실제 사내 SSO 연동** — 운영 목표는 ADFS 직접 연결(`auth_code`, a-ims-prod 실서버 성공). eflms용 ADFS client 등록·`SSO_USER_ID_CLAIM` 확인 필요. — 로컬 Keycloak과 실제 브로커가 issuer URL만 주는 모델인지, client_id/secret도 주는 범용 모델인지부터 사내 SSO 담당자 확인 필요
 - ⬜ 완전한 로그아웃(OIDC RP-Initiated Logout, `end_session_endpoint` 호출) — 지금은 우리 앱 로그아웃이 IdP 세션까지 끊지 않음(4.4 참고). 필요해지면 추가
 - ⬜ 이 관리자 화면 외의 일반 대시보드까지 SSO로 게이트하는 것 — 현재 의도적으로 범위 밖(§1 참고)
 - ⬜ 조용한 자동 재인증(silent re-auth) — 처음부터 범위 밖으로 보류(§5 참고)
@@ -281,6 +310,8 @@ eflms는 아직 실제 브로커 접속 정보가 없어 이 문제를 겪을 �
 | OIDC 클라이언트 등록 + CA 번들 신뢰 | `backend/app/auth/oidc.py` |
 | 라우터(로그인/콜백/접근관리, 에러 진단 배너, `SSO_FLOW_MODE` 분기) | `backend/app/api/routes/admin.py` |
 | `SSO_FLOW_MODE` 단위/통합테스트(합성 RSA 키쌍) | `backend/tests/test_sso_implicit_form_post.py` |
+| 모드 설정 가이드(폴더 문서) | `backend/app/auth/SSO_MODES.md` |
+| 모드 검증·빈 env 경고·기동 요약 | `backend/app/core/config.py`, `backend/app/main.py`, `backend/tests/test_settings_modes.py` |
 | 세션 검증 의존성 | `backend/app/api/deps.py` (`require_session` / `require_admin`) |
 | DB 모델 | `backend/app/db/models/auth.py` |
 | 프론트 로그인/탭 UI(에러 배너 포함) | `frontend/src/views/AdminView.vue`, `frontend/src/components/AccessUsersPanel.vue` |

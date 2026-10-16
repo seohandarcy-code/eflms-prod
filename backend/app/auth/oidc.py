@@ -76,7 +76,7 @@ if SSO_BROKER_CONFIGURED:
     )
 
 
-# --- SSO_FLOW_MODE=implicit_form_post(기본값) 전용 — discovery 미지원 자체 브로커 ---
+# --- SSO_FLOW_MODE=implicit_form_post(기본값 아님, 명시 필요) 전용 — discovery 미지원 자체 브로커 ---
 #
 # 이 방식의 브로커는 discovery(.well-known/openid-configuration)를 지원하지
 # 않는다. {SSO_ISSUER_URL}/oidc/form-authorize로 인가 요청을 보내면

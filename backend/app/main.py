@@ -1,3 +1,4 @@
+import logging
 import secrets
 from contextlib import asynccontextmanager
 
@@ -15,6 +16,11 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 실제로 적용된 인증 설정을 기동 때마다 한 줄로 남긴다 — ConfigMap/.env 값이
+    # 파드·프로세스에 정말 반영됐는지 로그만 보고 바로 확인하기 위함(a-ims-prod가
+    # SSO_FLOW_MODE 미반영 원인을 찾느라 며칠 쓴 문제, backend/app/auth/SSO_MODES.md).
+    # 앱 로거엔 INFO 핸들러가 없어서, uvicorn 실행 시 항상 출력되는 uvicorn.error 로거를 쓴다.
+    logging.getLogger("uvicorn.error").info("EFLMS auth config: %s", settings.auth_summary())
     if settings.auto_seed_if_empty:
         async with async_session_factory() as session:
             if await seed.is_empty(session):
