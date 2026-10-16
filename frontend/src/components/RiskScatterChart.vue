@@ -126,7 +126,7 @@ function buildMarkerTrace(
     x: groupList.map((item) => item.pof),
     y: groupList.map((item) => item.cof),
     z: groupList.map((item) => item.dof),
-    text: groupList.map((item) => item.transformer_name),
+    text: groupList.map((item) => item.equipment_name),
     customdata: groupList.map((item) => item.equipment_id),
     // 네이티브 호버 라벨은 쓰지 않는다 — 커스텀 오버레이 카드로 완전히 대체한다.
     // (Plotly의 loneHover/hovertemplateString 렌더링 경로 자체를 타지 않게 됨)
@@ -256,7 +256,7 @@ const replaceCount = computed(() => groupByStatus(props.equipmentList, "replace"
       <div v-if="hoveredItem" class="hover-card" :style="cardStyle">
         <div class="hc-head">
           <span class="hc-dot" :style="{ background: statusColor(hoveredItem.status) }"></span>
-          <span class="hc-name">{{ hoveredItem.transformer_name }}</span>
+          <span class="hc-name">{{ hoveredItem.equipment_name }}</span>
           <span class="hc-score">{{ hoveredItem.total_score.toFixed(1) }}점</span>
         </div>
         <div class="hc-status" :style="{ color: statusColor(hoveredItem.status) }">{{ statusLabel(hoveredItem.status) }}</div>

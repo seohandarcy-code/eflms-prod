@@ -103,7 +103,7 @@ function fuzzyMatch(target: string, query: string): boolean {
 
 const displayList = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
-  const filtered = query ? store.equipmentList.filter((item) => fuzzyMatch(item.transformer_name, query)) : store.equipmentList;
+  const filtered = query ? store.equipmentList.filter((item) => fuzzyMatch(item.equipment_name, query)) : store.equipmentList;
 
   const sorted = [...filtered];
   switch (sortKey.value) {
@@ -114,10 +114,10 @@ const displayList = computed(() => {
       sorted.sort((a, b) => b.total_score - a.total_score);
       break;
     case "name_asc":
-      sorted.sort((a, b) => a.transformer_name.localeCompare(b.transformer_name));
+      sorted.sort((a, b) => a.equipment_name.localeCompare(b.equipment_name));
       break;
     case "name_desc":
-      sorted.sort((a, b) => b.transformer_name.localeCompare(a.transformer_name));
+      sorted.sort((a, b) => b.equipment_name.localeCompare(a.equipment_name));
       break;
   }
   return sorted;
@@ -292,7 +292,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
                     @click="selectCard(entry.item.equipment_id)"
                   >
                     <div class="reason-row">
-                      <span class="reason-name">{{ entry.item.transformer_name }}</span>
+                      <span class="reason-name">{{ entry.item.equipment_name }}</span>
                       <span class="reason-score" :style="{ color: statusColor(entry.item.status) }">
                         {{ statusLabel(entry.item.status) }} · 종합점수 {{ entry.item.total_score.toFixed(1) }}
                       </span>

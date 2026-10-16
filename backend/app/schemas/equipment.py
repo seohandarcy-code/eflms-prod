@@ -12,7 +12,7 @@ class EquipmentSummary(BaseModel):
     equipment_id: int
     factory_code: str
     ef_code: str
-    transformer_name: str
+    equipment_name: str
     voltage: int
     pof: int
     cof: int
@@ -175,7 +175,7 @@ class EquipmentDetail(BaseModel):
     equipment_id: int
     factory_code: str
     ef_code: str
-    transformer_name: str
+    equipment_name: str
     voltage: int
     onan_val: int
     onaf_val: float

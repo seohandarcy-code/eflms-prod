@@ -16,6 +16,7 @@ ALLOWED_TABLES: list[str] = [
     "equipment",
     "score_snapshot",
     "transformer_score_detail",
+    "transformer_spec",
     "dga_reading",
     "furan_reading",
     "dielectric_test",

@@ -57,7 +57,7 @@ const color = computed(() => (detail.value ? statusColor(detail.value.status) : 
         </div>
 
         <div class="name-row">
-          <span class="name">{{ detail.transformer_name }}</span>
+          <span class="name">{{ detail.equipment_name }}</span>
           <span class="chip" :style="{ background: statusBg(detail.status), color }">
             {{ statusLabel(detail.status) }}
           </span>

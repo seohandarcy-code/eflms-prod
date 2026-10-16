@@ -20,6 +20,7 @@ from app.db.models import (
     PeriodicInspection,
     ScoreSnapshot,
     TransformerScoreDetail,
+    TransformerSpec,
 )
 from app.db.session import async_session_factory
 from app.equipment_types.ef1_transformer import calculate, generate_input_row
@@ -36,6 +37,7 @@ _RESET_ORDER = [
     DielectricTest,
     FuranReading,
     DgaReading,
+    TransformerSpec,
     EquipmentExtraAttribute,
     Equipment,
     EquipmentType,

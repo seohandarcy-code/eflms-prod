@@ -29,7 +29,7 @@ const emit = defineEmits<{ select: [equipmentId: number] }>();
         :style="activeId === item.equipment_id ? { borderLeftColor: statusColor(item.status) } : {}"
         @click="emit('select', item.equipment_id)"
       >
-        <td class="name">{{ item.transformer_name }}</td>
+        <td class="name">{{ item.equipment_name }}</td>
         <td>{{ item.factory_code }}</td>
         <td>{{ item.voltage.toLocaleString() }}V</td>
         <td class="num mono">{{ item.pof }}</td>

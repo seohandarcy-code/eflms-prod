@@ -18,15 +18,18 @@ from app.db.models import (
     PeriodicInspection,
     ScoreSnapshot,
     TransformerScoreDetail,
+    TransformerSpec,
 )
 from app.equipment_types.ef1_transformer import EF_CODE, EF_NAME
 
 
 async def _get_or_create_equipment(row: dict, session: AsyncSession) -> Equipment:
+    # EF1 입력의 이름 컬럼(transformer_name)은 공통 equipment_name에 들어간다 — 사내 입력파일
+    # 헤더는 그대로 transformer_name이다(Stage 8-1). 8-2에서 설비유형 모듈로 옮겨갈 연결부.
     stmt = select(Equipment).where(
         Equipment.factory_code == row["factory_code"],
         Equipment.ef_code == row["EF_code"],
-        Equipment.transformer_name == row["transformer_name"],
+        Equipment.equipment_name == row["transformer_name"],
     )
     equipment = (await session.execute(stmt)).scalar_one_or_none()
 
@@ -34,17 +37,13 @@ async def _get_or_create_equipment(row: dict, session: AsyncSession) -> Equipmen
         equipment = Equipment(
             factory_code=row["factory_code"],
             ef_code=row["EF_code"],
-            transformer_name=row["transformer_name"],
+            equipment_name=row["transformer_name"],
             voltage=row["voltage"],
-            onan_val=row["ONAN_val"],
-            onaf_val=row["ONAF_val"],
             operation_start_time=row["operation_start_time"],
         )
         session.add(equipment)
     else:
         equipment.voltage = row["voltage"]
-        equipment.onan_val = row["ONAN_val"]
-        equipment.onaf_val = row["ONAF_val"]
         equipment.operation_start_time = row["operation_start_time"]
 
     await session.flush()  # equipment_id 확보
@@ -60,6 +59,15 @@ async def ingest_row(row: dict, session: AsyncSession) -> int:
 
     equipment = await _get_or_create_equipment(row, session)
     eq_id = equipment.equipment_id
+
+    await session.merge(
+        TransformerSpec(
+            equipment_id=eq_id,
+            updated_at=row["today"],
+            onan_val=row["ONAN_val"],
+            onaf_val=row["ONAF_val"],
+        )
+    )
 
     await session.merge(
         DgaReading(

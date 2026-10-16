@@ -12,6 +12,17 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
 
+class TransformerSpec(Base):
+    """EF1 정격용량 — Stage 8-1에서 공통 equipment 테이블에서 분리(원본 ONAN_val/ONAF_val)."""
+
+    __tablename__ = "transformer_spec"
+
+    equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
+    updated_at: Mapped[date] = mapped_column(Date)
+    onan_val: Mapped[int] = mapped_column(Integer)
+    onaf_val: Mapped[float] = mapped_column(Float)
+
+
 class DgaReading(Base):
     __tablename__ = "dga_reading"
 

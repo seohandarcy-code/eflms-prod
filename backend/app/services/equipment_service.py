@@ -13,6 +13,7 @@ from app.db.models import (
     PeriodicInspection,
     ScoreSnapshot,
     TransformerScoreDetail,
+    TransformerSpec,
 )
 from app.schemas.equipment import (
     DesignAttributeOut,
@@ -64,7 +65,7 @@ async def list_equipment(session: AsyncSession, factory_code: str | None = None)
             equipment_id=equipment.equipment_id,
             factory_code=equipment.factory_code,
             ef_code=equipment.ef_code,
-            transformer_name=equipment.transformer_name,
+            equipment_name=equipment.equipment_name,
             voltage=equipment.voltage,
             pof=score.pof,
             cof=score.cof,
@@ -84,6 +85,7 @@ async def get_equipment_detail(session: AsyncSession, equipment_id: int) -> Equi
     if equipment is None:
         return None
 
+    spec = await session.get(TransformerSpec, equipment_id)
     dga = await session.get(DgaReading, equipment_id)
     furan = await session.get(FuranReading, equipment_id)
     dielectric = await session.get(DielectricTest, equipment_id)
@@ -98,10 +100,12 @@ async def get_equipment_detail(session: AsyncSession, equipment_id: int) -> Equi
         equipment_id=equipment.equipment_id,
         factory_code=equipment.factory_code,
         ef_code=equipment.ef_code,
-        transformer_name=equipment.transformer_name,
+        equipment_name=equipment.equipment_name,
         voltage=equipment.voltage,
-        onan_val=equipment.onan_val,
-        onaf_val=equipment.onaf_val,
+        # EF1 정격용량은 Stage 8-1부터 transformer_spec에 있다. 응답 필드는 그대로 두고,
+        # 설비유형별 상세 구조로 옮기는 건 Stage 8-4.
+        onan_val=spec.onan_val,
+        onaf_val=spec.onaf_val,
         operation_start_time=equipment.operation_start_time,
         status=classify_status(score.pof, score.cof, score.dof),
         dga=DgaReadingOut.model_validate(dga),

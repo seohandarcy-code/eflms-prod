@@ -9,6 +9,7 @@ from app.db.models.readings import (
     LoadCondition,
     OilTest,
     PeriodicInspection,
+    TransformerSpec,
 )
 from app.db.models.scoring import ScoreSnapshot, TransformerScoreDetail
 
@@ -24,6 +25,7 @@ __all__ = [
     "LoadCondition",
     "PeriodicInspection",
     "DesignAttribute",
+    "TransformerSpec",
     "ScoreSnapshot",
     "TransformerScoreDetail",
 ]

@@ -4,7 +4,7 @@ export interface EquipmentSummary {
   equipment_id: number;
   factory_code: string;
   ef_code: string;
-  transformer_name: string;
+  equipment_name: string;
   voltage: number;
   pof: number;
   cof: number;
@@ -77,7 +77,7 @@ export interface EquipmentDetail {
   equipment_id: number;
   factory_code: string;
   ef_code: string;
-  transformer_name: string;
+  equipment_name: string;
   voltage: number;
   onan_val: number;
   onaf_val: number;

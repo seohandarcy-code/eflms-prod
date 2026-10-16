@@ -7,7 +7,7 @@ const summary: EquipmentSummary = {
   equipment_id: 1,
   factory_code: "H1",
   ef_code: "EF1",
-  transformer_name: "TR1",
+  equipment_name: "TR1",
   voltage: 22900,
   pof: 90,
   cof: 90,

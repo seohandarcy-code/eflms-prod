@@ -18,11 +18,21 @@
 - [ ] 임포트 이력/오류 리포트 화면 (현재는 CLI 콘솔 요약 + JSON 로그 한 줄뿐, 웹 화면 없음)
 - [ ] 정기 실행 자동화 — 사내 입력파일이 실제로 들어오기 시작하면 `/schedule`로 주기 실행 전환 (루트 `CLAUDE.md`의 "루프/스케줄 활용 계획" 참고)
 
-## Phase 3 — 보류: 설비유형 확장 (사내 데이터 확보 후 진행)
+## Phase 3 — 설비유형 확장 (EF2 GIS 착수, 2026-10-16)
 
-- EF2~EF22 순차 추가: 설비유형별 계산기 모듈 + 도메인 테이블 (기존 EF1 코드/테이블 불변)
+- EF2~EF22 순차 추가: 설비유형별 계산기 모듈 + 도메인 테이블
 - 대시보드에 설비유형 필터 실제 활성화
-- **보류 사유(2026-09-13)**: EF2 이상 설비유형의 실제 입력 데이터가 아직 없어 계산기/스키마를 설계할 근거가 부족함. Phase 2를 먼저 진행하고, 사내에서 해당 데이터를 확보한 뒤 재착수한다.
+- ~~보류(2026-09-13)~~ → **재착수(2026-10-16)**: EF2(GIS) 계산 로직 원본(`ref_data/schema_eflms_gis.py`)을 확보. 실데이터는 나중에 투입 — 그 전까지는 원본 generator 범위의 mock으로 개발한다.
+- **1회성 예외(2026-10-16 승인)**: 공통 레이어(`equipment`)에 변압기 전용 요소(`transformer_name`, `onan_val`, `onaf_val`)가 섞여 있고, 적재·조회·시드·임포트가 EF1에 고정돼 있어서 "EF2 추가 시 EF1 코드/공통 테이블 불변" 원칙을 이번 한 번만 예외로 한다(8-1, 8-2). 이후 EF3부터는 새 모듈·새 테이블만 추가한다.
+
+**Stage 8 — EF2(GIS) 도입** (각 하위 단계 시작 전 상세 계획 승인)
+- [x] **8-0 계산 로직 확정·문서화(2026-10-16)**: 수정본 원본 재분석(그대로 실행됨, mock 5,000건 PoF 18~98·CoF 40~99·DoF 39~100), 원본 공식 그대로 유지 방침(SF6·`>101`·`age_minus` 미합산·음수 점수 저장/차트만 클램프·상태판정 EF1 동일), 입력 허용값(전압 154k/345k 제한 포함), `gis_*` 테이블 매핑 — `docs/DATA_DICTIONARY.md` EF2 절
+- [x] **8-1 공통 레이어 일반화(2026-10-16)**: `equipment.transformer_name` → `equipment_name`, `onan_val`/`onaf_val` → EF1 전용 `transformer_spec` 이관(마이그레이션 `8a1c4e2f9b70`, SQLite는 `batch_alter_table`), API 필드 `equipment_name`(상세의 `onan_val`/`onaf_val`은 이름 유지·`transformer_spec`에서 읽음, 유형별 구조는 8-4), 프론트 이름 변경, 관리자 화이트리스트 13개. **겪은 문제**: 같은 batch에서 같은 이름의 UNIQUE 제약을 drop→create하면 재생성 테이블에서 create가 빠져 자연키가 사라짐 — 마이그레이션 테스트로 발견, create를 별도 batch로 분리. 검증: upgrade→downgrade 왕복 테스트(데이터·자연키 복원), 적재·상세 테스트(pytest 53개), vitest 10개·vue-tsc, 로컬 개발 DB 복사본에서 125건 전 필드·점수 동일 확인 후 실제 적용(백업 `backend/eflms.before-8-1.db`, gitignore 대상), nginx 경유 API 확인. 브라우저 화면 확인은 연결된 Chrome이 다른 기기여서 미실시
+- [ ] 8-2 설비유형 레지스트리 + EF1 플러그인화 + 유형별 운영: 유형 단위 리셋(`app.db.reset --ef-code`), `seed --ef-code EF1|EF2|all`, 임포트 `--ef-code` 레지스트리 라우팅·`--replace`(유형 단위 교체), 파일 단위 트랜잭션(`ingest_row` 내부 commit 제거), `AUTO_SEED_IF_EMPTY` 유형별 — "다른 유형 리셋/교체 시 EF1 불변" 테스트
+- [ ] 8-3 EF2 백엔드: `ef2_gis.py`, `gis_*` 6개 테이블, 허용값 검증, mock 생성기, `sample_data/ef2/` 3종, 관리자 화이트리스트, 전 감점 분기 정답값 테스트, "EF1 실데이터+EF2 mock 공존 → EF2만 교체" 통합테스트
+- [ ] 8-4 API: `ef_code` 필터, `/api/equipment-types`(유형·건수·감점 라벨 메타데이터), 상세 유형별 discriminated union, 유형별 공식 기반 5년 예측(`calculate(as_of=)`), 유형별 KPI
+- [ ] 8-5 프론트: `전체 | 변압기 | GIS` 전환(URL 쿼리), 전체 보기 통합(KPI 분해·마커 모양으로 유형 구분·통합 정렬), 유형별 상세 본문 컴포넌트, 감점 라벨 API 메타데이터화, `/guide` GIS 절
+- [ ] 8-6 문서: ARCHITECTURE "새 설비유형 추가 절차"(EF3~ 체크리스트), CLAUDE.md 원칙 문구 갱신
 
 ## Phase 4 — 인프라 전환
 

@@ -22,7 +22,7 @@ const color = computed(() => statusColor(props.summary.status));
   >
     <div class="card-head">
       <div>
-        <span class="name">{{ summary.transformer_name }}</span>
+        <span class="name">{{ summary.equipment_name }}</span>
         <span class="meta">{{ summary.factory_code }} · {{ summary.voltage.toLocaleString() }}V</span>
       </div>
       <span class="chip" :style="{ background: statusBg(summary.status), color }">

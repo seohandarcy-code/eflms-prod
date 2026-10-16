@@ -13,11 +13,11 @@
 
 **공통 레이어 (모든 설비유형 공통)**
 - `equipment_type` — `ef_code`(PK), 설비종류명, 활성 여부
-- `equipment` — `equipment_id`(surrogate PK, 자동증가), `factory_code`, `ef_code`(FK), `transformer_name`, `voltage`, `onan_val`, `onaf_val`, `operation_start_time`. `UNIQUE(factory_code, ef_code, transformer_name)` — 동일 설비 중복 등록 방지는 이 자연키 제약이 담당(식별/조회는 항상 `equipment_id`로).
+- `equipment` — `equipment_id`(surrogate PK, 자동증가), `factory_code`, `ef_code`(FK), `equipment_name`, `voltage`, `operation_start_time`. `UNIQUE(factory_code, ef_code, equipment_name)` — 동일 설비 중복 등록 방지는 이 자연키 제약이 담당(식별/조회는 항상 `equipment_id`로). 설비유형 전용 속성은 두지 않는다 — Stage 8-1(2026-10-16)에 변압기 전용이던 `transformer_name`/`onan_val`/`onaf_val`을 `equipment_name` + EF1 전용 `transformer_spec`으로 정리했다(공통 레이어 불변 원칙의 1회성 예외, `docs/ROADMAP.md` Phase 3).
 - `score_snapshot` — `equipment_id`(FK, unique), `pof_minus`, `pof`, `cof_minus`, `cof`, `dof_minus`, `dof`, `total_score`, `computed_at`. 설비유형과 무관하게 모든 타입이 이 계약(PoF/CoF/DoF/종합점수)을 공유한다.
 
 **EF1(변압기) 전용 도메인 테이블** — 입력값은 원본 그대로, 계산값은 별도 테이블로 분리해서 관리한다.
-- 입력: `dga_reading`, `furan_reading`, `dielectric_test`, `oil_test`, `load_condition`, `periodic_inspection`, `design_attribute` (컬럼 상세는 [DATA_DICTIONARY.md](DATA_DICTIONARY.md) 참고)
+- 입력: `transformer_spec`(정격용량), `dga_reading`, `furan_reading`, `dielectric_test`, `oil_test`, `load_condition`, `periodic_inspection`, `design_attribute` (컬럼 상세는 [DATA_DICTIONARY.md](DATA_DICTIONARY.md) 참고)
 - 계산: `transformer_score_detail` — EF1 전용 세부 감점 breakdown 전부(다른 설비유형이 생기면 `ef2_score_detail`처럼 별도 테이블을 추가하고 기존 테이블/코드는 건드리지 않는다)
 
 **설비유형 확장 원칙**: EF2~EF22가 추가될 때는 새 도메인 테이블 + 새 계산기 모듈을 추가할 뿐, `equipment_type`/`equipment`/`score_snapshot` 공통 레이어와 기존 EF1 코드는 변경하지 않는다(개방-폐쇄 원칙).
@@ -33,7 +33,7 @@
 - `AuthProvider` 인터페이스로 추상화. 지금은 무인증(또는 더미 로그인)으로 시작하되, FastAPI 의존성 자리(`get_current_user`류)만 미리 만들어 둔다.
 - 토큰 클레임은 OIDC 클레임(`sub`, `email`, `roles`)과 유사하게 맞춰서, 추후 사내 SSO(OIDC) 연동 시 프론트/백엔드 변경을 최소화한다.
 - `AUTH_MODE` env로 `none` → `local`(구현 완료, 2026-09-29) → `sso`(계획) 전환. `sso`를 선택하면 아직 `NotImplementedError`가 나는 자리 확보 상태(`backend/app/core/security.py` — 참고로 이 `get_current_user`/`AUTH_MODE` 일반 인증 자리와, 아래 `local` 모드로 실제 구현한 관리자 로그인은 서로 다른 코드 경로다. 일반 대시보드는 여전히 무인증 공개이며, `local`은 오직 `/admin`(DB 테이블 조회 전용 화면)만 게이트한다).
-- **`local`(구현 완료)**: 관리자 단일 계정, 메모리 세션(TTL 8시간) + 로그인 시도 5회 실패 시 5분 잠금(`backend/app/auth/state.py`의 `AdminAuthStore`, a-ims-prod 패턴 그대로 채택). JWT 서명 없이 opaque 토큰(`secrets.token_urlsafe`)만 사용. 게이트 대상은 `GET/POST /api/admin/*`(로그인/로그아웃/테이블 목록·조회, `require_admin` 의존성) — 편집 기능 없음, 화이트리스트 12개 테이블 조회 전용.
+- **`local`(구현 완료)**: 관리자 단일 계정, 메모리 세션(TTL 8시간) + 로그인 시도 5회 실패 시 5분 잠금(`backend/app/auth/state.py`의 `AdminAuthStore`, a-ims-prod 패턴 그대로 채택). JWT 서명 없이 opaque 토큰(`secrets.token_urlsafe`)만 사용. 게이트 대상은 `GET/POST /api/admin/*`(로그인/로그아웃/테이블 목록·조회, `require_admin` 의존성) — 편집 기능 없음, 화이트리스트 13개 테이블 조회 전용(Stage 8-1에 `transformer_spec` 추가).
 - **(계획, Phase 5 다음 단계)** `sso`: OIDC(`authlib`). IdP 인증 성공이 곧 접근 허용은 아님 — `allowed_users` DB 테이블에 등록된 계정만 세션이 발급됨(관리자가 화면에서 직접 등록/삭제). `SSO_ADMIN_ALLOWLIST`(env)에 매칭되는 계정은 로그인마다 admin 권한이 자동 복구되는 브레이크글래스 — 전체 락아웃 방지용 안전망.
   - `SSO_ALLOW_LOCAL_LOGIN`: 개발 중 듀얼모드 — 브로커가 client_id를 아직 발급하지 않은 단계에서도 `sso` 모드에서 로컬 비밀번호 로그인을 같이 열어, 관리자가 먼저 들어가 SSO 계정을 등록해둘 수 있게 함(기본값 false).
   - `SSO_BROKER_CONFIGURED = bool(SSO_ISSUER_URL)`: `SSO_CLIENT_ID`/`SSO_CLIENT_SECRET` 없이 issuer URL만 발급하는 사내 브로커 방식에도 대응(authlib이 빈 client_secret/client_id를 이미 지원함을 소스로 확인됨).
