@@ -22,12 +22,12 @@
 
 **EF2(GIS) 전용 도메인 테이블**(Stage 8-3) — 입력: `gis_operation`, `gis_diagnosis`, `gis_sf6_reading`, `gis_consequence_attribute`, `gis_design_attribute` / 계산: `gis_score_detail`. 계산기 `backend/app/equipment_types/ef2_gis.py`.
 
-**설비유형 확장 원칙**: EF2~EF22가 추가될 때는 새 도메인 테이블 + 새 계산기 모듈을 추가할 뿐, `equipment_type`/`equipment`/`score_snapshot` 공통 레이어와 기존 EF1 코드는 변경하지 않는다(개방-폐쇄 원칙).
+**설비유형 확장 원칙**: 공통 레이어는 EF2 도입 때 한 번 일반화했다(Stage 8-1 `equipment` 정리, 8-2 레지스트리·플러그인화 — 승인된 1회성 예외). 이후 새 설비유형(EF3~)은 **새 계산기 모듈 + 새 도메인 테이블 + 레지스트리 등록만** 추가하고, `equipment_type`/`equipment`/`score_snapshot` 공통 레이어와 기존 유형 코드는 변경하지 않는다(개방-폐쇄 원칙). 절차는 아래 "새 설비유형 추가 절차".
 
 ## 계산 로직 — "설비 타입 계산기 레지스트리"
 
-- `ref_data/schema_eflms.py`의 `INPUT_COLUMNS`/`CALCULATED_COLUMNS` 패턴을 설비 타입별 모듈로 일반화한다: `backend/app/equipment_types/ef1_transformer.py` (추후 `ef2_xxx.py` ...).
-- 공통 인터페이스: `calculate(input) -> {pof, cof, dof, total_score, breakdown}`.
+- `ref_data/`의 `INPUT_COLUMNS`/`CALCULATED_COLUMNS` 패턴을 설비 타입별 모듈로 일반화한다: `backend/app/equipment_types/ef1_transformer.py`, `ef2_gis.py` (추후 `ef3_xxx.py` ...).
+- 공통 인터페이스: `backend/app/equipment_types/base.py`의 `EquipmentTypeModule` — `calculate(input_row, as_of=None)`(입력 + 전체 계산 컬럼 flat dict), `generate_input_row`, `ingest_domain`, `load_inputs`/`last_diag_dates`/`load_detail`, 메타데이터 `EF_CODE`/`EF_NAME`/`NAME_FIELD`/`INPUT_COLUMNS`/`DOMAIN_TABLES`/`BREAKDOWN`. 레지스트리는 `registry.py`.
 - `EF_code → 계산기` 매핑으로 라우팅. 계산은 데이터 적재(시드/임포트) 시점에 수행하고 결과를 `score_snapshot`/`*_score_detail`에 저장한다(매 조회마다 재계산하지 않음 — 성능·감사 추적 목적).
 
 ## 인증
@@ -77,6 +77,19 @@ mock 생성기(ref_data 로직 이식)     ─┐
 - 서비스(`equipment_service`)는 공통 테이블만 직접 읽고, 유형별 정보는 설비유형 모듈의 `last_diag_dates`/`load_detail`/`load_inputs`에 맡긴다 — 새 유형은 모듈과 `app/schemas/<유형>.py` 상세 스키마, `TypeDetail` union 한 줄만 추가한다.
 - `projection`(0~5년, 저장된 입력을 기준일만 바꿔 재계산)은 **화면에서 쓰지 않는다** — 측정값 고정 재계산이라 EF1 Furan(총량÷사용년수 판정)처럼 시간이 지나면 점수가 오히려 좋아지는 항목이 있다(2026-10-17 확인·결정). 화면 예측 차트는 기존 "연 -1점 단순 가정"을 유지.
 - 화면(Stage 8-5)은 전체 유형을 받아 사이드바 "설비유형" 다중 선택 필터(비우면 전체, URL `?type=EF1,EF2`)로 클라이언트에서 거른다. 감점 사유 라벨·가이드 구성 항목은 `/api/equipment-types`의 `breakdown`이 단일 원본이다(프론트에 라벨 하드코딩 없음).
+
+## 새 설비유형 추가 절차 (EF3~ 체크리스트)
+
+EF2(GIS)를 붙이며 실제로 거친 순서다(Stage 8-0~8-5, `docs/ROADMAP.md` Phase 3). 각 단계는 루트 `CLAUDE.md` 규칙대로 계획 승인 후 진행한다.
+
+1. **원본 분석·확정** — `ref_data/`의 계산 툴을 실제로 돌려본다(캐시를 남기지 않게 `python -I -B`). 실행 불가 오류, 컬럼 이름 불일치, 비정상 점수 범위를 찾아 원본 작성자에게 확인한다. 원본과 다르게 해석할 곳이 없도록 하고, "원본 그대로 유지하는 판단"과 입력 허용값을 `docs/DATA_DICTIONARY.md`에 절로 남긴다. `ref_data/` 파일은 수정하지 않는다(참고자료로 커밋).
+2. **DB** — `backend/app/db/models/<유형>.py`에 입력 도메인 테이블(설비당 1행 + 시점 컬럼)과 `<유형>_score_detail`, `models/__init__.py` 등록, Alembic 마이그레이션(새 테이블 생성만 — 공통·기존 테이블 변경 금지). 관리자 화이트리스트(`admin_service.ALLOWED_TABLES`)에 추가.
+3. **계산기 모듈** — `backend/app/equipment_types/ef<N>_<이름>.py`에 `base.py` 인터페이스 전부: 원본 공식을 그대로 옮긴 `CALCULATED_COLUMNS`(날짜는 `row["_as_of"]`/`row["today"]` 사용), 허용값(`choices`/`min`/`max`/`required`)을 붙인 `INPUT_COLUMNS`, `NAME_FIELD`, `DOMAIN_TABLES`, `ingest_domain`, `load_inputs`, `last_diag_dates`, `load_detail`, `BREAKDOWN`(축별 감점 라벨 — PoF 합산에 안 들어가는 항목은 넣지 않거나 `summed: False`). `registry.py`에 한 줄 등록.
+4. **응답 스키마** — `backend/app/schemas/ef<N>.py`에 `Ef<N>Detail`(`ef_code: Literal[...]`)과 하위 스키마, `schemas/equipment.py`의 `TypeDetail` union에 추가.
+5. **샘플·테스트** — `python scripts/generate_sample_dat.py --ef-code EF<N>`(`sample_data/ef<n>/`). 테스트: 원본 파일과 전 계산 컬럼 일치, 감점 분기별 정답값(mock에서 안 나오는 분기 포함), mock 생성값의 허용값 통과·허용값 밖 거부, `load_inputs` 왕복(재계산 = 저장 점수, `tests/test_type_queries.py`에 파라미터 추가), "새 유형만 `--replace`해도 기존 유형 불변", 마이그레이션 왕복. 참고 예시: `tests/test_ef2_gis.py`.
+6. **프론트** — `types/equipment.ts`에 `Ef<N>TypeDetail`(→ `TypeDetail` union), `components/detail/Ef<N>DetailBody.vue`(compact/raw 두 부분), `utils/scoreBreakdown.ts`에 근거 문구 맵, `EquipmentDetailPanel.vue`의 헤더 부제(`typeSubtitle`). 필터·KPI·분포도 마커·감점 사유 라벨·가이드는 `/api/equipment-types` 메타데이터로 자동 반영된다.
+7. **운영 데이터** — 개발 DB는 복사본에서 먼저 마이그레이션·시드를 검증한 뒤 적용(백업). 실데이터는 `python -m app.db.import_data --file <파일> --ef-code EF<N> --replace`로 그 유형만 교체.
+8. **문서** — `DATA_DICTIONARY.md`(구현 반영), `backend/CLAUDE.md` "등록된 설비유형" 표, `ROADMAP.md`.
 
 ## API 문서화
 
