@@ -17,15 +17,26 @@ import math
 import random
 from datetime import date, timedelta
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
+    Equipment,
     GisConsequenceAttribute,
     GisDesignAttribute,
     GisDiagnosis,
     GisOperation,
     GisScoreDetail,
     GisSf6Reading,
+)
+from app.schemas.ef2 import (
+    Ef2Detail,
+    GisConsequenceAttributeOut,
+    GisDesignAttributeOut,
+    GisDiagnosisOut,
+    GisOperationOut,
+    GisScoreDetailOut,
+    GisSf6ReadingOut,
 )
 
 EF_CODE = "EF2"
@@ -322,8 +333,9 @@ def dof_minus_cal(row):
 
 
 CALCULATED_COLUMNS = [
-    {"name": "today", "formula": lambda row: date.today()},
-    {"name": "operation_year", "formula": lambda row: round((date.today() - row["operation_start_time"]).days / 365, 1)},
+    # 계산 기준일은 calculate(as_of=)로 받는다(기본 오늘 — 원본과 같은 결과). Stage 8-4, 점수 예측용.
+    {"name": "today", "formula": lambda row: row["_as_of"]},
+    {"name": "operation_year", "formula": lambda row: round((row["today"] - row["operation_start_time"]).days / 365, 1)},
     {"name": "age_minus", "formula": lambda row: -(math.floor(row["operation_year"]))},
     {"name": "cb_op_num_minus", "formula": cb_op_num_minus_cal},
     {"name": "cb_op_year", "formula": lambda row: row["operation_year"]},
@@ -370,12 +382,14 @@ CALCULATED_COLUMNS = [
 ]
 
 
-def calculate(input_row: dict) -> dict:
+def calculate(input_row: dict, as_of: date | None = None) -> dict:
     """input_row(INPUT_COLUMNS 값들)를 받아 전체 계산 컬럼을 더한 dict를 반환한다.
-    원본을 바꾸지 않도록 복사본에 계산한다."""
+    원본을 바꾸지 않도록 복사본에 계산한다. as_of는 계산 기준일(기본 오늘)."""
     row = dict(input_row)
+    row["_as_of"] = as_of or date.today()
     for col in CALCULATED_COLUMNS:
         row[col["name"]] = col["formula"](row)
+    del row["_as_of"]
     return row
 
 
@@ -450,4 +464,106 @@ async def ingest_domain(row: dict, equipment_id: int, session: AsyncSession) -> 
     # 계산 컬럼 이름 = 테이블 컬럼 이름이라 그대로 옮긴다.
     await session.merge(
         GisScoreDetail(equipment_id=equipment_id, **{name: row[name] for name in _SCORE_DETAIL_FIELDS})
+    )
+
+
+# ------------------------------------------------------------------
+# 4. 조회 (Stage 8-4)
+# ------------------------------------------------------------------
+# 감점 항목 메타데이터(원본 라벨 기준). PoF는 원본의 기계적/전기적/화학적 3그룹으로 묶는다.
+# age_minus는 원본에서 계산만 하고 PoF 합산엔 넣지 않는다 — 감점 사유로 띄우면 모든 GIS 설비에
+# 점수와 무관한 큰 감점이 보이게 되므로 메타데이터에서 뺐다(상세 원본 데이터에서만 표시, 2026-10-17).
+BREAKDOWN = {
+    "pof": [
+        {"field": "cb_op_num_minus", "label": "차단기 동작횟수", "group": "기계적"},
+        {"field": "cb_stat_minus", "label": "차단기 고장확률(와이블)", "group": "기계적"},
+        {"field": "insul_stat_minus", "label": "절연물 고장확률(와이블)", "group": "기계적"},
+        {"field": "rated_trip_count_minus", "label": "정격차단 동작횟수", "group": "전기적"},
+        {"field": "cum_trip_current_minus", "label": "누적차단전류", "group": "전기적"},
+        {"field": "cb_op_char_over_minus", "label": "차단기 동작특성", "group": "전기적"},
+        {"field": "load_minus", "label": "부하율", "group": "전기적"},
+        {"field": "leakage_curr_minus", "label": "누설전류", "group": "전기적"},
+        {"field": "part_dischar_minus", "label": "부분방전", "group": "화학적"},
+        {"field": "sf6_minus", "label": "SF6 가스", "group": "화학적"},
+        {"field": "elec_room_minus", "label": "전기실 온도", "group": "화학적"},
+    ],
+    "cof": [
+        {"field": "in_vol_minus", "label": "인입전압"},
+        {"field": "productivity_minus", "label": "생산영향성"},
+        {"field": "fire_spread_minus", "label": "화재확산"},
+        {"field": "env_minus", "label": "환경_위치"},
+        {"field": "emerge_resp_minus", "label": "비상대응시간"},
+        {"field": "rep_cost_minus", "label": "사고복구비용"},
+        {"field": "rep_time_minus", "label": "정상화기간"},
+    ],
+    "dof": [
+        {"field": "in_line_minus", "label": "인입선로"},
+        {"field": "ato_minus", "label": "ATO 구성"},
+        {"field": "reliability_minus", "label": "공급신뢰도"},
+        {"field": "online_diag_minus", "label": "온라인진단"},
+        {"field": "offline_diag_minus", "label": "오프라인진단"},
+        {"field": "tbm_minus", "label": "TBM 실시"},
+        {"field": "conn_rev_minus", "label": "도체접속구조개선"},
+        {"field": "leak_str_minus", "label": "가스기밀강화"},
+        {"field": "insul_str_minus", "label": "절연스펙강화"},
+        {"field": "vt_la_minus", "label": "부품신뢰성강화"},
+    ],
+}
+
+_DOMAIN_MODELS = (GisOperation, GisDiagnosis, GisSf6Reading, GisConsequenceAttribute, GisDesignAttribute, GisScoreDetail)
+# 입력 컬럼 이름 = 테이블 컬럼 이름인 항목(원본 → DB 그대로 저장)
+_SAME_NAME_INPUTS = {
+    GisOperation: ("op_type", "cb_op_num", "rated_trip_count", "cum_trip_current", "cb_op_char_over", "load_percent", "leakage_curr"),
+    GisDiagnosis: ("part_dischar_pat", "elec_room_max_temp"),
+    GisSf6Reading: ("sf6_so2", "sf6_leak", "sf6_h2o", "sf6_purity"),
+    GisConsequenceAttribute: ("in_vol", "capa_times_load", "fire_spread", "env_loc", "emerge_resp_pat", "rep_cost", "rep_time"),
+    GisDesignAttribute: ("in_line_num", "ato", "reliability", "online_diag", "offline_diag", "tbm", "conn_rev", "leak_str", "insul_str", "vt_la_str"),
+}
+
+
+async def _load_rows(session: AsyncSession, equipment_id: int):
+    rows = [await session.get(model, equipment_id) for model in _DOMAIN_MODELS]
+    return None if any(r is None for r in rows) else rows
+
+
+async def load_inputs(session: AsyncSession, equipment_id: int) -> tuple[dict, date] | None:
+    """저장된 값으로 calculate() 입력 행을 복원하고, 저장된 점수의 계산 기준일과 함께 돌려준다."""
+    equipment = await session.get(Equipment, equipment_id)
+    rows = await _load_rows(session, equipment_id)
+    if equipment is None or rows is None:
+        return None
+    by_model = dict(zip(_DOMAIN_MODELS, rows))
+    row = {
+        "factory_code": equipment.factory_code,
+        "EF_code": equipment.ef_code,
+        "gis_name": equipment.equipment_name,
+        "voltage": equipment.voltage,
+        "operation_start_time": equipment.operation_start_time,
+        "sf6_diag_time": by_model[GisSf6Reading].diag_time,
+    }
+    for model, names in _SAME_NAME_INPUTS.items():
+        row.update({name: getattr(by_model[model], name) for name in names})
+    return row, by_model[GisScoreDetail].today
+
+
+async def last_diag_dates(session: AsyncSession, equipment_ids: list[int]) -> dict[int, date]:
+    """화면의 '최근 진단일' — EF2는 SF6 진단일."""
+    if not equipment_ids:
+        return {}
+    stmt = select(GisSf6Reading.equipment_id, GisSf6Reading.diag_time).where(GisSf6Reading.equipment_id.in_(equipment_ids))
+    return dict((await session.execute(stmt)).all())
+
+
+async def load_detail(session: AsyncSession, equipment_id: int) -> Ef2Detail | None:
+    rows = await _load_rows(session, equipment_id)
+    if rows is None:
+        return None
+    operation, diagnosis, sf6, consequence, design, detail = rows
+    return Ef2Detail(
+        operation=GisOperationOut.model_validate(operation),
+        diagnosis=GisDiagnosisOut.model_validate(diagnosis),
+        sf6=GisSf6ReadingOut.model_validate(sf6),
+        consequence=GisConsequenceAttributeOut.model_validate(consequence),
+        design=GisDesignAttributeOut.model_validate(design),
+        score_detail=GisScoreDetailOut.model_validate(detail),
     )

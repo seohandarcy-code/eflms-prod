@@ -38,6 +38,11 @@ describe("EquipmentCard", () => {
     expect(wrapper.text()).toContain("즉시교체");
   });
 
+  it("shows the equipment type badge when a type name is given", () => {
+    const wrapper = mount(EquipmentCard, { props: { summary: { ...summary, ef_code: "EF2" }, typeName: "GIS" } });
+    expect(wrapper.find(".type-badge").text()).toBe("GIS");
+  });
+
   it("emits select with the equipment id when clicked", async () => {
     const wrapper = mount(EquipmentCard, { props: { summary } });
     await wrapper.trigger("click");

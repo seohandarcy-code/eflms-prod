@@ -5,8 +5,28 @@ import type { Data, Layout, PlotlyHTMLElement } from "plotly.js";
 import type { EquipmentStatus, EquipmentSummary } from "../types/equipment";
 import { statusColor, statusLabel } from "../utils/statusStyle";
 
-const props = defineProps<{ equipmentList: EquipmentSummary[]; selectedId: number | null }>();
+const props = withDefaults(
+  defineProps<{ equipmentList: EquipmentSummary[]; selectedId: number | null; typeNames?: Record<string, string> }>(),
+  { typeNames: () => ({}) },
+);
 const emit = defineEmits<{ select: [equipmentId: number]; hover: [equipmentId: number | null] }>();
+
+// 설비유형은 마커 모양으로 구분한다(상태는 지금처럼 색). 등장 순서(코드 정렬)대로 배정.
+const TYPE_SYMBOLS = ["circle", "diamond", "square", "cross", "x"];
+const TYPE_GLYPHS: Record<string, string> = { circle: "●", diamond: "◆", square: "■", cross: "✚", x: "✕" };
+
+function typeCodes(list: EquipmentSummary[]): string[] {
+  return [...new Set(list.map((item) => item.ef_code))].sort();
+}
+
+function symbolFor(codes: string[], efCode: string): string {
+  return TYPE_SYMBOLS[Math.max(0, codes.indexOf(efCode)) % TYPE_SYMBOLS.length];
+}
+
+// 실데이터에선 점수가 0 미만이 될 수 있다(원본 공식대로 저장) — 축 범위 밖으로 사라지지 않게 표시만 0~100으로 자른다.
+function clampScore(value: number): number {
+  return Math.max(0, Math.min(100, value));
+}
 
 const CARD_WIDTH = 192;
 const CARD_HEIGHT = 92;
@@ -115,6 +135,7 @@ function buildMarkerTrace(
   size: number,
   selectedId: number | null,
   selectionExists: boolean,
+  codes: string[],
 ): Data {
   const selectedIndex = selectedId === null ? -1 : groupList.findIndex((item) => item.equipment_id === selectedId);
 
@@ -123,9 +144,9 @@ function buildMarkerTrace(
     mode: "markers",
     name,
     showlegend: true,
-    x: groupList.map((item) => item.pof),
-    y: groupList.map((item) => item.cof),
-    z: groupList.map((item) => item.dof),
+    x: groupList.map((item) => clampScore(item.pof)),
+    y: groupList.map((item) => clampScore(item.cof)),
+    z: groupList.map((item) => clampScore(item.dof)),
     text: groupList.map((item) => item.equipment_name),
     customdata: groupList.map((item) => item.equipment_id),
     // 네이티브 호버 라벨은 쓰지 않는다 — 커스텀 오버레이 카드로 완전히 대체한다.
@@ -136,6 +157,7 @@ function buildMarkerTrace(
       // 눈에 띄게 다르게 보인다. 분리 전(단일 trace, 배열 크기)과 동일하게 보이도록
       // 그룹 내 모든 점에 같은 값을 반복한 배열로 넘긴다.
       size: groupList.map(() => size),
+      symbol: groupList.map((item) => symbolFor(codes, item.ef_code)),
       color,
       line: { color: "#fff", width: 1 },
     },
@@ -161,15 +183,16 @@ function buildTrace(list: EquipmentSummary[], selectedId: number | null): Data[]
   const reviewList = groupByStatus(list, "review");
   const replaceList = groupByStatus(list, "replace");
   const selectionExists = selectedId !== null && list.some((item) => item.equipment_id === selectedId);
+  const codes = typeCodes(list);
 
   const drawnEdgeKeys = new Set<string>();
 
   return [
     buildNotchedBoxEdges(NORMAL_BIG, NORMAL_NOTCH, statusColor("normal"), drawnEdgeKeys),
     buildNotchedBoxEdges(REVIEW_BIG, REVIEW_NOTCH, statusColor("review"), drawnEdgeKeys),
-    buildMarkerTrace(normalList, `정상 설비 : ${normalList.length} 건`, statusColor("normal"), 7, selectedId, selectionExists),
-    buildMarkerTrace(reviewList, `교체검토 설비 : ${reviewList.length} 건`, statusColor("review"), 8, selectedId, selectionExists),
-    buildMarkerTrace(replaceList, `즉시교체 설비 : ${replaceList.length} 건`, statusColor("replace"), 9, selectedId, selectionExists),
+    buildMarkerTrace(normalList, `정상 설비 : ${normalList.length} 건`, statusColor("normal"), 7, selectedId, selectionExists, codes),
+    buildMarkerTrace(reviewList, `교체검토 설비 : ${reviewList.length} 건`, statusColor("review"), 8, selectedId, selectionExists, codes),
+    buildMarkerTrace(replaceList, `즉시교체 설비 : ${replaceList.length} 건`, statusColor("replace"), 9, selectedId, selectionExists, codes),
   ];
 }
 
@@ -246,6 +269,12 @@ onUnmounted(() => {
 const normalCount = computed(() => groupByStatus(props.equipmentList, "normal").length);
 const reviewCount = computed(() => groupByStatus(props.equipmentList, "review").length);
 const replaceCount = computed(() => groupByStatus(props.equipmentList, "replace").length);
+// 두 가지 이상 유형이 섞여 있을 때만 "모양 = 설비유형" 범례를 보여준다.
+const typeLegend = computed(() => {
+  const codes = typeCodes(props.equipmentList);
+  if (codes.length < 2) return "";
+  return codes.map((code) => `${TYPE_GLYPHS[symbolFor(codes, code)]} ${props.typeNames[code] ?? code}`).join("  ");
+});
 </script>
 
 <template>
@@ -259,13 +288,15 @@ const replaceCount = computed(() => groupByStatus(props.equipmentList, "replace"
           <span class="hc-name">{{ hoveredItem.equipment_name }}</span>
           <span class="hc-score">{{ hoveredItem.total_score.toFixed(1) }}점</span>
         </div>
-        <div class="hc-status" :style="{ color: statusColor(hoveredItem.status) }">{{ statusLabel(hoveredItem.status) }}</div>
+        <div class="hc-status" :style="{ color: statusColor(hoveredItem.status) }">
+          {{ statusLabel(hoveredItem.status) }} · {{ typeNames[hoveredItem.ef_code] ?? hoveredItem.ef_code }}
+        </div>
         <div class="hc-axes">POF {{ hoveredItem.pof }} · COF {{ hoveredItem.cof }} · DOF {{ hoveredItem.dof }}</div>
       </div>
     </div>
 
     <div style="font-size: 11px; color: #8891a0; padding: 0 8px 6px">
-      ● 정상 {{ normalCount }}대&nbsp;&nbsp;● 교체검토 {{ reviewCount }}대&nbsp;&nbsp;● 즉시교체 {{ replaceCount }}대 · 드래그로 회전 · 오른쪽 드래그로 이동 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택 · 초록 테두리 = 정상 경계 · 노랑 테두리 = 교체검토 경계(그 안쪽은 즉시교체)
+      ● 정상 {{ normalCount }}대&nbsp;&nbsp;● 교체검토 {{ reviewCount }}대&nbsp;&nbsp;● 즉시교체 {{ replaceCount }}대<template v-if="typeLegend"> · 모양: {{ typeLegend }}</template> · 드래그로 회전 · 오른쪽 드래그로 이동 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택 · 초록 테두리 = 정상 경계 · 노랑 테두리 = 교체검토 경계(그 안쪽은 즉시교체)
     </div>
   </div>
 </template>

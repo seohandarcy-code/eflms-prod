@@ -65,6 +65,19 @@ mock 생성기(ref_data 로직 이식)     ─┐
 - Vue 3 + Vite + Pinia(상태관리) + Element Plus(UI 컴포넌트).
 - [design/Main.dc.html](../design/Main.dc.html)은 최초 승인된 방향(Direction A: 관제실형 테이블 + PoF/CoF/DoF 3축 분포도 + 카드형 설비 목록)을 담은 2026-09-14 시점 목업으로, **그 이후 실제 화면 구현은 목업을 갱신하지 않고 코드에서 직접 반복 개선**해왔다(3단계 정상/교체검토/즉시교체 상태 체계, 검색·정렬·페이지네이션·리스트뷰, 다중선택 필터, 상세 패널 신규 차트 2종, `/guide` 안내 페이지 등 — 자세한 이력은 [ROADMAP.md](ROADMAP.md) Phase 1 참고). 즉 `design/*.dc.html`은 초기 승인 근거를 남긴 기록이고, **현재 화면의 정본은 `frontend/src/views/DashboardView.vue` 등 실제 구현 코드**다.
 
+## 조회 API — 설비유형별 (Stage 8-4)
+
+| 엔드포인트 | 내용 |
+|---|---|
+| `GET /api/equipment-types` | 등록된 유형, 유형별 설비 수, 감점 항목 메타데이터(`breakdown` — 축별 `field`/`label`/`group`/`summed`) |
+| `GET /api/equipment?ef_code=&factory_code=` | 공통 요약 목록. `ef_code`를 빼면 전체 유형. 최근 진단일은 유형별 기준(EF1 DGA, EF2 SF6) |
+| `GET /api/equipment/{id}` | 공통 헤더 + `score` + `type_detail`(`ef_code`로 구분되는 union: EF1/EF2 전용 상세) + `projection` |
+| `GET /api/summary?ef_code=` | KPI + `by_type`(유형별 합계·교체검토·즉시교체) |
+
+- 서비스(`equipment_service`)는 공통 테이블만 직접 읽고, 유형별 정보는 설비유형 모듈의 `last_diag_dates`/`load_detail`/`load_inputs`에 맡긴다 — 새 유형은 모듈과 `app/schemas/<유형>.py` 상세 스키마, `TypeDetail` union 한 줄만 추가한다.
+- `projection`(0~5년, 저장된 입력을 기준일만 바꿔 재계산)은 **화면에서 쓰지 않는다** — 측정값 고정 재계산이라 EF1 Furan(총량÷사용년수 판정)처럼 시간이 지나면 점수가 오히려 좋아지는 항목이 있다(2026-10-17 확인·결정). 화면 예측 차트는 기존 "연 -1점 단순 가정"을 유지.
+- 화면(Stage 8-5)은 전체 유형을 받아 사이드바 "설비유형" 다중 선택 필터(비우면 전체, URL `?type=EF1,EF2`)로 클라이언트에서 거른다. 감점 사유 라벨·가이드 구성 항목은 `/api/equipment-types`의 `breakdown`이 단일 원본이다(프론트에 라벨 하드코딩 없음).
+
 ## API 문서화
 
 - FastAPI가 자동 생성하는 OpenAPI 스펙을 프론트-백엔드 계약으로 사용한다. 별도의 API 문서를 손으로 관리하지 않는다.

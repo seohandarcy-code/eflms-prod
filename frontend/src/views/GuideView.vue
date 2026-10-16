@@ -1,11 +1,26 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { COF_FIELD_LABELS, DOF_FIELD_LABELS, POF_FIELD_LABELS } from "../utils/scoreBreakdown";
+import { onMounted } from "vue";
+import { useEquipmentStore } from "../stores/equipment";
+import type { Axis, BreakdownItem } from "../types/equipment";
 import { statusColor, statusLabel } from "../utils/statusStyle";
 
-const pofItems = computed(() => Object.values(POF_FIELD_LABELS));
-const cofItems = computed(() => Object.values(COF_FIELD_LABELS));
-const dofItems = computed(() => Object.values(DOF_FIELD_LABELS));
+// 구성 항목은 설비유형별 감점 메타데이터(/api/equipment-types)를 그대로 보여준다(Stage 8-5).
+const store = useEquipmentStore();
+onMounted(() => store.loadTypes());
+
+const AXIS_TITLES: Record<Axis, string> = { pof: "POF 구성 항목", cof: "COF 구성 항목", dof: "DOF 구성 항목" };
+const AXES: Axis[] = ["pof", "cof", "dof"];
+
+// 그룹(예: GIS PoF의 기계적/전기적/화학적)이 있으면 그룹별로 묶는다. 그룹이 없으면 한 덩어리.
+function groupItems(items: BreakdownItem[]): { group: string | null; items: BreakdownItem[] }[] {
+  const groups: { group: string | null; items: BreakdownItem[] }[] = [];
+  for (const item of items) {
+    const last = groups[groups.length - 1];
+    if (last && last.group === item.group) last.items.push(item);
+    else groups.push({ group: item.group, items: [item] });
+  }
+  return groups;
+}
 </script>
 
 <template>
@@ -33,7 +48,7 @@ const dofItems = computed(() => Object.values(DOF_FIELD_LABELS));
           <div class="axis-card">
             <div class="axis-name">POF</div>
             <div class="axis-full">고장확률 (Probability of Failure)</div>
-            <p>설비 자체의 상태·진단 결과를 바탕으로, 이 설비가 실제로 고장날 가능성이 얼마나 되는지를 나타냅니다. DGA(유중가스), Furan, 부분방전, 절연내력 시험 등 정기 진단 결과가 반영됩니다.</p>
+            <p>설비 자체의 상태·진단 결과를 바탕으로, 이 설비가 실제로 고장날 가능성이 얼마나 되는지를 나타냅니다. 변압기는 Furan·부분방전·절연내력 시험 등, GIS는 차단기 동작이력·SF6 가스·부분방전 등 설비유형마다 다른 진단 결과가 반영됩니다(아래 "각 축을 구성하는 항목").</p>
           </div>
           <div class="axis-card">
             <div class="axis-name">COF</div>
@@ -50,33 +65,28 @@ const dofItems = computed(() => Object.values(DOF_FIELD_LABELS));
 
       <section class="card">
         <h2>종합점수 계산</h2>
-        <p class="lead">세 축의 감점을 아래 비율로 합산해 종합점수를 만듭니다 — POF의 비중이 가장 크고, DOF가 가장 작습니다.</p>
-        <div class="formula">종합점수 = 0.5 × POF 감점 + 0.3 × COF 감점 + 0.2 × DOF 감점</div>
+        <p class="lead">세 축의 점수를 아래 비율로 가중합해 종합점수를 만듭니다 — POF의 비중이 가장 크고, DOF가 가장 작습니다. 모든 설비유형에 같은 비율을 쓰므로 유형이 달라도 종합점수로 함께 비교할 수 있습니다.</p>
+        <div class="formula">종합점수 = 0.5 × POF + 0.3 × COF + 0.2 × DOF</div>
       </section>
 
-      <section class="card">
-        <h2>각 축을 구성하는 항목</h2>
+      <section v-for="info in store.equipmentTypes" :key="info.ef_code" class="card">
+        <h2>각 축을 구성하는 항목 — {{ info.ef_code }} · {{ info.ef_name }}</h2>
         <p class="lead">아래 항목들에서 기준 미달이 있으면 해당 축에서 감점됩니다(대시보드의 "점검필요 순위" 패널에서 항목에 마우스를 올리면 이 설비의 실제 측정값을 볼 수 있습니다).</p>
         <div class="axis-cards">
-          <div class="axis-card">
-            <div class="axis-name">POF 구성 항목</div>
-            <ul>
-              <li v-for="label in pofItems" :key="label">{{ label }}</li>
-            </ul>
-          </div>
-          <div class="axis-card">
-            <div class="axis-name">COF 구성 항목</div>
-            <ul>
-              <li v-for="label in cofItems" :key="label">{{ label }}</li>
-            </ul>
-          </div>
-          <div class="axis-card">
-            <div class="axis-name">DOF 구성 항목</div>
-            <ul>
-              <li v-for="label in dofItems" :key="label">{{ label }}</li>
-            </ul>
+          <div v-for="axis in AXES" :key="axis" class="axis-card">
+            <div class="axis-name">{{ AXIS_TITLES[axis] }}</div>
+            <template v-for="block in groupItems(info.breakdown[axis])" :key="block.group ?? 'all'">
+              <div v-if="block.group" class="axis-group">{{ block.group }}</div>
+              <ul>
+                <li v-for="item in block.items" :key="item.field">{{ item.label }}</li>
+              </ul>
+            </template>
           </div>
         </div>
+      </section>
+      <section v-if="store.equipmentTypes.length === 0" class="card">
+        <h2>각 축을 구성하는 항목</h2>
+        <p class="lead">설비유형 정보를 불러오는 중입니다...</p>
       </section>
 
       <section class="card">
@@ -248,5 +258,11 @@ h2 {
 .rule-table th {
   background: #f9fafb;
   font-weight: 700;
+}
+.axis-group {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a5568;
+  margin-top: 8px;
 }
 </style>

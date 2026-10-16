@@ -2,7 +2,10 @@
 import type { EquipmentSummary } from "../types/equipment";
 import { statusBg, statusColor, statusLabel } from "../utils/statusStyle";
 
-defineProps<{ items: EquipmentSummary[]; activeId: number | null }>();
+// typeNames: ef_code → 설비유형 이름. 비어 있으면 코드를 그대로 보여준다(Stage 8-5).
+withDefaults(defineProps<{ items: EquipmentSummary[]; activeId: number | null; typeNames?: Record<string, string> }>(), {
+  typeNames: () => ({}),
+});
 const emit = defineEmits<{ select: [equipmentId: number] }>();
 </script>
 
@@ -11,6 +14,7 @@ const emit = defineEmits<{ select: [equipmentId: number] }>();
     <thead>
       <tr>
         <th>설비명</th>
+        <th>설비유형</th>
         <th>사업장</th>
         <th>전압</th>
         <th class="num">POF</th>
@@ -30,6 +34,7 @@ const emit = defineEmits<{ select: [equipmentId: number] }>();
         @click="emit('select', item.equipment_id)"
       >
         <td class="name">{{ item.equipment_name }}</td>
+        <td>{{ typeNames[item.ef_code] ?? item.ef_code }}</td>
         <td>{{ item.factory_code }}</td>
         <td>{{ item.voltage.toLocaleString() }}V</td>
         <td class="num mono">{{ item.pof }}</td>

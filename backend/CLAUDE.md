@@ -57,7 +57,8 @@ cd backend
 | EF2 GIS | `app/equipment_types/ef2_gis.py` | `gis_operation`, `gis_diagnosis`, `gis_sf6_reading`, `gis_consequence_attribute`, `gis_design_attribute`, `gis_score_detail` | `sample_data/ef2/` |
 
 - EF2는 임포트 허용값(`choices`/`min`/`max`/`required`)을 선언해 둬서 오류값(예: 소문자 `c`, 154k/345k 외 전압, 순도 100 초과)을 행 오류로 거부한다. 목록은 `docs/DATA_DICTIONARY.md` EF2 절.
-- **Stage 8-4 전까지 조회 API(목록/KPI/상세)는 EF1만 대상**이다(`app/services/equipment_service.py`의 `_VIEWABLE_EF_CODE`) — EF2 데이터를 넣어도 화면은 지금과 같다.
+- 조회 API는 설비유형별로 동작한다(Stage 8-4, `docs/ARCHITECTURE.md` "조회 API"). 상세는 `type_detail`(EF1/EF2 union), 유형별 스키마는 `app/schemas/ef1.py`·`ef2.py`. 화면은 8-5 전까지 `ef_code=EF1`만 요청한다.
+- 설비유형 모듈의 조회용 인터페이스: `BREAKDOWN`(감점 라벨 메타), `calculate(row, as_of=)`(계산 기준일), `load_inputs`(저장값 → 계산 입력 복원 — 재계산하면 저장 점수와 같아야 함, `tests/test_type_queries.py`), `last_diag_dates`, `load_detail`.
 
 ## 설비유형별 데이터 운영 (Stage 8-2)
 

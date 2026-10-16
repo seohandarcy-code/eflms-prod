@@ -14,11 +14,20 @@ export interface EquipmentSummary {
   last_diag_date: string | null;
 }
 
+export interface TypeKPI {
+  ef_code: string;
+  ef_name: string;
+  total_equipment: number;
+  review_count: number;
+  replace_count: number;
+}
+
 export interface SummaryKPI {
   total_equipment: number;
   review_count: number;
   replace_count: number;
   last_updated: string | null;
+  by_type: TypeKPI[];
 }
 
 export interface ScoreDetail {
@@ -73,16 +82,10 @@ export interface ScoreDetail {
   oltc2_minus: number;
 }
 
-export interface EquipmentDetail {
-  equipment_id: number;
-  factory_code: string;
-  ef_code: string;
-  equipment_name: string;
-  voltage: number;
-  onan_val: number;
-  onaf_val: number;
-  operation_start_time: string;
-  status: EquipmentStatus;
+/** EF1(변압기) 전용 상세 — EquipmentDetail.type_detail (Stage 8-4) */
+export interface Ef1TypeDetail {
+  ef_code: "EF1";
+  spec: { updated_at: string; onan_val: number; onaf_val: number };
   dga: {
     diag_time: string;
     dga_h2: number;
@@ -144,6 +147,122 @@ export interface EquipmentDetail {
     rip_install: string;
     vacuum_set: string;
   };
+  score_detail: ScoreDetail;
+}
+
+/** EF2(GIS) 전용 상세 — EquipmentDetail.type_detail (Stage 8-5). 필드는 backend app/schemas/ef2.py와 1:1 */
+export interface Ef2ScoreDetail {
+  computed_at: string;
+  today: string;
+  operation_year: number;
+  age_minus: number;
+  cb_op_num_minus: number;
+  cb_op_year: number;
+  cb_stat: number;
+  cb_stat_minus: number;
+  insul_year: number;
+  insul_stat: number;
+  insul_stat_minus: number;
+  gis_mech_minus: number;
+  rated_trip_count_minus: number;
+  cum_trip_current_minus: number;
+  cb_op_char_over_minus: number;
+  load_minus: number;
+  leakage_curr_minus: number;
+  gis_elec_minus: number;
+  part_dischar_minus: number;
+  sf6_minus: number;
+  elec_room_minus: number;
+  gis_chem_minus: number;
+  in_vol_minus: number;
+  productivity_minus: number;
+  fire_spread_minus: number;
+  env_minus: number;
+  emerge_resp_minus: number;
+  rep_cost_minus: number;
+  rep_time_minus: number;
+  in_line_minus: number;
+  ato_minus: number;
+  reliability_minus: number;
+  online_diag_minus: number;
+  offline_diag_minus: number;
+  tbm_minus: number;
+  conn_rev_minus: number;
+  leak_str_minus: number;
+  insul_str_minus: number;
+  vt_la_minus: number;
+}
+
+export interface Ef2TypeDetail {
+  ef_code: "EF2";
+  operation: {
+    measured_at: string;
+    op_type: string;
+    cb_op_num: number;
+    rated_trip_count: number;
+    cum_trip_current: number;
+    cb_op_char_over: string;
+    load_percent: number;
+    leakage_curr: number;
+  };
+  diagnosis: {
+    measured_at: string;
+    part_dischar_pat: string;
+    elec_room_max_temp: number;
+  };
+  sf6: {
+    diag_time: string;
+    sf6_so2: number;
+    sf6_leak: string;
+    sf6_h2o: number;
+    sf6_purity: number;
+  };
+  consequence: {
+    updated_at: string;
+    in_vol: string;
+    capa_times_load: string;
+    fire_spread: string;
+    env_loc: string;
+    emerge_resp_pat: string;
+    rep_cost: string;
+    rep_time: string;
+  };
+  design: {
+    updated_at: string;
+    in_line_num: string;
+    ato: string;
+    reliability: string;
+    online_diag: string;
+    offline_diag: string;
+    tbm: string;
+    conn_rev: string;
+    leak_str: string;
+    insul_str: string;
+    vt_la_str: string;
+  };
+  score_detail: Ef2ScoreDetail;
+}
+
+export type TypeDetail = Ef1TypeDetail | Ef2TypeDetail;
+
+export interface ProjectionPoint {
+  years_ahead: number;
+  as_of: string;
+  pof: number;
+  cof: number;
+  dof: number;
+  total_score: number;
+}
+
+export interface EquipmentDetail {
+  equipment_id: number;
+  factory_code: string;
+  ef_code: string;
+  ef_name: string;
+  equipment_name: string;
+  voltage: number;
+  operation_start_time: string;
+  status: EquipmentStatus;
   score: {
     pof_minus: number;
     pof: number;
@@ -154,5 +273,23 @@ export interface EquipmentDetail {
     total_score: number;
     computed_at: string;
   };
-  score_detail: ScoreDetail;
+  type_detail: TypeDetail;
+  projection: ProjectionPoint[];
+}
+
+/** /api/equipment-types — 설비유형과 감점 항목 메타데이터(화면 라벨의 단일 원본, Stage 8-5) */
+export interface BreakdownItem {
+  field: string;
+  label: string;
+  group: string | null;
+  summed: boolean;
+}
+
+export type Axis = "pof" | "cof" | "dof";
+
+export interface EquipmentTypeInfo {
+  ef_code: string;
+  ef_name: string;
+  equipment_count: number;
+  breakdown: Record<Axis, BreakdownItem[]>;
 }

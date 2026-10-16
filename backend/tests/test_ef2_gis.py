@@ -247,15 +247,17 @@ async def test_ef2_replace_import_keeps_ef1_intact(client, session_factory, tmp_
         assert await _ef1_fingerprint(session) == before
 
 
-async def test_read_apis_stay_ef1_only_until_stage_8_4(client, session_factory):
+async def test_read_apis_filter_by_type(client, session_factory):
+    """Stage 8-4에 8-3 임시 안전장치(EF1만 조회)를 걷어냈다 — 유형 필터로 각각/전체를 고른다."""
     async with session_factory() as session:
         eq_id = await ingest_row(ef2_gis.calculate(ef2_gis.generate_input_row()), session)
         await session.commit()
 
-    items = (await client.get("/api/equipment")).json()
-    assert {item["ef_code"] for item in items} == {"EF1"}
-    assert (await client.get("/api/summary")).json()["total_equipment"] == 3
-    assert (await client.get(f"/api/equipment/{eq_id}")).status_code == 404
+    assert {i["ef_code"] for i in (await client.get("/api/equipment")).json()} == {"EF1", "EF2"}
+    assert {i["ef_code"] for i in (await client.get("/api/equipment", params={"ef_code": "EF1"})).json()} == {"EF1"}
+    assert (await client.get("/api/summary", params={"ef_code": "EF1"})).json()["total_equipment"] == 3
+    assert (await client.get("/api/summary")).json()["total_equipment"] == 4
+    assert (await client.get(f"/api/equipment/{eq_id}")).json()["type_detail"]["ef_code"] == "EF2"
 
 
 # ------------------------------------------------------------------ 마이그레이션

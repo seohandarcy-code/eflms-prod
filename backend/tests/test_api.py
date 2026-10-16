@@ -30,8 +30,10 @@ async def test_equipment_detail_matches_list_entry(client):
     detail = (await client.get(f"/api/equipment/{first_id}")).json()
     assert detail["equipment_id"] == first_id
     assert detail["score"]["total_score"] == items[0]["total_score"]
-    assert "score_detail" in detail
-    assert "dga" in detail and "design" in detail
+    # Stage 8-4: 유형 전용 상세는 type_detail(ef_code로 구분)에 들어간다
+    assert detail["type_detail"]["ef_code"] == "EF1"
+    assert "score_detail" in detail["type_detail"]
+    assert "dga" in detail["type_detail"] and "design" in detail["type_detail"]
 
 
 async def test_equipment_detail_404_for_unknown_id(client):

@@ -41,6 +41,13 @@ describe("EquipmentListTable", () => {
     expect(wrapper.text()).toContain("즉시교체");
   });
 
+  it("shows each row's equipment type name, falling back to the code", () => {
+    const mixed = [items[0], { ...items[1], ef_code: "EF2" }];
+    const wrapper = mount(EquipmentListTable, { props: { items: mixed, activeId: null, typeNames: { EF1: "변압기" } } });
+    const typeCells = wrapper.findAll("tbody tr").map((row) => row.findAll("td")[1].text());
+    expect(typeCells).toEqual(["변압기", "EF2"]);
+  });
+
   it("emits select with the equipment id when a row is clicked", async () => {
     const wrapper = mount(EquipmentListTable, { props: { items, activeId: null } });
     await wrapper.findAll("tbody tr")[1].trigger("click");

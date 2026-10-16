@@ -6,26 +6,41 @@
 
 공개 인터페이스:
 - generate_input_row() -> dict      : mock 입력 1건 생성 (시드용)
-- calculate(input_row) -> dict      : 입력 dict 하나로 전체 계산 컬럼을 산출
+- calculate(input_row, as_of=None) -> dict : 입력 dict 하나로 전체 계산 컬럼을 산출(as_of=계산 기준일, 기본 오늘)
 - ingest_domain(row, equipment_id, session) : EF1 전용 테이블 upsert (Stage 8-2에 ingest.py에서 이동)
+- load_inputs / last_diag_dates / load_detail / BREAKDOWN : 조회용 (Stage 8-4)
 """
 import itertools
 import math
 import random
 from datetime import date, timedelta
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
     DesignAttribute,
     DgaReading,
     DielectricTest,
+    Equipment,
     FuranReading,
     LoadCondition,
     OilTest,
     PeriodicInspection,
     TransformerScoreDetail,
     TransformerSpec,
+)
+from app.schemas.ef1 import (
+    DesignAttributeOut,
+    DgaReadingOut,
+    DielectricTestOut,
+    Ef1Detail,
+    FuranReadingOut,
+    LoadConditionOut,
+    OilTestOut,
+    PeriodicInspectionOut,
+    TransformerScoreDetailOut,
+    TransformerSpecOut,
 )
 
 EF_CODE = "EF1"
@@ -442,8 +457,9 @@ def dof_minus_cal(row):
 
 
 CALCULATED_COLUMNS = [
-    {"name": "today", "formula": lambda row: date.today()},
-    {"name": "operation_year", "formula": lambda row: round((date.today() - row["operation_start_time"]).days / 365, 1)},
+    # 계산 기준일은 calculate(as_of=)로 받는다(기본 오늘) — Stage 8-4, N년 뒤 점수 예측용. 결과는 이전과 같다.
+    {"name": "today", "formula": lambda row: row["_as_of"]},
+    {"name": "operation_year", "formula": lambda row: round((row["today"] - row["operation_start_time"]).days / 365, 1)},
     {"name": "age_minus", "formula": lambda row: -(math.floor(row["operation_year"]))},
     {"name": "dga_tcg", "formula": dga_tcg_cal},
     {"name": "dga_diag", "formula": dga_diag_cal},
@@ -507,12 +523,14 @@ CALCULATED_COLUMNS = [
 ]
 
 
-def calculate(input_row: dict) -> dict:
+def calculate(input_row: dict, as_of: date | None = None) -> dict:
     """input_row(INPUT_COLUMNS 값들)를 받아 전체 계산 컬럼을 더한 dict를 반환한다.
-    원본을 바꾸지 않도록 복사본에 계산한다."""
+    원본을 바꾸지 않도록 복사본에 계산한다. as_of는 계산 기준일(기본 오늘)."""
     row = dict(input_row)
+    row["_as_of"] = as_of or date.today()
     for col in CALCULATED_COLUMNS:
         row[col["name"]] = col["formula"](row)
+    del row["_as_of"]
     return row
 
 
@@ -681,4 +699,133 @@ async def ingest_domain(row: dict, equipment_id: int, session: AsyncSession) -> 
             bushing_minus=row["bushing_minus"],
             oltc2_minus=row["oltc2_minus"],
         )
+    )
+
+
+# ------------------------------------------------------------------
+# 4. 조회 (Stage 8-4)
+# ------------------------------------------------------------------
+# 감점 항목 메타데이터 — 화면의 감점 사유/가이드가 이걸 쓴다(기존 frontend scoreBreakdown.ts 라벨 그대로).
+# dga_minus는 원본 공식에서 pof_minus 합산이 주석 처리돼 있어 summed=False로 표시한다.
+BREAKDOWN = {
+    "pof": [
+        {"field": "age_minus", "label": "경과연수"},
+        {"field": "dga_minus", "label": "DGA(유중가스)", "summed": False},
+        {"field": "load_minus", "label": "부하율"},
+        {"field": "temp_minus", "label": "운전온도"},
+        {"field": "dielec_str_te_minus", "label": "절연내력시험"},
+        {"field": "acid_measure_minus", "label": "산가도시험"},
+        {"field": "moisture_minus", "label": "수분시험"},
+        {"field": "furan_minus", "label": "Furan"},
+        {"field": "part_discharge_minus", "label": "부분방전"},
+        {"field": "oltc_96t_minus", "label": "OLTC 96T 동작"},
+        {"field": "oltc_minus", "label": "OLTC 동작진단"},
+        {"field": "thermal_img_minus", "label": "열화상"},
+        {"field": "noise_minus", "label": "이상소음"},
+    ],
+    "cof": [
+        {"field": "first_voltage_minus", "label": "1차전압"},
+        {"field": "productivity_minus", "label": "생산성 영향(용량×부하율)"},
+        {"field": "fire_minus", "label": "화재취약성"},
+        {"field": "fire_spread_minus", "label": "화재확산장소"},
+        {"field": "emerge_response_minus", "label": "비상대응시간"},
+        {"field": "rep_cost_minus", "label": "교체비용"},
+        {"field": "rep_time_minus", "label": "교체기간"},
+    ],
+    "dof": [
+        {"field": "redundancy_minus", "label": "예비화"},
+        {"field": "ato_minus", "label": "계통자동전환"},
+        {"field": "online_og_minus", "label": "온라인 유중가스"},
+        {"field": "offline_safety_minus", "label": "안전공사 정밀점검"},
+        {"field": "sec_minus", "label": "보호요소"},
+        {"field": "alarm_minus", "label": "알람요소"},
+        {"field": "winding_minus", "label": "권선(절연 1단계 상승)"},
+        {"field": "prod_life_minus", "label": "수명향상(고밀도 절연지)"},
+        {"field": "connect_part_minus", "label": "접속부(이중절연)"},
+        {"field": "temp_inc_limit_minus", "label": "온도상승한도"},
+        {"field": "test_reliability_minus", "label": "SFRA 시험"},
+        {"field": "bushing_minus", "label": "부싱"},
+        {"field": "oltc2_minus", "label": "OLTC(진공식)"},
+    ],
+}
+
+_DOMAIN_MODELS = (TransformerSpec, DgaReading, FuranReading, DielectricTest, OilTest, LoadCondition, PeriodicInspection, DesignAttribute, TransformerScoreDetail)
+
+
+async def _load_rows(session: AsyncSession, equipment_id: int):
+    rows = [await session.get(model, equipment_id) for model in _DOMAIN_MODELS]
+    return None if any(r is None for r in rows) else rows
+
+
+async def load_inputs(session: AsyncSession, equipment_id: int) -> tuple[dict, date] | None:
+    """저장된 값으로 calculate() 입력 행을 복원하고, 저장된 점수의 계산 기준일과 함께 돌려준다.
+    calculate(입력, as_of=기준일)은 저장된 점수와 같아야 한다(tests/test_type_queries.py)."""
+    equipment = await session.get(Equipment, equipment_id)
+    rows = await _load_rows(session, equipment_id)
+    if equipment is None or rows is None:
+        return None
+    spec, dga, furan, dielectric, oil, load, inspection, design, detail = rows
+    row = {
+        "factory_code": equipment.factory_code,
+        "EF_code": equipment.ef_code,
+        "transformer_name": equipment.equipment_name,
+        "voltage": equipment.voltage,
+        "ONAN_val": spec.onan_val,
+        "ONAF_val": spec.onaf_val,
+        "operation_start_time": equipment.operation_start_time,
+        "dga_diag_time": dga.diag_time,
+        **{f"dga_{k}": getattr(dga, f"dga_{k}") for k in ("h2", "c2h2", "c2h4", "c2h6", "ch4", "c3h8", "co", "co2", "o2", "n2", "fluc")},
+        "load_percent": load.load_percent,
+        "coil_max_temp": load.coil_max_temp,
+        **{f"dielec_str_te_{i}": getattr(dielectric, f"dielec_str_te_{i}") for i in range(1, 7)},
+        "acid_measure_val": oil.acid_measure_val,
+        "moisture_rslt": oil.moisture_rslt,
+        "furan_diag_time": furan.diag_time,
+        "furan_5H2F": furan.furan_5h2f,
+        "furan_2FOL": furan.furan_2fol,
+        "furan_2FAL": furan.furan_2fal,
+        "furan_2ACF": furan.furan_2acf,
+        "furan_5M2F": furan.furan_5m2f,
+        "part_discharge_diag": inspection.part_discharge_diag,
+        "oltc_96T_diag": inspection.oltc_96t_diag,
+        "oltc_rslt": inspection.oltc_rslt,
+        "oltc_type": inspection.oltc_type,
+        "thermal_img_temp": inspection.thermal_img_temp,
+        "noise_diag": inspection.noise_diag,
+        **{
+            k: getattr(design, k)
+            for k in (
+                "fire_vul_type", "fire_spread_loc", "emerge_response_1s", "redundancy", "ato", "online_og_chk",
+                "offline_safety_chk", "sec_num", "alarm_num", "insul_1st_lvup", "high_insul_adt", "double_insul",
+                "sfra_test", "rip_install", "vacuum_set",
+            )
+        },
+        "55k_install": design.install_55k,
+    }
+    return row, detail.today
+
+
+async def last_diag_dates(session: AsyncSession, equipment_ids: list[int]) -> dict[int, date]:
+    """화면의 '최근 진단일' — EF1은 DGA 진단일."""
+    if not equipment_ids:
+        return {}
+    stmt = select(DgaReading.equipment_id, DgaReading.diag_time).where(DgaReading.equipment_id.in_(equipment_ids))
+    return dict((await session.execute(stmt)).all())
+
+
+async def load_detail(session: AsyncSession, equipment_id: int) -> Ef1Detail | None:
+    rows = await _load_rows(session, equipment_id)
+    if rows is None:
+        return None
+    spec, dga, furan, dielectric, oil, load, inspection, design, detail = rows
+    return Ef1Detail(
+        spec=TransformerSpecOut.model_validate(spec),
+        dga=DgaReadingOut.model_validate(dga),
+        furan=FuranReadingOut.model_validate(furan),
+        dielectric=DielectricTestOut.model_validate(dielectric),
+        oil=OilTestOut.model_validate(oil),
+        load=LoadConditionOut.model_validate(load),
+        inspection=PeriodicInspectionOut.model_validate(inspection),
+        design=DesignAttributeOut.model_validate(design),
+        score_detail=TransformerScoreDetailOut.model_validate(detail),
     )

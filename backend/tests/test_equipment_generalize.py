@@ -16,8 +16,9 @@ async def test_ingest_writes_transformer_spec_and_detail_reads_it(client, sessio
     assert resp.status_code == 200
     body = resp.json()
     assert body["equipment_name"] == equipment.equipment_name
-    assert body["onan_val"] == spec.onan_val
-    assert body["onaf_val"] == spec.onaf_val
+    # Stage 8-4부터 EF1 정격용량은 type_detail.spec에 있다
+    assert body["type_detail"]["spec"]["onan_val"] == spec.onan_val
+    assert body["type_detail"]["spec"]["onaf_val"] == spec.onaf_val
     assert "transformer_name" not in body
 
 

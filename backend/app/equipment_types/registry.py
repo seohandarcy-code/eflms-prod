@@ -31,6 +31,10 @@ def registered_codes() -> list[str]:
     return list(_REGISTRY)
 
 
+def all_modules() -> list[EquipmentTypeModule]:
+    return list(_REGISTRY.values())
+
+
 def resolve_codes(ef_code: str) -> list[str]:
     """CLI용 — "all"이면 등록된 전체, 아니면 해당 코드 하나(검증 포함)."""
     if ef_code.lower() == "all":

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useEquipmentStore } from "../stores/equipment";
 import RiskScatterChart from "../components/RiskScatterChart.vue";
 import EquipmentCard from "../components/EquipmentCard.vue";
@@ -12,6 +13,8 @@ import { statusColor, statusLabel } from "../utils/statusStyle";
 import type { EquipmentDetail, EquipmentSummary } from "../types/equipment";
 
 const store = useEquipmentStore();
+const route = useRoute();
+const router = useRouter();
 const selectedId = ref<number | null>(null);
 const hoveredId = ref<number | null>(null);
 const reasonScrollEl = ref<HTMLDivElement | null>(null);
@@ -22,13 +25,44 @@ const FACTORY_OPTIONS = [
   { value: "K1", label: "K1" },
   { value: "P1", label: "P1" },
 ];
-const EQUIPMENT_TYPE_OPTIONS = [{ value: "EF1", label: "EF1 · 변압기" }];
+// 설비유형 옵션은 백엔드 레지스트리(/api/equipment-types)에서 온다 — 새 유형이 등록되면 자동으로 나타난다.
+const equipmentTypeOptions = computed(() =>
+  store.equipmentTypes.map((t) => ({ value: t.ef_code, label: `${t.ef_code} · ${t.ef_name}` })),
+);
+
+function typeLabel(efCode: string): string {
+  return `${efCode} · ${store.typeNames[efCode] ?? efCode}`;
+}
 
 const filterSummaryText = computed(() => {
   const factoryText = store.factoryFilters.length === 0 ? "전체 사업장" : store.factoryFilters.join(", ");
-  const typeText = store.equipmentTypeFilters.length === 0 ? "EF1 · 변압기" : store.equipmentTypeFilters.join(", ");
+  const typeText = store.equipmentTypeFilters.length === 0 ? "전체 설비유형" : store.equipmentTypeFilters.map(typeLabel).join(", ");
   return `${typeText} · ${factoryText}`;
 });
+
+// KPI "전체 설비" 아래에 유형별 대수를 나눠 보여준다(필터 적용 후 목록 기준).
+const typeCountText = computed(() =>
+  store.visibleTypeCodes
+    .map((code) => `${store.typeNames[code] ?? code} ${store.equipmentList.filter((item) => item.ef_code === code).length}`)
+    .join(" · "),
+);
+
+// 선택한 설비유형을 URL(?type=EF1,EF2)에 남겨 링크로 공유할 수 있게 한다.
+function typesFromQuery(): string[] {
+  const raw = route.query.type;
+  const value = Array.isArray(raw) ? raw.join(",") : (raw ?? "");
+  return value.split(",").map((code) => code.trim()).filter(Boolean);
+}
+
+watch(
+  () => store.equipmentTypeFilters,
+  (codes) => {
+    const type = codes.length > 0 ? codes.join(",") : undefined;
+    if ((route.query.type ?? undefined) !== type) {
+      router.replace({ query: { ...route.query, type } });
+    }
+  },
+);
 
 const EMPTY_REASONS: ReasonsByAxis = { pof: [], cof: [], dof: [] };
 
@@ -38,7 +72,7 @@ const detailReasons = computed(() =>
     return {
       item,
       detail,
-      reasons: detail ? getReasonsByAxis(detail.score_detail) : EMPTY_REASONS,
+      reasons: detail ? getReasonsByAxis(detail.type_detail.score_detail, store.breakdownFor(detail.ef_code)) : EMPTY_REASONS,
     };
   }),
 );
@@ -143,7 +177,21 @@ function goToPage(page: number) {
   currentPage.value = Math.min(Math.max(page, 1), totalPages.value);
 }
 
+// 필터를 바꿔서 선택된 설비가 목록에서 빠지면, 남은 목록에서 가장 시급한 설비로 바꾼다.
+watch(
+  () => store.equipmentList,
+  (list) => {
+    if (list.length === 0) {
+      selectedId.value = null;
+    } else if (!list.some((item) => item.equipment_id === selectedId.value)) {
+      selectedId.value = list[0].equipment_id;
+    }
+  },
+);
+
 onMounted(async () => {
+  const queryTypes = typesFromQuery();
+  if (queryTypes.length > 0) store.setEquipmentTypeFilters(queryTypes);
   await store.load();
   // 점검필요 순위 리스트의 감점 사유를 보여주기 위해 상세를 미리 불러온다.
   await Promise.all(store.needsInspectionList.map((item) => store.loadDetail(item.equipment_id)));
@@ -197,12 +245,11 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
       <aside class="rail">
         <MultiSelectFilter
           label="설비유형"
-          :options="EQUIPMENT_TYPE_OPTIONS"
+          :options="equipmentTypeOptions"
           :model-value="store.equipmentTypeFilters"
           all-label="전체 설비유형"
           @update:model-value="store.setEquipmentTypeFilters"
         />
-        <div class="rail-hint">EF2~EF22 설비유형 추가 예정</div>
 
         <MultiSelectFilter
           label="사업장"
@@ -229,7 +276,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
             <div class="card kpi">
               <div class="kpi-label">전체 설비</div>
               <div class="kpi-value">{{ store.equipmentList.length }}<span class="unit">대</span></div>
-              <div class="kpi-sub">EF1 · 변압기 기준{{ store.factoryFilters.length > 0 ? ` · ${store.factoryFilters.join(", ")} 필터 적용` : "" }}</div>
+              <div class="kpi-sub">{{ typeCountText || "-" }}{{ store.factoryFilters.length > 0 ? ` · ${store.factoryFilters.join(", ")} 필터 적용` : "" }}</div>
             </div>
             <div class="card kpi">
               <div class="kpi-label">정상 설비</div>
@@ -249,7 +296,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
             <div class="card kpi">
               <div class="kpi-label">최근 데이터 갱신</div>
               <div class="kpi-value small">{{ formatDateTime(store.summary?.last_updated ?? null) }}</div>
-              <div class="kpi-sub">DGA · Furan 정기점검 반영</div>
+              <div class="kpi-sub">정기점검 데이터 반영</div>
             </div>
           </div>
 
@@ -276,7 +323,13 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
             </div>
             <div class="risk-body">
               <div class="chart-col">
-                <RiskScatterChart :equipment-list="store.equipmentList" :selected-id="selectedId" @select="selectCard" @hover="onChartHover" />
+                <RiskScatterChart
+                  :equipment-list="store.equipmentList"
+                  :selected-id="selectedId"
+                  :type-names="store.typeNames"
+                  @select="selectCard"
+                  @hover="onChartHover"
+                />
               </div>
               <div class="reason-col">
                 <div class="reason-title">점검필요 순위 · 종합점수 낮은순</div>
@@ -297,7 +350,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
                         {{ statusLabel(entry.item.status) }} · 종합점수 {{ entry.item.total_score.toFixed(1) }}
                       </span>
                     </div>
-                    <div class="reason-meta">{{ entry.item.factory_code }} · {{ entry.item.voltage.toLocaleString() }}V</div>
+                    <div class="reason-meta">{{ store.typeNames[entry.item.ef_code] ?? entry.item.ef_code }} · {{ entry.item.factory_code }} · {{ entry.item.voltage.toLocaleString() }}V</div>
 
                     <div class="axis-grid">
                       <div class="axis-col">
@@ -383,11 +436,12 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
                 v-for="item in pagedList"
                 :key="item.equipment_id"
                 :summary="item"
+                :type-name="store.typeNames[item.ef_code]"
                 :active="selectedId === item.equipment_id"
                 @select="selectCard"
               />
             </div>
-            <EquipmentListTable v-else :items="pagedList" :active-id="selectedId" @select="selectCard" />
+            <EquipmentListTable v-else :items="pagedList" :active-id="selectedId" :type-names="store.typeNames" @select="selectCard" />
 
             <div v-if="totalPages > 1" class="pagination">
               <button class="page-btn" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">이전</button>
@@ -478,11 +532,6 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   background: #fff;
   border-right: 1px solid #e2e5ea;
   padding: 24px 20px;
-}
-.rail-hint {
-  font-size: 11px;
-  color: #b4bac4;
-  margin-top: -14px;
 }
 .admin-link {
   /* .rail이 .main과 같은 높이로 늘어나므로(사이드바 배경을 끝까지 채우기 위함),

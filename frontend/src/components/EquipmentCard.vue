@@ -3,7 +3,8 @@ import { computed } from "vue";
 import type { EquipmentSummary } from "../types/equipment";
 import { statusBg, statusColor, statusLabel } from "../utils/statusStyle";
 
-const props = defineProps<{ summary: EquipmentSummary; active?: boolean }>();
+// typeName: 설비유형 이름(예: 변압기, GIS). 주면 카드에 유형 배지를 붙인다(Stage 8-5).
+const props = defineProps<{ summary: EquipmentSummary; active?: boolean; typeName?: string }>();
 const emit = defineEmits<{ select: [equipmentId: number] }>();
 
 function clampWidth(value: number): number {
@@ -23,7 +24,7 @@ const color = computed(() => statusColor(props.summary.status));
     <div class="card-head">
       <div>
         <span class="name">{{ summary.equipment_name }}</span>
-        <span class="meta">{{ summary.factory_code }} · {{ summary.voltage.toLocaleString() }}V</span>
+        <span class="meta"><span v-if="typeName" class="type-badge">{{ typeName }}</span>{{ summary.factory_code }} · {{ summary.voltage.toLocaleString() }}V</span>
       </div>
       <span class="chip" :style="{ background: statusBg(summary.status), color }">
         <span class="dot" :style="{ background: color }"></span>
@@ -137,5 +138,14 @@ const color = computed(() => statusColor(props.summary.status));
 }
 .mono {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+.type-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: #4a5568;
+  background: #eef0f3;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-right: 5px;
 }
 </style>

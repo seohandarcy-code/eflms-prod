@@ -1,7 +1,10 @@
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.ef1 import Ef1Detail
+from app.schemas.ef2 import Ef2Detail
 
 EquipmentStatus = Literal["normal", "review", "replace"]
 
@@ -22,89 +25,6 @@ class EquipmentSummary(BaseModel):
     last_diag_date: date | None = None
 
 
-class DgaReadingOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    diag_time: date
-    dga_h2: int
-    dga_c2h2: float
-    dga_c2h4: int
-    dga_c2h6: int
-    dga_ch4: int
-    dga_c3h8: int
-    dga_co: int
-    dga_co2: int
-    dga_o2: int
-    dga_n2: int
-    dga_fluc: int
-
-
-class FuranReadingOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    diag_time: date
-    furan_5h2f: int
-    furan_2fol: float
-    furan_2fal: int
-    furan_2acf: int
-    furan_5m2f: int
-
-
-class DielectricTestOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    measured_at: date
-    dielec_str_te_1: float
-    dielec_str_te_2: float
-    dielec_str_te_3: float
-    dielec_str_te_4: float
-    dielec_str_te_5: float
-    dielec_str_te_6: float
-
-
-class OilTestOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    measured_at: date
-    acid_measure_val: float
-    moisture_rslt: float
-
-
-class LoadConditionOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    measured_at: date
-    load_percent: float
-    coil_max_temp: int
-
-
-class PeriodicInspectionOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    measured_at: date
-    part_discharge_diag: str
-    oltc_96t_diag: str
-    oltc_rslt: int
-    oltc_type: str
-    thermal_img_temp: str
-    noise_diag: str
-
-
-class DesignAttributeOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    updated_at: date
-    fire_vul_type: str
-    fire_spread_loc: str
-    emerge_response_1s: str
-    redundancy: str
-    ato: str
-    online_og_chk: str
-    offline_safety_chk: str
-    sec_num: int
-    alarm_num: int
-    insul_1st_lvup: str
-    high_insul_adt: str
-    double_insul: str
-    install_55k: str
-    sfra_test: str
-    rip_install: str
-    vacuum_set: str
-
-
 class ScoreSnapshotOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     pof_minus: int
@@ -117,80 +37,47 @@ class ScoreSnapshotOut(BaseModel):
     computed_at: datetime
 
 
-class TransformerScoreDetailOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    computed_at: datetime
-    today: date
-    operation_year: float
-    age_minus: int
-    dga_tcg: float
-    dga_diag: str
-    dga_minus: int
-    load_minus: int
-    temp_minus: int
-    dielec_str_te_avg: float
-    dielec_str_te_diag: str
-    dielec_str_te_minus: int
-    acid_measure_desc: str
-    acid_measure_minus: int
-    moisture_desc: str
-    moisture_minus: int
-    furan_total: float
-    furan_total_per_year: float
-    furan_desc: str
-    furan_minus: int
-    part_discharge_minus: int
-    oltc_96t_minus: int
-    oltc_diag: str
-    oltc_minus: int
-    thermal_img_minus: int
-    noise_minus: int
-    first_voltage: int
-    first_voltage_minus: int
-    capa_times_load: float
-    productivity_minus: int
-    fire_minus: int
-    fire_spread_minus: int
-    emerge_response_minus: int
-    rep_cost: float
-    rep_cost_minus: int
-    rep_time: int
-    rep_time_minus: int
-    redundancy_minus: int
-    ato_minus: int
-    online_og_minus: int
-    offline_safety_minus: int
-    sec_minus: int
-    alarm_minus: int
-    winding_minus: int
-    prod_life_minus: int
-    connect_part_minus: int
-    temp_inc_limit_minus: int
-    test_reliability_minus: int
-    bushing_minus: int
-    oltc2_minus: int
+class ProjectionPoint(BaseModel):
+    """N년 뒤 점수 — 저장된 입력값으로 설비유형 공식을 기준일만 바꿔 재계산한 값(0년 = 저장된 점수).
+
+    **화면에서는 쓰지 않는다(2026-10-17 결정)**: 측정값을 고정한 채 기준일만 늦추므로, 시간에 따라
+    쌓이는 값을 연수로 나눠 판정하는 항목이 있으면 점수가 오히려 좋아진다 — EF1 Furan(총량÷사용년수)
+    때문에 실제로 2년 뒤 PoF가 21→44로 역전되는 설비가 있었다. 화면의 5개년 예측은 기존대로 "연 -1점
+    단순 가정"(frontend ScoreProjectionChart). 예측 모델(누적값 증가율 가정 등)이 정해지면 이 값을 보정해 쓴다.
+    """
+
+    years_ahead: int
+    as_of: date
+    pof: int
+    cof: int
+    dof: int
+    total_score: float
+
+
+# 설비유형별 상세는 ef_code로 구분되는 union — 새 유형은 여기에 스키마 하나를 추가한다.
+TypeDetail = Annotated[Union[Ef1Detail, Ef2Detail], Field(discriminator="ef_code")]
 
 
 class EquipmentDetail(BaseModel):
     equipment_id: int
     factory_code: str
     ef_code: str
+    ef_name: str
     equipment_name: str
     voltage: int
-    onan_val: int
-    onaf_val: float
     operation_start_time: date
     status: EquipmentStatus
-
-    dga: DgaReadingOut
-    furan: FuranReadingOut
-    dielectric: DielectricTestOut
-    oil: OilTestOut
-    load: LoadConditionOut
-    inspection: PeriodicInspectionOut
-    design: DesignAttributeOut
     score: ScoreSnapshotOut
-    score_detail: TransformerScoreDetailOut
+    type_detail: TypeDetail
+    projection: list[ProjectionPoint]
+
+
+class TypeKPI(BaseModel):
+    ef_code: str
+    ef_name: str
+    total_equipment: int
+    review_count: int
+    replace_count: int
 
 
 class SummaryKPI(BaseModel):
@@ -198,3 +85,19 @@ class SummaryKPI(BaseModel):
     review_count: int
     replace_count: int
     last_updated: datetime | None = None
+    by_type: list[TypeKPI] = []
+
+
+class BreakdownItem(BaseModel):
+    field: str
+    label: str
+    group: str | None = None
+    # False면 계산 결과에는 나오지만 축 점수(pof 등) 합산에는 들어가지 않는 항목(원본 공식대로).
+    summed: bool = True
+
+
+class EquipmentTypeOut(BaseModel):
+    ef_code: str
+    ef_name: str
+    equipment_count: int
+    breakdown: dict[str, list[BreakdownItem]]

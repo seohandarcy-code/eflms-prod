@@ -23,6 +23,13 @@ npm run dev
 - `src/stores/` — Pinia 스토어
 - `src/views/` — 화면 단위 컴포넌트 (`DashboardView.vue` 메인 대시보드, `GuideView.vue` — POF/COF/DOF 지표·판정기준 안내 `/guide`)
 - `src/api/client.ts` — axios 인스턴스, `VITE_API_BASE_URL` 사용
+- `src/components/detail/` — 설비유형별 상세 본문(`Ef1DetailBody.vue`, `Ef2DetailBody.vue`). `EquipmentDetailPanel.vue`는 공통 헤더·점수·차트만 갖고, `type_detail.ef_code`로 본문을 고른다. 본문 클래스(`compact-row`, `raw-*`) 스타일은 패널이 `:deep()`으로 입힌다.
+
+## 설비유형 (Stage 8-5)
+
+- 유형 목록과 감점 항목 라벨은 `/api/equipment-types`(스토어 `equipmentTypes`, `breakdownFor(ef_code)`)에서 온다 — `utils/scoreBreakdown.ts`에 라벨을 하드코딩하지 않는다. 근거 툴팁 문구만 유형별 맵(`EF1_EVIDENCE`, `EF2_EVIDENCE`)으로 둔다.
+- 새 설비유형을 붙일 때: `types/equipment.ts`에 `EfNTypeDetail` 추가(→ `TypeDetail` union), `components/detail/EfNDetailBody.vue`, `scoreBreakdown.ts`의 근거 맵, 패널 헤더 부제(`typeSubtitle`). 필터·KPI·분포도·가이드는 메타데이터로 자동 반영된다.
+- 점수는 원본 공식대로 음수가 될 수 있다 — 막대·분포도는 표시만 0~100으로 자른다.
 
 ## 컨벤션
 

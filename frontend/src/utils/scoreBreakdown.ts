@@ -1,46 +1,7 @@
-import type { EquipmentDetail, ScoreDetail } from "../types/equipment";
+import type { Axis, BreakdownItem, Ef1TypeDetail, Ef2TypeDetail, EquipmentDetail } from "../types/equipment";
 
-export const POF_FIELD_LABELS: Partial<Record<keyof ScoreDetail, string>> = {
-  age_minus: "경과연수",
-  dga_minus: "DGA(유중가스)",
-  load_minus: "부하율",
-  temp_minus: "운전온도",
-  dielec_str_te_minus: "절연내력시험",
-  acid_measure_minus: "산가도시험",
-  moisture_minus: "수분시험",
-  furan_minus: "Furan",
-  part_discharge_minus: "부분방전",
-  oltc_96t_minus: "OLTC 96T 동작",
-  oltc_minus: "OLTC 동작진단",
-  thermal_img_minus: "열화상",
-  noise_minus: "이상소음",
-};
-
-export const COF_FIELD_LABELS: Partial<Record<keyof ScoreDetail, string>> = {
-  first_voltage_minus: "1차전압",
-  productivity_minus: "생산성 영향(용량×부하율)",
-  fire_minus: "화재취약성",
-  fire_spread_minus: "화재확산장소",
-  emerge_response_minus: "비상대응시간",
-  rep_cost_minus: "교체비용",
-  rep_time_minus: "교체기간",
-};
-
-export const DOF_FIELD_LABELS: Partial<Record<keyof ScoreDetail, string>> = {
-  redundancy_minus: "예비화",
-  ato_minus: "계통자동전환",
-  online_og_minus: "온라인 유중가스",
-  offline_safety_minus: "안전공사 정밀점검",
-  sec_minus: "보호요소",
-  alarm_minus: "알람요소",
-  winding_minus: "권선(절연 1단계 상승)",
-  prod_life_minus: "수명향상(고밀도 절연지)",
-  connect_part_minus: "접속부(이중절연)",
-  temp_inc_limit_minus: "온도상승한도",
-  test_reliability_minus: "SFRA 시험",
-  bushing_minus: "부싱",
-  oltc2_minus: "OLTC(진공식)",
-};
+// 감점 항목 라벨은 백엔드 설비유형 모듈의 BREAKDOWN(/api/equipment-types)이 단일 원본이다(Stage 8-5).
+// 예전처럼 여기에 유형별 라벨을 하드코딩하지 않는다.
 
 export interface ScoreReason {
   field: string;
@@ -54,28 +15,26 @@ export interface ReasonsByAxis {
   dof: ScoreReason[];
 }
 
-function collectReasons(detail: ScoreDetail, fields: Partial<Record<keyof ScoreDetail, string>>): ScoreReason[] {
-  const reasons: ScoreReason[] = [];
-  for (const [field, label] of Object.entries(fields)) {
-    const value = detail[field as keyof ScoreDetail] as number;
-    if (typeof value === "number" && value < 0) {
-      reasons.push({ field, label, value });
-    }
-  }
-  return reasons.sort((a, b) => a.value - b.value);
-}
+const AXES: Axis[] = ["pof", "cof", "dof"];
 
 /** PoF/CoF/DoF 축별로 감점 사유 전부(0인 항목 제외)를 감점 큰 순으로 반환한다. */
-export function getReasonsByAxis(detail: ScoreDetail): ReasonsByAxis {
-  return {
-    pof: collectReasons(detail, POF_FIELD_LABELS),
-    cof: collectReasons(detail, COF_FIELD_LABELS),
-    dof: collectReasons(detail, DOF_FIELD_LABELS),
-  };
+export function getReasonsByAxis(scoreDetail: object, breakdown: Record<Axis, BreakdownItem[]>): ReasonsByAxis {
+  const values = scoreDetail as Record<string, unknown>;
+  const result: ReasonsByAxis = { pof: [], cof: [], dof: [] };
+  for (const axis of AXES) {
+    for (const item of breakdown[axis] ?? []) {
+      const value = values[item.field];
+      if (typeof value === "number" && value < 0) {
+        result[axis].push({ field: item.field, label: item.label, value });
+      }
+    }
+    result[axis].sort((a, b) => a.value - b.value);
+  }
+  return result;
 }
 
 // 감점 항목별로 "왜 감점됐는지" 실제 근거(원본 측정값/판정)를 한 줄로 보여준다(hover 툴팁용).
-const EVIDENCE: Record<string, (d: EquipmentDetail) => string> = {
+const EF1_EVIDENCE: Record<string, (d: Ef1TypeDetail) => string> = {
   age_minus: (d) => `경과연수 ${d.score_detail.operation_year}년차`,
   dga_minus: (d) => `TCG ${d.score_detail.dga_tcg}ppm · 판정 ${d.score_detail.dga_diag}`,
   load_minus: (d) => `부하율 ${d.load.load_percent}%`,
@@ -113,7 +72,43 @@ const EVIDENCE: Record<string, (d: EquipmentDetail) => string> = {
   oltc2_minus: (d) => `OLTC(진공식) 적용 ${d.design.vacuum_set}`,
 };
 
+const EF2_EVIDENCE: Record<string, (d: Ef2TypeDetail) => string> = {
+  cb_op_num_minus: (d) => `차단기 동작횟수 ${d.operation.cb_op_num}회`,
+  cb_stat_minus: (d) => `사용 ${d.score_detail.cb_op_year}년 · 차단기 상태점수 ${d.score_detail.cb_stat.toFixed(3)}`,
+  insul_stat_minus: (d) => `사용 ${d.score_detail.insul_year}년 · 절연물 상태점수 ${d.score_detail.insul_stat.toFixed(3)}`,
+  rated_trip_count_minus: (d) => `정격차단 동작 ${d.operation.rated_trip_count}회`,
+  cum_trip_current_minus: (d) => `누적차단전류 ${d.operation.cum_trip_current}`,
+  cb_op_char_over_minus: (d) => `동작특성 기준치 초과 ${d.operation.cb_op_char_over}`,
+  load_minus: (d) => `부하율 ${d.operation.load_percent}%`,
+  leakage_curr_minus: (d) => `누설전류 ${d.operation.leakage_curr}`,
+  part_dischar_minus: (d) => `부분방전 이상패턴 ${d.diagnosis.part_dischar_pat}`,
+  sf6_minus: (d) => `SO2 ${d.sf6.sf6_so2} · 누기 ${d.sf6.sf6_leak} · 수분 ${d.sf6.sf6_h2o} · 순도 ${d.sf6.sf6_purity}%`,
+  elec_room_minus: (d) => `전기실 최대온도 ${d.diagnosis.elec_room_max_temp}℃`,
+
+  in_vol_minus: (d) => `인입전압 등급 ${d.consequence.in_vol}`,
+  productivity_minus: (d) => `생산영향성 등급 ${d.consequence.capa_times_load}`,
+  fire_spread_minus: (d) => `화재확산 등급 ${d.consequence.fire_spread}`,
+  env_minus: (d) => `환경_위치 등급 ${d.consequence.env_loc}`,
+  emerge_resp_minus: (d) => `비상대응시간 등급 ${d.consequence.emerge_resp_pat}`,
+  rep_cost_minus: (d) => `사고복구비용 등급 ${d.consequence.rep_cost}`,
+  rep_time_minus: (d) => `정상화기간 등급 ${d.consequence.rep_time}`,
+
+  in_line_minus: (d) => `인입선로 등급 ${d.design.in_line_num}`,
+  ato_minus: (d) => `ATO 구성 ${d.design.ato}`,
+  reliability_minus: (d) => `공급신뢰도 등급 ${d.design.reliability}`,
+  online_diag_minus: (d) => `온라인진단 등급 ${d.design.online_diag}`,
+  offline_diag_minus: (d) => `오프라인진단 ${d.design.offline_diag}`,
+  tbm_minus: (d) => `TBM 실시 ${d.design.tbm}`,
+  conn_rev_minus: (d) => `도체접속구조개선 ${d.design.conn_rev}`,
+  leak_str_minus: (d) => `가스기밀강화 ${d.design.leak_str}`,
+  insul_str_minus: (d) => `절연스펙강화 ${d.design.insul_str}`,
+  vt_la_minus: (d) => `부품신뢰성강화 ${d.design.vt_la_str}`,
+};
+
 /** 감점 항목 하나의 근거(원본 측정값/판정)를 한 줄 텍스트로 반환한다. 매핑이 없으면 빈 문자열. */
 export function getEvidence(field: string, detail: EquipmentDetail): string {
-  return EVIDENCE[field]?.(detail) ?? "";
+  const typeDetail = detail.type_detail;
+  if (typeDetail.ef_code === "EF1") return EF1_EVIDENCE[field]?.(typeDetail) ?? "";
+  if (typeDetail.ef_code === "EF2") return EF2_EVIDENCE[field]?.(typeDetail) ?? "";
+  return "";
 }
