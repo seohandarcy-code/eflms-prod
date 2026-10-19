@@ -127,14 +127,14 @@ def test_deduction_branches(overrides, column, expected):
     assert ef2_gis.calculate(_base_row(**overrides))[column] == expected
 
 
-def test_weibull_aging_and_totals_at_30_years():
+def test_aging_and_totals_at_30_years():
     row = ef2_gis.calculate(_base_row(operation_start_time=date.today() - timedelta(days=30 * 365)))
     assert row["operation_year"] == 30.0
     assert row["age_minus"] == -30
     assert row["cb_stat_minus"] == -6       # e^-((30/72)^3.21) = 0.9416
     assert row["insul_stat_minus"] == -5    # e^-((30/4199)^0.75) = 0.9757, ×2
     assert row["gis_mech_minus"] == -11
-    # age_minus는 PoF에 합산하지 않는다(원본대로) — 노화는 와이블 감점이 담당
+    # age_minus는 PoF에 합산하지 않는다(원본대로) — 노화는 차단기·절연물 상태점수(고장확률) 감점이 담당
     assert row["pof"] == 100 - 11
     assert row["cof"] == 100 and row["dof"] == 100
     assert row["total_score"] == pytest.approx(0.5 * 89 + 0.3 * 100 + 0.2 * 100)

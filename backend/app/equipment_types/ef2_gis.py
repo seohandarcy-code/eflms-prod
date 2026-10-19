@@ -475,8 +475,8 @@ async def ingest_domain(row: dict, equipment_id: int, session: AsyncSession) -> 
 BREAKDOWN = {
     "pof": [
         {"field": "cb_op_num_minus", "label": "차단기 동작횟수", "group": "기계적"},
-        {"field": "cb_stat_minus", "label": "차단기 고장확률(와이블)", "group": "기계적"},
-        {"field": "insul_stat_minus", "label": "절연물 고장확률(와이블)", "group": "기계적"},
+        {"field": "cb_stat_minus", "label": "차단기 고장확률", "group": "기계적"},
+        {"field": "insul_stat_minus", "label": "절연물 고장확률", "group": "기계적"},
         {"field": "rated_trip_count_minus", "label": "정격차단 동작횟수", "group": "전기적"},
         {"field": "cum_trip_current_minus", "label": "누적차단전류", "group": "전기적"},
         {"field": "load_minus", "label": "부하율", "group": "전기적"},

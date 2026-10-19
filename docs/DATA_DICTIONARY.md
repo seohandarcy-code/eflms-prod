@@ -97,7 +97,7 @@
 ### EF2 산출 파이프라인 요약
 
 1. 경과연수: `today` → `operation_year`(일수/365, 소수 1자리) → `age_minus`(표시용, PoF 합산엔 미포함)
-2. 와이블 노화: `cb_stat = e^-((operation_year/72)^3.21)` → `cb_stat_minus = round((cb_stat-1)×100×1)`, `insul_stat = e^-((operation_year/4199)^0.75)` → `insul_stat_minus = round((insul_stat-1)×100×2)`
+2. 노화(차단기·절연물 상태점수): `cb_stat = e^-((operation_year/72)^3.21)` → `cb_stat_minus = round((cb_stat-1)×100×1)`, `insul_stat = e^-((operation_year/4199)^0.75)` → `insul_stat_minus = round((insul_stat-1)×100×2)`
 3. PoF = 100 + 기계적(`cb_op_num` + `cb_stat` + `insul_stat` 감점) + 전기적(정격차단횟수·누적차단전류·부하율·누설전류) + 화학적(부분방전·SF6·전기실온도)
 4. CoF = 100 + (인입전압·생산영향성·화재확산·환경_위치·비상대응·사고복구비용·정상화기간)
 5. DoF = 100 + (인입선로·ATO·공급신뢰도·온라인/오프라인진단·TBM·도체접속·가스기밀·절연스펙·부품신뢰성)
@@ -109,7 +109,7 @@
 |---|---|---|
 | SF6 감점 | 수분 ≤150이면 순도(≤95/≤97)를 보지 않음 | 원본대로 |
 | 누적차단전류 | 중간 구간 기준이 `> 101` | 원본대로 |
-| `age_minus` | 계산하지만 PoF 합산에 미포함(EF1은 포함) — 노화는 와이블 감점이 담당 | 원본대로, 상세 화면엔 표시 |
+| `age_minus` | 계산하지만 PoF 합산에 미포함(EF1은 포함) — 노화는 차단기·절연물 상태점수 감점이 담당 | 원본대로, 상세 화면엔 표시 |
 | 음수 점수 | 실데이터에선 PoF 약 -67, DoF -33까지 이론상 가능(mock 범위에선 PoF 18~98, CoF 40~99, DoF 39~100) | 계산값은 원본대로 저장(엑셀과 일치), 차트 표시만 0~100으로 클램프. 상태 판정엔 영향 없음 |
 | 상태 판정 | — | EF1과 같은 `classify_status` 기준 |
 

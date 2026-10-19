@@ -3,8 +3,10 @@ import { onMounted } from "vue";
 import { useEquipmentStore } from "../stores/equipment";
 import type { Axis, BreakdownItem } from "../types/equipment";
 import { statusColor, statusLabel } from "../utils/statusStyle";
+import { TYPE_GUIDES } from "../utils/typeGuide";
 
 // 구성 항목은 설비유형별 감점 메타데이터(/api/equipment-types)를 그대로 보여준다(Stage 8-5).
+// 유형별 계산 방법 설명은 utils/typeGuide.ts — 없는 유형은 항목 목록만 나온다.
 const store = useEquipmentStore();
 onMounted(() => store.loadTypes());
 
@@ -58,7 +60,7 @@ function groupItems(items: BreakdownItem[]): { group: string | null; items: Brea
           <div class="axis-card">
             <div class="axis-name">DOF</div>
             <div class="axis-full">설계/방어수준 (Degree of Failure protection)</div>
-            <p>고장이 나더라도 피해를 줄여줄 예비 설비·보호 장치가 얼마나 갖춰져 있는지입니다. 예비화, 계통자동전환, 온라인 유중가스 감시, 안전공사 정밀점검 이력 등이 반영됩니다.</p>
+            <p>고장이 나더라도 피해를 줄여줄 예비 설비·보호 장치가 얼마나 갖춰져 있는지입니다. 예비화·자동전환, 상시 감시와 정기 점검, 설계 강화 여부 등이 반영됩니다(설비유형별 항목은 아래).</p>
           </div>
         </div>
       </section>
@@ -70,11 +72,15 @@ function groupItems(items: BreakdownItem[]): { group: string | null; items: Brea
       </section>
 
       <section v-for="info in store.equipmentTypes" :key="info.ef_code" class="card">
-        <h2>각 축을 구성하는 항목 — {{ info.ef_code }} · {{ info.ef_name }}</h2>
+        <h2>계산 방법과 구성 항목 — {{ info.ef_code }} · {{ info.ef_name }}</h2>
         <p class="lead">아래 항목들에서 기준 미달이 있으면 해당 축에서 감점됩니다(대시보드의 "점검필요 순위" 패널에서 항목에 마우스를 올리면 이 설비의 실제 측정값을 볼 수 있습니다).</p>
         <div class="axis-cards">
           <div v-for="axis in AXES" :key="axis" class="axis-card">
             <div class="axis-name">{{ AXIS_TITLES[axis] }}</div>
+            <div v-if="TYPE_GUIDES[info.ef_code]" class="axis-desc">
+              <div class="axis-formula">{{ TYPE_GUIDES[info.ef_code].axes[axis][0] }}</div>
+              <p v-for="(line, i) in TYPE_GUIDES[info.ef_code].axes[axis].slice(1)" :key="i">{{ line }}</p>
+            </div>
             <template v-for="block in groupItems(info.breakdown[axis])" :key="block.group ?? 'all'">
               <div v-if="block.group" class="axis-group">{{ block.group }}</div>
               <ul>
@@ -83,6 +89,16 @@ function groupItems(items: BreakdownItem[]): { group: string | null; items: Brea
             </template>
           </div>
         </div>
+        <div v-if="TYPE_GUIDES[info.ef_code]?.formulas" class="type-formulas">
+          <div v-for="f in TYPE_GUIDES[info.ef_code].formulas" :key="f.label" class="type-formula">
+            <div class="type-formula-label">{{ f.label }}</div>
+            <div class="formula">{{ f.expr }}</div>
+            <div v-if="f.note" class="type-formula-note">{{ f.note }}</div>
+          </div>
+        </div>
+        <ul v-if="TYPE_GUIDES[info.ef_code]?.notes" class="type-notes">
+          <li v-for="(n, i) in TYPE_GUIDES[info.ef_code].notes" :key="i">{{ n }}</li>
+        </ul>
       </section>
       <section v-if="store.equipmentTypes.length === 0" class="card">
         <h2>각 축을 구성하는 항목</h2>
@@ -258,6 +274,49 @@ h2 {
 .rule-table th {
   background: #f9fafb;
   font-weight: 700;
+}
+.axis-desc {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #e2e5ea;
+}
+.axis-formula {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a2230;
+  margin-bottom: 6px;
+}
+.axis-desc p + p {
+  margin-top: 4px;
+}
+.type-formulas {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+.type-formula-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 6px;
+}
+.type-formula .formula {
+  font-size: 13px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.type-formula-note {
+  font-size: 12px;
+  color: #8891a0;
+  margin-top: 6px;
+}
+.type-notes {
+  margin: 14px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #4a5361;
+  line-height: 1.7;
 }
 .axis-group {
   font-size: 12px;

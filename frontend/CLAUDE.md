@@ -28,7 +28,8 @@ npm run dev
 ## 설비유형 (Stage 8-5)
 
 - 유형 목록과 감점 항목 라벨은 `/api/equipment-types`(스토어 `equipmentTypes`, `breakdownFor(ef_code)`)에서 온다 — `utils/scoreBreakdown.ts`에 라벨을 하드코딩하지 않는다. 근거 툴팁 문구만 유형별 맵(`EF1_EVIDENCE`, `EF2_EVIDENCE`)으로 둔다.
-- 새 설비유형을 붙일 때: `types/equipment.ts`에 `EfNTypeDetail` 추가(→ `TypeDetail` union), `components/detail/EfNDetailBody.vue`, `scoreBreakdown.ts`의 근거 맵, 패널 헤더 부제(`typeSubtitle`). 필터·KPI·분포도·가이드는 메타데이터로 자동 반영된다.
+- 새 설비유형을 붙일 때: `types/equipment.ts`에 `EfNTypeDetail` 추가(→ `TypeDetail` union), `components/detail/EfNDetailBody.vue`, `scoreBreakdown.ts`의 근거 맵, 패널 헤더 부제(`typeSubtitle`), 가이드의 계산 방법 설명(`utils/typeGuide.ts`의 `TYPE_GUIDES` — 없으면 가이드에 항목 목록만 나옴). 필터·KPI·분포도·가이드 항목 목록은 메타데이터로 자동 반영된다.
+- 화면 라벨은 원본(`ref_data`) 라벨 표현을 따른다 — 원본에 없는 용어(예: 계산식 이름)를 라벨에 덧붙이지 않는다. 계산식 설명은 가이드(`typeGuide.ts`)에 둔다(2026-10-19, GIS 라벨의 "(와이블)" 제거).
 - 점수는 원본 공식대로 음수가 될 수 있다 — 막대·분포도는 표시만 0~100으로 자른다.
 
 ## 컨벤션

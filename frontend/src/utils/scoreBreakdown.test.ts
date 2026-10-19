@@ -10,7 +10,7 @@ const EF1_BREAKDOWN: Record<Axis, BreakdownItem[]> = {
   dof: [item("redundancy_minus", "예비화"), item("ato_minus", "계통자동전환"), item("online_og_minus", "온라인 유중가스"), item("offline_safety_minus", "안전공사 정밀점검")],
 };
 const EF2_BREAKDOWN: Record<Axis, BreakdownItem[]> = {
-  pof: [item("cb_stat_minus", "차단기 고장확률(와이블)", "기계적"), item("sf6_minus", "SF6 가스", "화학적")],
+  pof: [item("cb_stat_minus", "차단기 고장확률", "기계적"), item("sf6_minus", "SF6 가스", "화학적")],
   cof: [item("in_vol_minus", "인입전압")],
   dof: [item("ato_minus", "ATO 구성")],
 };
@@ -117,7 +117,7 @@ describe("getReasonsByAxis", () => {
   it("works for EF2 score details with that type's own metadata", () => {
     const ef2Detail = { cb_stat_minus: -6, sf6_minus: -15, in_vol_minus: -16, ato_minus: 0, age_minus: -20 };
     const { pof, cof, dof } = getReasonsByAxis(ef2Detail, EF2_BREAKDOWN);
-    expect(pof.map((r) => [r.label, r.value])).toEqual([["SF6 가스", -15], ["차단기 고장확률(와이블)", -6]]);
+    expect(pof.map((r) => [r.label, r.value])).toEqual([["SF6 가스", -15], ["차단기 고장확률", -6]]);
     expect(cof.map((r) => r.value)).toEqual([-16]);
     expect(dof).toEqual([]); // age_minus처럼 메타데이터에 없는 필드는 사유로 안 나온다
   });
