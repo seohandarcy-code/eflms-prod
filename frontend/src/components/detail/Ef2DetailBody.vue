@@ -34,7 +34,6 @@ defineProps<{ typeDetail: Ef2TypeDetail; part: "compact" | "raw" }>();
           <div class="raw-subtitle">기계적 (합계 {{ typeDetail.score_detail.gis_mech_minus }})</div>
           <div class="raw-fields">
             <div class="raw-field"><span>사용연수</span><b>{{ typeDetail.score_detail.operation_year }}년</b></div>
-            <div class="raw-field"><span>경과연수(참고·PoF 미합산)</span><b>{{ typeDetail.score_detail.age_minus }}</b></div>
             <div class="raw-field"><span>차단기 동작횟수</span><b>{{ typeDetail.operation.cb_op_num }}</b></div>
             <div class="raw-field"><span>동작횟수 감점</span><b class="neg">{{ typeDetail.score_detail.cb_op_num_minus }}</b></div>
             <div class="raw-field"><span>차단기 상태점수</span><b>{{ typeDetail.score_detail.cb_stat.toFixed(4) }}</b></div>
@@ -57,6 +56,7 @@ defineProps<{ typeDetail: Ef2TypeDetail; part: "compact" | "raw" }>();
             <div class="raw-field"><span>부하율 감점</span><b class="neg">{{ typeDetail.score_detail.load_minus }}</b></div>
             <div class="raw-field"><span>누설전류</span><b>{{ typeDetail.operation.leakage_curr }}</b></div>
             <div class="raw-field"><span>누설전류 감점</span><b class="neg">{{ typeDetail.score_detail.leakage_curr_minus }}</b></div>
+            <div class="raw-field"><span>경과연수 감점</span><b class="neg">{{ typeDetail.score_detail.age_minus }}</b></div>
           </div>
         </div>
 

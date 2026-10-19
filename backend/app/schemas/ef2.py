@@ -11,7 +11,7 @@ class GisOperationOut(BaseModel):
     op_type: str
     cb_op_num: int
     rated_trip_count: int
-    cum_trip_current: int
+    cum_trip_current: float
     load_percent: float
     leakage_curr: float
 

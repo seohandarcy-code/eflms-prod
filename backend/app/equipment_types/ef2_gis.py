@@ -1,8 +1,8 @@
 """EF2(GIS) 설비유형 계산기 (Stage 8-3).
 
 `ref_data/schema_eflms_gis.py`(2026-10-16 수정본)의 INPUT_COLUMNS/CALCULATED_COLUMNS 공식을
-**그대로** 이식했다 — 공식을 원본과 다르게 해석한 곳은 없다(아래 미사용 항목 제외, SF6 판정 순서, 누적차단전류 `> 101`,
-age_minus 미합산, 음수 점수 허용 모두 원본대로, docs/DATA_DICTIONARY.md "원본 그대로 유지하는
+**그대로** 이식했다 — 공식을 원본과 다르게 해석한 곳은 없다(아래 "원본과 다른 점" 제외, SF6 판정 순서,
+누적차단전류 `> 101`, 음수 점수 허용 모두 원본대로, docs/DATA_DICTIONARY.md "원본 그대로 유지하는
 판단"). tests/test_ef2_gis.py가 같은 입력으로 원본과 결과를 대조한다.
 
 원본과 다른 점:
@@ -10,6 +10,10 @@ age_minus 미합산, 음수 점수 허용 모두 원본대로, docs/DATA_DICTION
   `cb_op_char_over_minus`(Y면 -9)를 빼고, `gis_elec_minus`는 나머지 4항목만 더한다. 원본에
   "N"(감점 0)을 넣은 결과와 같다(테스트가 그렇게 대조). 실제 파일에 이 컬럼이 있으면
   `IGNORED_COLUMNS`로 임포트에서 건너뛴다.
+- **경과연수 감점(`age_minus`)을 전기적 감점에 합산(2026-10-19, 사용자 결정)** — 원본은 계산만 하고
+  어디에도 더하지 않는다. `gis_elec_minus`에 더해 PoF·전체 점수에 반영된다(사용 1년당 -1).
+  노화는 차단기·절연물 고장확률 감점에도 반영되므로 두 가지가 함께 깎인다.
+- `cum_trip_current`(누적 차단 전류) int → float(2026-10-19, 실데이터에 소수값). 감점 기준은 같다.
 - dtype "string" → "str" 통일
 - 임포트 허용값(choices/min/max/required) 추가 — 오류값이 계산에 조용히 0점으로 섞이는 것을 막는다.
   mock 생성기는 원본의 좁혀둔 범위를 그대로 쓰고, 생성값도 이 검증을 통과한다.
@@ -93,14 +97,15 @@ INPUT_COLUMNS = [
      "generator": lambda: date(1999, 10, 1) + timedelta(days=random.randint(0, 7300))},
     {"name": "rated_trip_count", "label": "정격 차단 동작 횟수", "dtype": "int", "min": 0,
      "generator": lambda: random.randint(0, 99)},
-    {"name": "cum_trip_current", "label": "누적 차단 전류", "dtype": "int", "min": 0,
+    {"name": "cum_trip_current", "label": "누적 차단 전류", "dtype": "float", "min": 0,
      "generator": lambda: random.randint(0, 99)},
     {"name": "load_percent", "label": "부하율", "dtype": "float", "min": 0,
      "generator": lambda: random.randint(0, 1000) / 10},
     {"name": "leakage_curr", "label": "누설전류", "dtype": "float", "min": 0,
      "generator": lambda: random.randint(0, 1) / 1000},
+    # mock은 화학적 감점이 나오지 않게 "N"만 생성한다(2026-10-19, 사용자 결정 — 실데이터 Y는 그대로 -15).
     {"name": "part_dischar_pat", "label": "부분 방전 이상 패턴", "dtype": "str", "choices": _YN,
-     "generator": lambda: random.choice(_YN)},
+     "generator": lambda: "N"},
     {"name": "sf6_diag_time", "label": "진단일", "dtype": "date",
      "generator": lambda: date(2024, 11, 1)},
     {"name": "sf6_so2", "label": "sf6_so2", "dtype": "float", "min": 0,
@@ -202,10 +207,11 @@ def leakage_curr_minus_cal(row):
 
 
 def gis_elec_minus_cal(row):
-    # 원본은 cb_op_char_over_minus도 더한다 — 미사용 결정으로 제외(2026-10-19, 모듈 docstring).
+    # 원본과 다른 점 두 가지(2026-10-19, 모듈 docstring): cb_op_char_over_minus는 미사용으로 빼고,
+    # 원본이 합산하지 않는 age_minus(경과연수)를 더한다.
     return (
         row["rated_trip_count_minus"] + row["cum_trip_current_minus"]
-        + row["load_minus"] + row["leakage_curr_minus"]
+        + row["load_minus"] + row["leakage_curr_minus"] + row["age_minus"]
     )
 
 
@@ -470,8 +476,7 @@ async def ingest_domain(row: dict, equipment_id: int, session: AsyncSession) -> 
 # 4. 조회 (Stage 8-4)
 # ------------------------------------------------------------------
 # 감점 항목 메타데이터(원본 라벨 기준). PoF는 원본의 기계적/전기적/화학적 3그룹으로 묶는다.
-# age_minus는 원본에서 계산만 하고 PoF 합산엔 넣지 않는다 — 감점 사유로 띄우면 모든 GIS 설비에
-# 점수와 무관한 큰 감점이 보이게 되므로 메타데이터에서 뺐다(상세 원본 데이터에서만 표시, 2026-10-17).
+# age_minus는 전기적 감점에 합산하므로(2026-10-19) 전기적 그룹에 둔다.
 BREAKDOWN = {
     "pof": [
         {"field": "cb_op_num_minus", "label": "차단기 동작횟수", "group": "기계적"},
@@ -481,6 +486,7 @@ BREAKDOWN = {
         {"field": "cum_trip_current_minus", "label": "누적차단전류", "group": "전기적"},
         {"field": "load_minus", "label": "부하율", "group": "전기적"},
         {"field": "leakage_curr_minus", "label": "누설전류", "group": "전기적"},
+        {"field": "age_minus", "label": "경과연수", "group": "전기적"},
         {"field": "part_dischar_minus", "label": "부분방전", "group": "화학적"},
         {"field": "sf6_minus", "label": "SF6 가스", "group": "화학적"},
         {"field": "elec_room_minus", "label": "전기실 온도", "group": "화학적"},

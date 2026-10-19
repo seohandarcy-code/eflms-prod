@@ -80,6 +80,7 @@ const EF2_EVIDENCE: Record<string, (d: Ef2TypeDetail) => string> = {
   cum_trip_current_minus: (d) => `누적차단전류 ${d.operation.cum_trip_current}`,
   load_minus: (d) => `부하율 ${d.operation.load_percent}%`,
   leakage_curr_minus: (d) => `누설전류 ${d.operation.leakage_curr}`,
+  age_minus: (d) => `경과연수 ${d.score_detail.operation_year}년차`,
   part_dischar_minus: (d) => `부분방전 이상패턴 ${d.diagnosis.part_dischar_pat}`,
   sf6_minus: (d) => `SO2 ${d.sf6.sf6_so2} · 누기 ${d.sf6.sf6_leak} · 수분 ${d.sf6.sf6_h2o} · 순도 ${d.sf6.sf6_purity}%`,
   elec_room_minus: (d) => `전기실 최대온도 ${d.diagnosis.elec_room_max_temp}℃`,

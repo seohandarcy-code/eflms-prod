@@ -21,7 +21,7 @@ class GisOperation(Base):
     op_type: Mapped[str] = mapped_column(String(20))
     cb_op_num: Mapped[int] = mapped_column(Integer)
     rated_trip_count: Mapped[int] = mapped_column(Integer)
-    cum_trip_current: Mapped[int] = mapped_column(Integer)
+    cum_trip_current: Mapped[float] = mapped_column(Float)
     load_percent: Mapped[float] = mapped_column(Float)
     leakage_curr: Mapped[float] = mapped_column(Float)
 

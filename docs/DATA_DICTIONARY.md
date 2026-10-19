@@ -46,7 +46,7 @@
 
 ## EF2(GIS) — Stage 8-3 구현(2026-10-16, 마이그레이션 `b3f7d2a8c615`)
 
-출처: `ref_data/schema_eflms_gis.py`(2026-10-16 수정본). 시스템 계산기(`ef2_gis.py`)는 **원본 공식을 그대로** 옮겼다(아래 "원본 그대로 유지하는 판단" 참고) — `backend/tests/test_ef2_gis.py`가 같은 입력으로 원본과 전 계산 컬럼을 대조한다. 원본에 섞여 있는 `dtype: "string"`은 `str`로 통일했다. 예외: `cb_op_char_over`는 미사용으로 뺐다(아래 "원본과 다르게 바꾼 것").
+출처: `ref_data/schema_eflms_gis.py`(2026-10-16 수정본). 시스템 계산기(`ef2_gis.py`)는 **원본 공식을 그대로** 옮겼다(아래 "원본 그대로 유지하는 판단" 참고) — `backend/tests/test_ef2_gis.py`가 같은 입력으로 원본과 전 계산 컬럼을 대조한다. 원본에 섞여 있는 `dtype: "string"`은 `str`로 통일했다. 예외: `cb_op_char_over` 미사용, `age_minus` 전기적 감점 합산, `cum_trip_current` 소수 허용(아래 "원본과 다르게 바꾼 것").
 
 ### 공통 테이블 매핑
 
@@ -83,7 +83,7 @@
 | `online_diag` | 온라인진단 | `A`~`D` |
 | `part_dischar_pat`, `ato`, `offline_diag`, `tbm`, `conn_rev`, `leak_str`, `insul_str`, `vt_la_str` | 부분방전 이상 패턴 / ATO 구성 / 오프라인진단 / TBM 실시 / 도체접속구조개선 / 가스기밀강화 / 절연스펙강화 / 부품신뢰성강화 | `Y`, `N` |
 | `sf6_leak` | SF6 누기 | `있음`, `없음` |
-| `cb_op_num`, `rated_trip_count`, `cum_trip_current`, `load_percent`, `leakage_curr`, `sf6_so2`, `sf6_h2o` | (수치) | 0 이상 |
+| `cb_op_num`, `rated_trip_count`, `cum_trip_current`, `load_percent`, `leakage_curr`, `sf6_so2`, `sf6_h2o` | (수치) | 0 이상 (`cum_trip_current`는 소수 허용) |
 | `sf6_purity` | SF6 순도 | 0~100 |
 | `elec_room_max_temp` | 전기실 최대온도 | 정수(범위 제한 없음) |
 | `factory_code`, `gis_name`, `op_type` | 사업장명 / 차단기명 / 조작방식 | 빈 값만 거부 |
@@ -96,9 +96,9 @@
 
 ### EF2 산출 파이프라인 요약
 
-1. 경과연수: `today` → `operation_year`(일수/365, 소수 1자리) → `age_minus`(표시용, PoF 합산엔 미포함)
+1. 경과연수: `today` → `operation_year`(일수/365, 소수 1자리) → `age_minus`(전기적 감점에 합산, 원본은 미합산)
 2. 노화(차단기·절연물 상태점수): `cb_stat = e^-((operation_year/72)^3.21)` → `cb_stat_minus = round((cb_stat-1)×100×1)`, `insul_stat = e^-((operation_year/4199)^0.75)` → `insul_stat_minus = round((insul_stat-1)×100×2)`
-3. PoF = 100 + 기계적(`cb_op_num` + `cb_stat` + `insul_stat` 감점) + 전기적(정격차단횟수·누적차단전류·부하율·누설전류) + 화학적(부분방전·SF6·전기실온도)
+3. PoF = 100 + 기계적(`cb_op_num` + `cb_stat` + `insul_stat` 감점) + 전기적(정격차단횟수·누적차단전류·부하율·누설전류·경과연수) + 화학적(부분방전·SF6·전기실온도)
 4. CoF = 100 + (인입전압·생산영향성·화재확산·환경_위치·비상대응·사고복구비용·정상화기간)
 5. DoF = 100 + (인입선로·ATO·공급신뢰도·온라인/오프라인진단·TBM·도체접속·가스기밀·절연스펙·부품신뢰성)
 6. `total_score = 0.5*pof + 0.3*cof + 0.2*dof` (EF1과 동일 가중치 — 전체 보기에서 유형 간 통합 정렬 가능, 2026-10-16 승인)
@@ -109,17 +109,18 @@
 |---|---|---|
 | SF6 감점 | 수분 ≤150이면 순도(≤95/≤97)를 보지 않음 | 원본대로 |
 | 누적차단전류 | 중간 구간 기준이 `> 101` | 원본대로 |
-| `age_minus` | 계산하지만 PoF 합산에 미포함(EF1은 포함) — 노화는 차단기·절연물 상태점수 감점이 담당 | 원본대로, 상세 화면엔 표시 |
-| 음수 점수 | 실데이터에선 PoF 약 -67, DoF -33까지 이론상 가능(mock 범위에선 PoF 18~98, CoF 40~99, DoF 39~100) | 계산값은 원본대로 저장(엑셀과 일치), 차트 표시만 0~100으로 클램프. 상태 판정엔 영향 없음 |
+| 음수 점수 | 실데이터에선 PoF 약 -67(여기에 경과연수 감점만큼 더), DoF -33까지 이론상 가능(mock 범위에선 2026-10 기준 PoF 약 15~91, CoF 40~99, DoF 39~100 — 경과연수 때문에 해마다 1점씩 내려감) | 계산값은 원본대로 저장(엑셀과 일치), 차트 표시만 0~100으로 클램프. 상태 판정엔 영향 없음 |
 | 상태 판정 | — | EF1과 같은 `classify_status` 기준 |
 
-mock 범위에선 감점이 한 번도 발생하지 않는 분기가 7개 있다(`cb_op_num`, `leakage_curr`, `sf6`, `elec_room`, `in_line`, `ato`, `tbm`) — 이 분기들은 입력값을 직접 지정하는 정답값 단위테스트(`test_ef2_gis.py`의 `BRANCHES`)로 검증한다.
+mock 범위에선 감점이 한 번도 발생하지 않는 분기가 8개 있다(`cb_op_num`, `leakage_curr`, `part_dischar`(2026-10-19부터 mock은 `N`만), `sf6`, `elec_room`, `in_line`, `ato`, `tbm`) — 이 분기들은 입력값을 직접 지정하는 정답값 단위테스트(`test_ef2_gis.py`의 `BRANCHES`)로 검증한다.
 
 ### 원본과 다르게 바꾼 것
 
 | 날짜 | 항목 | 원본 | 시스템 |
 |---|---|---|---|
 | 2026-10-19 | `cb_op_char_over`(CB 동작특성 기준치 초과) — 사용자 결정으로 미사용 | 입력 Y면 `cb_op_char_over_minus = -9`, `gis_elec_minus`에 합산 | 입력 컬럼·감점 컬럼·DB 컬럼(마이그레이션 `c4e9a1d7b2f3`)·화면에서 제거. `gis_elec_minus`는 나머지 4항목 합. 결과는 원본에 `"N"`을 넣은 것과 같다(테스트가 그렇게 대조). 실제 파일에 이 컬럼이 있으면 `ef2_gis.IGNORED_COLUMNS`로 임포트가 건너뛴다(저장 안 함, 결과에 "사용 안 하는 컬럼"으로 표시) |
+| 2026-10-19 | `age_minus`(경과연수) — 사용자 결정으로 전기적 감점에 합산 | 계산만 하고 어디에도 합산하지 않음 | `gis_elec_minus`에 더해 PoF·`total_score`에 반영(사용 1년당 -1). 노화는 차단기·절연물 고장확률 감점(기계적)에도 반영돼 함께 깎인다. 감점 사유 메타데이터에 "경과연수"(전기적) 추가. 테스트는 원본 결과에 `age_minus`를 더한 값과 대조 |
+| 2026-10-19 | `cum_trip_current`(누적 차단 전류) — 실데이터에 소수값 | `dtype: "int"` | `float`(DB 컬럼 마이그레이션 `d7a2c5e8f1b4`). 감점 기준(25 이상·101 초과·500 초과)은 같다. mock 생성 범위는 그대로 |
 
 ## 미확정/자동 캡처 컬럼
 

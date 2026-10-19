@@ -1,7 +1,8 @@
 """Stage 8-3 — EF2(GIS) 계산기·적재·임포트 검증.
 
-- 원본(ref_data/schema_eflms_gis.py)과 같은 입력 → 모든 계산 컬럼이 같은지. 단 미사용으로 뺀
-  `cb_op_char_over`(2026-10-19)는 원본에 "N"(감점 0)을 넣어 대조한다 — "그 항목만 빠지고 나머지는 원본 그대로"
+- 원본(ref_data/schema_eflms_gis.py)과 같은 입력 → 모든 계산 컬럼이 같은지. 원본과 다르게 바꾼 두 가지
+  (2026-10-19)만 반영해 대조한다: 미사용으로 뺀 `cb_op_char_over`는 원본에 "N"(감점 0)을 넣고,
+  전기적 감점에 더한 `age_minus`는 원본 결과의 전기적·PoF·전체 점수에 더한다(`_expected`)
 - 감점 분기별 정답값(mock 범위에선 안 나오는 분기 포함)
 - mock 생성값이 임포트 허용값을 통과하는지, 허용값 밖은 거부되는지
 - EF1과 공존(EF2만 교체해도 EF1 불변), 8-4 전 조회 API 안전장치
@@ -64,11 +65,22 @@ def _ref_calculate(ref, row, cb_op_char_over="N"):
     return row
 
 
+def _expected(ref, row):
+    """원본 결과에 우리 쪽 변경(age_minus를 전기적 감점에 합산)을 얹은 기대값."""
+    exp = _ref_calculate(ref, row)
+    age = exp["age_minus"]
+    exp["gis_elec_minus"] += age
+    exp["pof_minus"] += age
+    exp["pof"] = 100 + exp["pof_minus"]
+    exp["total_score"] = 0.5 * exp["pof"] + 0.3 * exp["cof"] + 0.2 * exp["dof"]
+    return exp
+
+
 def _base_row(**overrides):
-    """감점이 하나도 없는 기준 입력(수분 ≤150, 전부 최상 등급) + 덮어쓸 값."""
+    """감점이 하나도 없는 기준 입력(오늘 가동 = 경과연수 0, 수분 ≤150, 전부 최상 등급) + 덮어쓸 값."""
     row = {
         "factory_code": "H1", "EF_code": "EF2", "gis_name": "cb1", "voltage": 154000, "op_type": "공압식",
-        "cb_op_num": 0, "operation_start_time": date.today() - timedelta(days=365),
+        "cb_op_num": 0, "operation_start_time": date.today(),
         "rated_trip_count": 0, "cum_trip_current": 0, "load_percent": 0.0,
         "leakage_curr": 0.0, "part_dischar_pat": "N", "sf6_diag_time": date(2024, 11, 1), "sf6_so2": 0.0,
         "sf6_leak": "없음", "sf6_h2o": 100.0, "sf6_purity": 99.9, "elec_room_max_temp": 25,
@@ -91,6 +103,11 @@ BRANCHES = [
     ({"cum_trip_current": 24}, "cum_trip_current_minus", 0), ({"cum_trip_current": 25}, "cum_trip_current_minus", -8),
     ({"cum_trip_current": 101}, "cum_trip_current_minus", -8), ({"cum_trip_current": 102}, "cum_trip_current_minus", -12),
     ({"cum_trip_current": 501}, "cum_trip_current_minus", -16),
+    # 소수값(2026-10-19 float 전환)
+    ({"cum_trip_current": 24.9}, "cum_trip_current_minus", 0), ({"cum_trip_current": 25.0}, "cum_trip_current_minus", -8),
+    ({"cum_trip_current": 101.5}, "cum_trip_current_minus", -12),
+    ({"operation_start_time": date.today() - timedelta(days=int(12.5 * 365))}, "age_minus", -12),
+    ({"operation_start_time": date.today() - timedelta(days=12 * 365)}, "gis_elec_minus", -12),
     ({"load_percent": 70.0}, "load_minus", 0), ({"load_percent": 70.1}, "load_minus", -10),
     ({"load_percent": 80.1}, "load_minus", -20), ({"load_percent": 90.1}, "load_minus", -30),
     ({"leakage_curr": 0.53}, "leakage_curr_minus", 0), ({"leakage_curr": 0.54}, "leakage_curr_minus", -6),  # *
@@ -134,10 +151,11 @@ def test_aging_and_totals_at_30_years():
     assert row["cb_stat_minus"] == -6       # e^-((30/72)^3.21) = 0.9416
     assert row["insul_stat_minus"] == -5    # e^-((30/4199)^0.75) = 0.9757, ×2
     assert row["gis_mech_minus"] == -11
-    # age_minus는 PoF에 합산하지 않는다(원본대로) — 노화는 차단기·절연물 상태점수(고장확률) 감점이 담당
-    assert row["pof"] == 100 - 11
+    # age_minus는 전기적 감점에 합산한다(2026-10-19, 원본은 미합산) — 고장확률 감점과 함께 깎인다
+    assert row["gis_elec_minus"] == -30
+    assert row["pof"] == 100 - 11 - 30
     assert row["cof"] == 100 and row["dof"] == 100
-    assert row["total_score"] == pytest.approx(0.5 * 89 + 0.3 * 100 + 0.2 * 100)
+    assert row["total_score"] == pytest.approx(0.5 * 59 + 0.3 * 100 + 0.2 * 100)
 
 
 def test_worst_case_scores_can_go_negative_and_are_kept():
@@ -155,9 +173,20 @@ def test_matches_reference_formulas(ref):
     rows.append(_base_row(operation_start_time=date.today() - timedelta(days=45 * 365)))
     for row in rows:
         ours = ef2_gis.calculate(row)
-        theirs = _ref_calculate(ref, row)
+        theirs = _expected(ref, row)
         for name in CALC_NAMES:
             assert ours[name] == theirs[name], (name, row)
+
+
+def test_age_minus_is_added_to_electrical_unlike_reference(ref):
+    """원본은 age_minus를 계산만 하고 더하지 않는다 — 우리는 전기적 감점에 더해 PoF·전체 점수가 그만큼 내려간다."""
+    row = _base_row(operation_start_time=date.today() - timedelta(days=20 * 365))
+    ours, theirs = ef2_gis.calculate(row), _ref_calculate(ref, row)
+    assert ours["age_minus"] == theirs["age_minus"] == -20
+    assert theirs["gis_elec_minus"] == 0 and ours["gis_elec_minus"] == -20
+    assert ours["pof"] == theirs["pof"] - 20
+    assert ours["total_score"] == pytest.approx(theirs["total_score"] - 10)
+    assert {"field": "age_minus", "label": "경과연수", "group": "전기적"} in ef2_gis.BREAKDOWN["pof"]
 
 
 def test_input_columns_match_reference_names(ref):
@@ -188,6 +217,8 @@ def test_mock_rows_pass_import_validation_and_calculate():
             assert _check_allowed(row[col["name"]], col) is None, (col["name"], row[col["name"]])
         calc = ef2_gis.calculate(row)
         assert 0 <= calc["pof"] <= 100 and 0 <= calc["cof"] <= 100 and 0 <= calc["dof"] <= 100
+        # mock은 화학적 감점(부분방전·전기실 온도·SF6)이 나오지 않게 생성한다(2026-10-19)
+        assert calc["part_dischar_minus"] == calc["elec_room_minus"] == calc["gis_chem_minus"] == 0
 
 
 # ------------------------------------------------------------------ 임포트
@@ -355,3 +386,48 @@ def test_drop_cb_op_char_over_migration_round_trip(tmp_path, monkeypatch):
             assert conn.execute("SELECT count(*) FROM gis_operation").fetchone() == (1,)
     finally:
         get_settings.cache_clear()
+
+
+def test_cum_trip_current_float_migration_round_trip(tmp_path, monkeypatch):
+    db_path = tmp_path / "gis_float.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path.as_posix()}")
+    get_settings.cache_clear()
+
+    def col_type():
+        with sqlite3.connect(db_path) as conn:
+            return {r[1]: r[2] for r in conn.execute("PRAGMA table_info(gis_operation)")}["cum_trip_current"]
+
+    try:
+        cfg = Config()
+        cfg.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
+        command.upgrade(cfg, "head")
+        assert col_type() == "FLOAT"
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(
+                "INSERT INTO gis_operation (equipment_id, measured_at, op_type, cb_op_num, rated_trip_count,"
+                " cum_trip_current, load_percent, leakage_curr) VALUES (1, '2026-10-19', '공압식', 1, 1, 12.6, 1.0, 0.0)"
+            )
+
+        command.downgrade(cfg, "c4e9a1d7b2f3")  # 소수값은 반올림해 정수로
+        assert col_type() == "INTEGER"
+        with sqlite3.connect(db_path) as conn:
+            assert conn.execute("SELECT cum_trip_current FROM gis_operation").fetchall() == [(13,)]
+
+        command.upgrade(cfg, "head")
+        assert col_type() == "FLOAT"
+    finally:
+        get_settings.cache_clear()
+
+
+async def test_import_accepts_decimal_cum_trip_current(session_factory, tmp_path):
+    rows = [ef2_gis.generate_input_row() for _ in range(2)]
+    rows[0]["cum_trip_current"], rows[1]["cum_trip_current"] = 24.9, 102.5
+    async with session_factory() as session:
+        result = await import_file(_write_ef2_dat(tmp_path, rows), "EF2", session)
+        assert result.ok, (result.file_errors, result.row_errors)
+        stored = (await session.execute(
+            select(GisOperation.cum_trip_current, GisScoreDetail.cum_trip_current_minus)
+            .join(GisScoreDetail, GisScoreDetail.equipment_id == GisOperation.equipment_id)
+            .order_by(GisOperation.cum_trip_current)
+        )).all()
+        assert [tuple(r) for r in stored] == [(24.9, 0), (102.5, -12)]
