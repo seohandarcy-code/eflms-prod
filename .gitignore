@@ -15,6 +15,9 @@ dist/
 
 # Databases
 *.db
+
+# 실데이터(회사 파일) — git에 올리지 않는다(README "다른 PC에서 실데이터로 시작하기")
+real_data/
 *.sqlite3
 
 # OS
