@@ -53,8 +53,6 @@ defineProps<{ typeDetail: Ef2TypeDetail; part: "compact" | "raw" }>();
             <div class="raw-field"><span>정격차단 감점</span><b class="neg">{{ typeDetail.score_detail.rated_trip_count_minus }}</b></div>
             <div class="raw-field"><span>누적차단전류</span><b>{{ typeDetail.operation.cum_trip_current }}</b></div>
             <div class="raw-field"><span>누적차단전류 감점</span><b class="neg">{{ typeDetail.score_detail.cum_trip_current_minus }}</b></div>
-            <div class="raw-field"><span>동작특성 기준치 초과</span><b>{{ typeDetail.operation.cb_op_char_over }}</b></div>
-            <div class="raw-field"><span>동작특성 감점</span><b class="neg">{{ typeDetail.score_detail.cb_op_char_over_minus }}</b></div>
             <div class="raw-field"><span>부하율</span><b>{{ typeDetail.operation.load_percent }}%</b></div>
             <div class="raw-field"><span>부하율 감점</span><b class="neg">{{ typeDetail.score_detail.load_minus }}</b></div>
             <div class="raw-field"><span>누설전류</span><b>{{ typeDetail.operation.leakage_curr }}</b></div>

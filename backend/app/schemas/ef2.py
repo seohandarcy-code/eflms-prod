@@ -12,7 +12,6 @@ class GisOperationOut(BaseModel):
     cb_op_num: int
     rated_trip_count: int
     cum_trip_current: int
-    cb_op_char_over: str
     load_percent: float
     leakage_curr: float
 
@@ -76,7 +75,6 @@ class GisScoreDetailOut(BaseModel):
     gis_mech_minus: int
     rated_trip_count_minus: int
     cum_trip_current_minus: int
-    cb_op_char_over_minus: int
     load_minus: int
     leakage_curr_minus: int
     gis_elec_minus: int

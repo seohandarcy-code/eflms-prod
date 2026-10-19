@@ -23,6 +23,8 @@ class EquipmentTypeModule(Protocol):
     DOMAIN_TABLES: list[type]
     # 축별 감점 항목 메타데이터 {"pof"|"cof"|"dof": [{field, label, group?, summed?}]} — 화면 표시용(Stage 8-4)
     BREAKDOWN: dict[str, list[dict[str, Any]]]
+    # (선택) 원본 파일에 있지만 쓰지 않는 컬럼 이름 튜플 — 임포트가 저장하지 않고 건너뛴다.
+    # 선언하지 않으면 빈 튜플로 취급한다(import_service가 getattr로 읽음). 예: EF2 cb_op_char_over.
 
     def generate_input_row(self) -> dict: ...
 

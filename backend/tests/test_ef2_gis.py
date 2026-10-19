@@ -1,6 +1,7 @@
 """Stage 8-3 — EF2(GIS) 계산기·적재·임포트 검증.
 
-- 원본(ref_data/schema_eflms_gis.py)과 같은 입력 → 모든 계산 컬럼이 같은지
+- 원본(ref_data/schema_eflms_gis.py)과 같은 입력 → 모든 계산 컬럼이 같은지. 단 미사용으로 뺀
+  `cb_op_char_over`(2026-10-19)는 원본에 "N"(감점 0)을 넣어 대조한다 — "그 항목만 빠지고 나머지는 원본 그대로"
 - 감점 분기별 정답값(mock 범위에선 안 나오는 분기 포함)
 - mock 생성값이 임포트 허용값을 통과하는지, 허용값 밖은 거부되는지
 - EF1과 공존(EF2만 교체해도 EF1 불변), 8-4 전 조회 API 안전장치
@@ -19,6 +20,7 @@ from sqlalchemy import func, select
 from app.core.config import BACKEND_DIR, get_settings
 from app.db.models import (
     Equipment,
+    EquipmentExtraAttribute,
     GisConsequenceAttribute,
     GisDesignAttribute,
     GisDiagnosis,
@@ -35,6 +37,9 @@ from app.services.ingest import ingest_row
 
 REF_PATH = BACKEND_DIR.parent / "ref_data" / "schema_eflms_gis.py"
 CALC_NAMES = [c["name"] for c in ef2_gis.CALCULATED_COLUMNS]
+# 미사용 결정으로 원본에서 뺀 입력과 그 감점 컬럼(2026-10-19)
+REMOVED_INPUTS = ("cb_op_char_over",)
+REMOVED_CALCS = ("cb_op_char_over_minus",)
 
 
 @pytest.fixture(scope="module")
@@ -51,8 +56,9 @@ def ref():
     return module
 
 
-def _ref_calculate(ref, row):
-    row = dict(row)
+def _ref_calculate(ref, row, cb_op_char_over="N"):
+    # 원본은 cb_op_char_over를 요구한다 — 우리 계산에서 뺀 항목이므로 감점 없는 "N"으로 채운다.
+    row = {**row, "cb_op_char_over": cb_op_char_over}
     for col in ref.CALCULATED_COLUMNS:
         row[col["name"]] = col["formula"](row)
     return row
@@ -63,7 +69,7 @@ def _base_row(**overrides):
     row = {
         "factory_code": "H1", "EF_code": "EF2", "gis_name": "cb1", "voltage": 154000, "op_type": "공압식",
         "cb_op_num": 0, "operation_start_time": date.today() - timedelta(days=365),
-        "rated_trip_count": 0, "cum_trip_current": 0, "cb_op_char_over": "N", "load_percent": 0.0,
+        "rated_trip_count": 0, "cum_trip_current": 0, "load_percent": 0.0,
         "leakage_curr": 0.0, "part_dischar_pat": "N", "sf6_diag_time": date(2024, 11, 1), "sf6_so2": 0.0,
         "sf6_leak": "없음", "sf6_h2o": 100.0, "sf6_purity": 99.9, "elec_room_max_temp": 25,
         "in_vol": "C", "capa_times_load": "E", "fire_spread": "B", "env_loc": "C", "emerge_resp_pat": "E",
@@ -85,7 +91,6 @@ BRANCHES = [
     ({"cum_trip_current": 24}, "cum_trip_current_minus", 0), ({"cum_trip_current": 25}, "cum_trip_current_minus", -8),
     ({"cum_trip_current": 101}, "cum_trip_current_minus", -8), ({"cum_trip_current": 102}, "cum_trip_current_minus", -12),
     ({"cum_trip_current": 501}, "cum_trip_current_minus", -16),
-    ({"cb_op_char_over": "Y"}, "cb_op_char_over_minus", -9),
     ({"load_percent": 70.0}, "load_minus", 0), ({"load_percent": 70.1}, "load_minus", -10),
     ({"load_percent": 80.1}, "load_minus", -20), ({"load_percent": 90.1}, "load_minus", -30),
     ({"leakage_curr": 0.53}, "leakage_curr_minus", 0), ({"leakage_curr": 0.54}, "leakage_curr_minus", -6),  # *
@@ -156,8 +161,23 @@ def test_matches_reference_formulas(ref):
 
 
 def test_input_columns_match_reference_names(ref):
-    assert [c["name"] for c in ef2_gis.INPUT_COLUMNS] == [c["name"] for c in ref.INPUT_COLUMNS]
-    assert CALC_NAMES == [c["name"] for c in ref.CALCULATED_COLUMNS]
+    """원본 컬럼 목록에서 미사용으로 뺀 것만 빠지고, 이름·순서는 원본 그대로."""
+    assert [c["name"] for c in ef2_gis.INPUT_COLUMNS] == [
+        c["name"] for c in ref.INPUT_COLUMNS if c["name"] not in REMOVED_INPUTS
+    ]
+    assert CALC_NAMES == [c["name"] for c in ref.CALCULATED_COLUMNS if c["name"] not in REMOVED_CALCS]
+    assert ef2_gis.IGNORED_COLUMNS == REMOVED_INPUTS
+
+
+def test_cb_op_char_over_no_longer_affects_score(ref):
+    """원본은 Y면 전기적 감점 -9 — 우리 계산은 입력에 Y가 있어도 무시하고 원본의 "N" 결과와 같다."""
+    row = _base_row(cb_op_char_over="Y")
+    ours = ef2_gis.calculate(row)
+    assert "cb_op_char_over_minus" not in ours
+    assert ours["gis_elec_minus"] == _ref_calculate(ref, row, "N")["gis_elec_minus"] == 0
+    assert _ref_calculate(ref, row, "Y")["gis_elec_minus"] == -9
+    assert ours["pof"] == 100
+    assert not any(item["field"] == "cb_op_char_over_minus" for item in ef2_gis.BREAKDOWN["pof"])
 
 
 def test_mock_rows_pass_import_validation_and_calculate():
@@ -215,6 +235,28 @@ async def test_import_rejects_out_of_range_values(session_factory, tmp_path, col
         assert [(e.row_number, e.column) for e in result.row_errors] == [(3, column)]
         assert reason_part in result.row_errors[0].reason
         assert await count_type(session, "EF2") == 0
+
+
+async def test_import_skips_ignored_column_from_reference_style_file(session_factory, tmp_path):
+    """실제 파일은 원본 컬럼명대로라 cb_op_char_over가 들어 있다 — 저장하지 않고 건너뛴다(값이 이상해도)."""
+    rows = [ef2_gis.generate_input_row() for _ in range(3)]
+    names = [c["name"] for c in ef2_gis.INPUT_COLUMNS]
+    pos = names.index("cum_trip_current") + 1  # 원본 순서 위치
+    header = names[:pos] + ["cb_op_char_over"] + names[pos:]
+    lines = ["\t".join(header)]
+    for r, flag in zip(rows, ["Y", "N", "아무값"]):
+        cells = [_fmt(r[n]) for n in names]
+        lines.append("\t".join(cells[:pos] + [flag] + cells[pos:]))
+    path = tmp_path / "ref_style.dat"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    async with session_factory() as session:
+        result = await import_file(str(path), "EF2", session)
+        assert result.ok, (result.file_errors, result.row_errors)
+        assert result.ignored_columns == ["cb_op_char_over"]
+        assert result.unknown_columns == []
+        assert await session.scalar(select(func.count()).select_from(EquipmentExtraAttribute)) == 0
+        assert await count_type(session, "EF2") == 3
 
 
 # ------------------------------------------------------------------ EF1과 공존
@@ -277,5 +319,39 @@ def test_gis_migration_round_trip(tmp_path, monkeypatch):
         command.downgrade(cfg, "8a1c4e2f9b70")
         with sqlite3.connect(db_path) as conn:
             assert not gis_tables & {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    finally:
+        get_settings.cache_clear()
+
+
+def test_drop_cb_op_char_over_migration_round_trip(tmp_path, monkeypatch):
+    db_path = tmp_path / "gis_drop.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path.as_posix()}")
+    get_settings.cache_clear()
+
+    def columns(table):
+        with sqlite3.connect(db_path) as conn:
+            return {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+
+    try:
+        cfg = Config()
+        cfg.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
+        command.upgrade(cfg, "head")
+        assert "cb_op_char_over" not in columns("gis_operation")
+        assert "cb_op_char_over_minus" not in columns("gis_score_detail")
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(
+                "INSERT INTO gis_operation (equipment_id, measured_at, op_type, cb_op_num, rated_trip_count,"
+                " cum_trip_current, load_percent, leakage_curr) VALUES (1, '2026-10-19', '공압식', 1, 1, 1, 1.0, 0.0)"
+            )
+
+        command.downgrade(cfg, "b3f7d2a8c615")  # 기존 행엔 감점 없는 값으로 되살아난다
+        with sqlite3.connect(db_path) as conn:
+            assert conn.execute("SELECT cb_op_char_over FROM gis_operation").fetchall() == [("N",)]
+        assert "cb_op_char_over_minus" in columns("gis_score_detail")
+
+        command.upgrade(cfg, "head")
+        assert "cb_op_char_over" not in columns("gis_operation")
+        with sqlite3.connect(db_path) as conn:
+            assert conn.execute("SELECT count(*) FROM gis_operation").fetchone() == (1,)
     finally:
         get_settings.cache_clear()

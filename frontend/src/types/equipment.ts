@@ -166,7 +166,6 @@ export interface Ef2ScoreDetail {
   gis_mech_minus: number;
   rated_trip_count_minus: number;
   cum_trip_current_minus: number;
-  cb_op_char_over_minus: number;
   load_minus: number;
   leakage_curr_minus: number;
   gis_elec_minus: number;
@@ -201,7 +200,6 @@ export interface Ef2TypeDetail {
     cb_op_num: number;
     rated_trip_count: number;
     cum_trip_current: number;
-    cb_op_char_over: string;
     load_percent: number;
     leakage_curr: number;
   };

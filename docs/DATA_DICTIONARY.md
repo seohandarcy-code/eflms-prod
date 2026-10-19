@@ -46,7 +46,7 @@
 
 ## EF2(GIS) — Stage 8-3 구현(2026-10-16, 마이그레이션 `b3f7d2a8c615`)
 
-출처: `ref_data/schema_eflms_gis.py`(2026-10-16 수정본). 시스템 계산기(`ef2_gis.py`)는 **원본 공식을 그대로** 옮겼다(아래 "원본 그대로 유지하는 판단" 참고) — `backend/tests/test_ef2_gis.py`가 같은 입력으로 원본과 전 계산 컬럼을 대조한다. 원본에 섞여 있는 `dtype: "string"`은 `str`로 통일했다.
+출처: `ref_data/schema_eflms_gis.py`(2026-10-16 수정본). 시스템 계산기(`ef2_gis.py`)는 **원본 공식을 그대로** 옮겼다(아래 "원본 그대로 유지하는 판단" 참고) — `backend/tests/test_ef2_gis.py`가 같은 입력으로 원본과 전 계산 컬럼을 대조한다. 원본에 섞여 있는 `dtype: "string"`은 `str`로 통일했다. 예외: `cb_op_char_over`는 미사용으로 뺐다(아래 "원본과 다르게 바꾼 것").
 
 ### 공통 테이블 매핑
 
@@ -60,7 +60,7 @@
 
 | 테이블 | INPUT_COLUMNS 매핑 | 시점 컬럼 | 축 |
 |---|---|---|---|
-| `gis_operation` | `op_type`, `cb_op_num`, `rated_trip_count`, `cum_trip_current`, `cb_op_char_over`, `load_percent`, `leakage_curr` | `measured_at` (신규 — 원본 mock엔 날짜 없음) | PoF 기계·전기 |
+| `gis_operation` | `op_type`, `cb_op_num`, `rated_trip_count`, `cum_trip_current`, `load_percent`, `leakage_curr` | `measured_at` (신규 — 원본 mock엔 날짜 없음) | PoF 기계·전기 |
 | `gis_diagnosis` | `part_dischar_pat`, `elec_room_max_temp` | `measured_at` (신규) | PoF 화학 |
 | `gis_sf6_reading` | `sf6_so2`, `sf6_leak`, `sf6_h2o`, `sf6_purity` | `diag_time` (= `sf6_diag_time`) | PoF 화학 |
 | `gis_consequence_attribute` | `in_vol`, `capa_times_load`, `fire_spread`, `env_loc`, `emerge_resp_pat`, `rep_cost`, `rep_time` | `updated_at` | CoF |
@@ -81,7 +81,7 @@
 | `capa_times_load`, `emerge_resp_pat`, `rep_cost`, `rep_time` | 생산영향성 / 비상대응시간 / 사고복구비용 / 정상화기간 | `A`~`E` |
 | `fire_spread`, `reliability` | 화재확산 / 공급신뢰도 | `A`, `B` |
 | `online_diag` | 온라인진단 | `A`~`D` |
-| `cb_op_char_over`, `part_dischar_pat`, `ato`, `offline_diag`, `tbm`, `conn_rev`, `leak_str`, `insul_str`, `vt_la_str` | CB 동작특성 기준치 초과 / 부분방전 이상 패턴 / ATO 구성 / 오프라인진단 / TBM 실시 / 도체접속구조개선 / 가스기밀강화 / 절연스펙강화 / 부품신뢰성강화 | `Y`, `N` |
+| `part_dischar_pat`, `ato`, `offline_diag`, `tbm`, `conn_rev`, `leak_str`, `insul_str`, `vt_la_str` | 부분방전 이상 패턴 / ATO 구성 / 오프라인진단 / TBM 실시 / 도체접속구조개선 / 가스기밀강화 / 절연스펙강화 / 부품신뢰성강화 | `Y`, `N` |
 | `sf6_leak` | SF6 누기 | `있음`, `없음` |
 | `cb_op_num`, `rated_trip_count`, `cum_trip_current`, `load_percent`, `leakage_curr`, `sf6_so2`, `sf6_h2o` | (수치) | 0 이상 |
 | `sf6_purity` | SF6 순도 | 0~100 |
@@ -92,13 +92,13 @@
 
 `score_snapshot`(공통)에 들어가는 7개를 제외한 나머지 CALCULATED_COLUMNS 전부:
 
-`today`, `operation_year`, `age_minus`, `cb_op_num_minus`, `cb_op_year`, `cb_stat`, `cb_stat_minus`, `insul_year`, `insul_stat`, `insul_stat_minus`, `gis_mech_minus`, `rated_trip_count_minus`, `cum_trip_current_minus`, `cb_op_char_over_minus`, `load_minus`, `leakage_curr_minus`, `gis_elec_minus`, `part_dischar_minus`, `sf6_minus`, `elec_room_minus`, `gis_chem_minus`, `in_vol_minus`, `productivity_minus`, `fire_spread_minus`, `env_minus`, `emerge_resp_minus`, `rep_cost_minus`, `rep_time_minus`, `in_line_minus`, `ato_minus`, `reliability_minus`, `online_diag_minus`, `offline_diag_minus`, `tbm_minus`, `conn_rev_minus`, `leak_str_minus`, `insul_str_minus`, `vt_la_minus`
+`today`, `operation_year`, `age_minus`, `cb_op_num_minus`, `cb_op_year`, `cb_stat`, `cb_stat_minus`, `insul_year`, `insul_stat`, `insul_stat_minus`, `gis_mech_minus`, `rated_trip_count_minus`, `cum_trip_current_minus`, `load_minus`, `leakage_curr_minus`, `gis_elec_minus`, `part_dischar_minus`, `sf6_minus`, `elec_room_minus`, `gis_chem_minus`, `in_vol_minus`, `productivity_minus`, `fire_spread_minus`, `env_minus`, `emerge_resp_minus`, `rep_cost_minus`, `rep_time_minus`, `in_line_minus`, `ato_minus`, `reliability_minus`, `online_diag_minus`, `offline_diag_minus`, `tbm_minus`, `conn_rev_minus`, `leak_str_minus`, `insul_str_minus`, `vt_la_minus`
 
 ### EF2 산출 파이프라인 요약
 
 1. 경과연수: `today` → `operation_year`(일수/365, 소수 1자리) → `age_minus`(표시용, PoF 합산엔 미포함)
 2. 와이블 노화: `cb_stat = e^-((operation_year/72)^3.21)` → `cb_stat_minus = round((cb_stat-1)×100×1)`, `insul_stat = e^-((operation_year/4199)^0.75)` → `insul_stat_minus = round((insul_stat-1)×100×2)`
-3. PoF = 100 + 기계적(`cb_op_num` + `cb_stat` + `insul_stat` 감점) + 전기적(정격차단횟수·누적차단전류·동작특성·부하율·누설전류) + 화학적(부분방전·SF6·전기실온도)
+3. PoF = 100 + 기계적(`cb_op_num` + `cb_stat` + `insul_stat` 감점) + 전기적(정격차단횟수·누적차단전류·부하율·누설전류) + 화학적(부분방전·SF6·전기실온도)
 4. CoF = 100 + (인입전압·생산영향성·화재확산·환경_위치·비상대응·사고복구비용·정상화기간)
 5. DoF = 100 + (인입선로·ATO·공급신뢰도·온라인/오프라인진단·TBM·도체접속·가스기밀·절연스펙·부품신뢰성)
 6. `total_score = 0.5*pof + 0.3*cof + 0.2*dof` (EF1과 동일 가중치 — 전체 보기에서 유형 간 통합 정렬 가능, 2026-10-16 승인)
@@ -114,6 +114,12 @@
 | 상태 판정 | — | EF1과 같은 `classify_status` 기준 |
 
 mock 범위에선 감점이 한 번도 발생하지 않는 분기가 7개 있다(`cb_op_num`, `leakage_curr`, `sf6`, `elec_room`, `in_line`, `ato`, `tbm`) — 이 분기들은 입력값을 직접 지정하는 정답값 단위테스트(`test_ef2_gis.py`의 `BRANCHES`)로 검증한다.
+
+### 원본과 다르게 바꾼 것
+
+| 날짜 | 항목 | 원본 | 시스템 |
+|---|---|---|---|
+| 2026-10-19 | `cb_op_char_over`(CB 동작특성 기준치 초과) — 사용자 결정으로 미사용 | 입력 Y면 `cb_op_char_over_minus = -9`, `gis_elec_minus`에 합산 | 입력 컬럼·감점 컬럼·DB 컬럼(마이그레이션 `c4e9a1d7b2f3`)·화면에서 제거. `gis_elec_minus`는 나머지 4항목 합. 결과는 원본에 `"N"`을 넣은 것과 같다(테스트가 그렇게 대조). 실제 파일에 이 컬럼이 있으면 `ef2_gis.IGNORED_COLUMNS`로 임포트가 건너뛴다(저장 안 함, 결과에 "사용 안 하는 컬럼"으로 표시) |
 
 ## 미확정/자동 캡처 컬럼
 

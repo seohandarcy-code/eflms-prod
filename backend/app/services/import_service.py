@@ -123,6 +123,7 @@ class ImportResult:
     file_errors: list[str] = field(default_factory=list)
     row_errors: list[RowError] = field(default_factory=list)
     unknown_columns: list[str] = field(default_factory=list)
+    ignored_columns: list[str] = field(default_factory=list)  # 유형이 IGNORED_COLUMNS로 선언한, 건너뛴 컬럼
     dry_run: bool = False
     existing_rows: int = 0  # dry_run일 때 현재 그 유형의 설비 수(--replace면 지워질 수)
 
@@ -180,8 +181,13 @@ async def import_file(
         return result
 
     matched_cols = [_match_column(columns_by_name, h) for h in header]
-    for h, col in zip(header, matched_cols):
-        if col is None and h.strip():
+    # 유형이 "원본엔 있지만 쓰지 않는다"고 선언한 컬럼 — 미등록 컬럼(extra 보관)과 달리 아예 버린다.
+    ignored = set(getattr(module, "IGNORED_COLUMNS", ()))
+    skip = [col is None and h in ignored for h, col in zip(header, matched_cols)]
+    for h, col, is_skipped in zip(header, matched_cols, skip):
+        if is_skipped:
+            result.ignored_columns.append(h)
+        elif col is None and h.strip():
             result.unknown_columns.append(h.strip())
 
     # 필수 입력 컬럼(스키마 전체)이 파일에 하나도 없으면 행 단위가 아니라 파일 단위 오류
@@ -212,7 +218,9 @@ async def import_file(
             continue
         row: dict = {"EF_code": ef_code}
         extras: dict[str, str] = {}
-        for h, col, raw_value in zip(header, matched_cols, raw_row):
+        for h, col, raw_value, is_skipped in zip(header, matched_cols, raw_row, skip):
+            if is_skipped:
+                continue
             if col is None:
                 if raw_value.strip():
                     extras[h.strip()] = raw_value.strip()

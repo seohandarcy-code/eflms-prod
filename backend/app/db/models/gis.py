@@ -22,7 +22,6 @@ class GisOperation(Base):
     cb_op_num: Mapped[int] = mapped_column(Integer)
     rated_trip_count: Mapped[int] = mapped_column(Integer)
     cum_trip_current: Mapped[int] = mapped_column(Integer)
-    cb_op_char_over: Mapped[str] = mapped_column(String(10))
     load_percent: Mapped[float] = mapped_column(Float)
     leakage_curr: Mapped[float] = mapped_column(Float)
 
@@ -109,7 +108,6 @@ class GisScoreDetail(Base):
 
     rated_trip_count_minus: Mapped[int] = mapped_column(Integer)
     cum_trip_current_minus: Mapped[int] = mapped_column(Integer)
-    cb_op_char_over_minus: Mapped[int] = mapped_column(Integer)
     load_minus: Mapped[int] = mapped_column(Integer)
     leakage_curr_minus: Mapped[int] = mapped_column(Integer)
     gis_elec_minus: Mapped[int] = mapped_column(Integer)

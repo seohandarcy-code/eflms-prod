@@ -42,6 +42,7 @@ async def run(path: str, ef_code: str, replace: bool, check: bool = False) -> bo
                 "file_errors": result.file_errors,
                 "row_errors": [asdict(e) for e in result.row_errors],
                 "unknown_columns": result.unknown_columns,
+                "ignored_columns": result.ignored_columns,
             },
             ensure_ascii=False,
             default=str,
@@ -68,6 +69,8 @@ async def run(path: str, ef_code: str, replace: bool, check: bool = False) -> bo
             print(f"  - {fe}")
         for e in result.row_errors:
             print(f"  - {e.row_number}행 {e.column}: '{e.raw_value}' ({e.reason})")
+    if result.ignored_columns:
+        print(f"  사용 안 하는 컬럼(무시, 저장 안 함): {', '.join(result.ignored_columns)}")
     return result.ok
 
 

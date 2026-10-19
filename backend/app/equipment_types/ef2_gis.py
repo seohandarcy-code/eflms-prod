@@ -1,11 +1,15 @@
 """EF2(GIS) 설비유형 계산기 (Stage 8-3).
 
 `ref_data/schema_eflms_gis.py`(2026-10-16 수정본)의 INPUT_COLUMNS/CALCULATED_COLUMNS 공식을
-**그대로** 이식했다 — 원본과 다르게 해석한 곳은 없다(SF6 판정 순서, 누적차단전류 `> 101`,
+**그대로** 이식했다 — 공식을 원본과 다르게 해석한 곳은 없다(아래 미사용 항목 제외, SF6 판정 순서, 누적차단전류 `> 101`,
 age_minus 미합산, 음수 점수 허용 모두 원본대로, docs/DATA_DICTIONARY.md "원본 그대로 유지하는
 판단"). tests/test_ef2_gis.py가 같은 입력으로 원본과 결과를 대조한다.
 
-원본과 다른 점은 계산 외적인 것뿐이다:
+원본과 다른 점:
+- **`cb_op_char_over`(CB 동작특성 기준치 초과) 미사용(2026-10-19, 사용자 결정)** — 입력 컬럼과
+  `cb_op_char_over_minus`(Y면 -9)를 빼고, `gis_elec_minus`는 나머지 4항목만 더한다. 원본에
+  "N"(감점 0)을 넣은 결과와 같다(테스트가 그렇게 대조). 실제 파일에 이 컬럼이 있으면
+  `IGNORED_COLUMNS`로 임포트에서 건너뛴다.
 - dtype "string" → "str" 통일
 - 임포트 허용값(choices/min/max/required) 추가 — 오류값이 계산에 조용히 0점으로 섞이는 것을 막는다.
   mock 생성기는 원본의 좁혀둔 범위를 그대로 쓰고, 생성값도 이 검증을 통과한다.
@@ -42,6 +46,8 @@ from app.schemas.ef2 import (
 EF_CODE = "EF2"
 EF_NAME = "GIS"
 NAME_FIELD = "gis_name"
+# 원본 컬럼이지만 쓰지 않는 입력 — 실제 파일에 있어도 임포트가 저장하지 않고 건너뛴다(import_service).
+IGNORED_COLUMNS = ("cb_op_char_over",)
 DOMAIN_TABLES = [
     GisScoreDetail,
     GisOperation,
@@ -89,8 +95,6 @@ INPUT_COLUMNS = [
      "generator": lambda: random.randint(0, 99)},
     {"name": "cum_trip_current", "label": "누적 차단 전류", "dtype": "int", "min": 0,
      "generator": lambda: random.randint(0, 99)},
-    {"name": "cb_op_char_over", "label": "CB 동작특성 기준치 초과", "dtype": "str", "choices": _YN,
-     "generator": lambda: random.choice(_YN)},
     {"name": "load_percent", "label": "부하율", "dtype": "float", "min": 0,
      "generator": lambda: random.randint(0, 1000) / 10},
     {"name": "leakage_curr", "label": "누설전류", "dtype": "float", "min": 0,
@@ -181,10 +185,6 @@ def cum_trip_current_minus_cal(row):
     return 0
 
 
-def cb_op_char_over_minus_cal(row):
-    return -9 if row["cb_op_char_over"] == "Y" else 0
-
-
 def load_minus_cal(row):
     s = row["load_percent"]
     if s > 90: return -30
@@ -202,8 +202,9 @@ def leakage_curr_minus_cal(row):
 
 
 def gis_elec_minus_cal(row):
+    # 원본은 cb_op_char_over_minus도 더한다 — 미사용 결정으로 제외(2026-10-19, 모듈 docstring).
     return (
-        row["rated_trip_count_minus"] + row["cum_trip_current_minus"] + row["cb_op_char_over_minus"]
+        row["rated_trip_count_minus"] + row["cum_trip_current_minus"]
         + row["load_minus"] + row["leakage_curr_minus"]
     )
 
@@ -347,7 +348,6 @@ CALCULATED_COLUMNS = [
     {"name": "gis_mech_minus", "formula": gis_mech_minus_cal},
     {"name": "rated_trip_count_minus", "formula": rated_trip_count_minus_cal},
     {"name": "cum_trip_current_minus", "formula": cum_trip_current_minus_cal},
-    {"name": "cb_op_char_over_minus", "formula": cb_op_char_over_minus_cal},
     {"name": "load_minus", "formula": load_minus_cal},
     {"name": "leakage_curr_minus", "formula": leakage_curr_minus_cal},
     {"name": "gis_elec_minus", "formula": gis_elec_minus_cal},
@@ -409,7 +409,6 @@ async def ingest_domain(row: dict, equipment_id: int, session: AsyncSession) -> 
             cb_op_num=row["cb_op_num"],
             rated_trip_count=row["rated_trip_count"],
             cum_trip_current=row["cum_trip_current"],
-            cb_op_char_over=row["cb_op_char_over"],
             load_percent=row["load_percent"],
             leakage_curr=row["leakage_curr"],
         )
@@ -480,7 +479,6 @@ BREAKDOWN = {
         {"field": "insul_stat_minus", "label": "절연물 고장확률(와이블)", "group": "기계적"},
         {"field": "rated_trip_count_minus", "label": "정격차단 동작횟수", "group": "전기적"},
         {"field": "cum_trip_current_minus", "label": "누적차단전류", "group": "전기적"},
-        {"field": "cb_op_char_over_minus", "label": "차단기 동작특성", "group": "전기적"},
         {"field": "load_minus", "label": "부하율", "group": "전기적"},
         {"field": "leakage_curr_minus", "label": "누설전류", "group": "전기적"},
         {"field": "part_dischar_minus", "label": "부분방전", "group": "화학적"},
@@ -513,7 +511,7 @@ BREAKDOWN = {
 _DOMAIN_MODELS = (GisOperation, GisDiagnosis, GisSf6Reading, GisConsequenceAttribute, GisDesignAttribute, GisScoreDetail)
 # 입력 컬럼 이름 = 테이블 컬럼 이름인 항목(원본 → DB 그대로 저장)
 _SAME_NAME_INPUTS = {
-    GisOperation: ("op_type", "cb_op_num", "rated_trip_count", "cum_trip_current", "cb_op_char_over", "load_percent", "leakage_curr"),
+    GisOperation: ("op_type", "cb_op_num", "rated_trip_count", "cum_trip_current", "load_percent", "leakage_curr"),
     GisDiagnosis: ("part_dischar_pat", "elec_room_max_temp"),
     GisSf6Reading: ("sf6_so2", "sf6_leak", "sf6_h2o", "sf6_purity"),
     GisConsequenceAttribute: ("in_vol", "capa_times_load", "fire_spread", "env_loc", "emerge_resp_pat", "rep_cost", "rep_time"),

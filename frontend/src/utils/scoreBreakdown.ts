@@ -78,7 +78,6 @@ const EF2_EVIDENCE: Record<string, (d: Ef2TypeDetail) => string> = {
   insul_stat_minus: (d) => `사용 ${d.score_detail.insul_year}년 · 절연물 상태점수 ${d.score_detail.insul_stat.toFixed(3)}`,
   rated_trip_count_minus: (d) => `정격차단 동작 ${d.operation.rated_trip_count}회`,
   cum_trip_current_minus: (d) => `누적차단전류 ${d.operation.cum_trip_current}`,
-  cb_op_char_over_minus: (d) => `동작특성 기준치 초과 ${d.operation.cb_op_char_over}`,
   load_minus: (d) => `부하율 ${d.operation.load_percent}%`,
   leakage_curr_minus: (d) => `누설전류 ${d.operation.leakage_curr}`,
   part_dischar_minus: (d) => `부분방전 이상패턴 ${d.diagnosis.part_dischar_pat}`,
