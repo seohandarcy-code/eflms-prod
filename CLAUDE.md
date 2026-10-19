@@ -25,6 +25,7 @@
   - [DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md) — 입력/계산 컬럼 정의 및 테이블 매핑
   - [ROADMAP.md](docs/ROADMAP.md) — 단계별 계획
   - [SECURITY_ENV.md](docs/SECURITY_ENV.md) — env 변수 목록 (일반/시크릿 구분)
+  - [DEPLOY_PDEP.md](docs/DEPLOY_PDEP.md) — PDEP 배포 체크리스트(사내 확인 질문, 배포 위험, 매니페스트 초안)
 - (추후) `backend/`, `frontend/` — Stage C에서 생성 예정. 생성 시점에 각 폴더 전용 `backend/CLAUDE.md`, `frontend/CLAUDE.md`도 함께 작성한다(컨벤션, 실행 방법 등 해당 폴더에 국한된 내용).
 
 ## 작업 방식 — 계획 승인 필수 (예외 없음)
