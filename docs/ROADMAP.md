@@ -35,6 +35,8 @@
 - [x] **8-6 문서(2026-10-17) — Stage 8 종료**: `docs/ARCHITECTURE.md`에 "새 설비유형 추가 절차"(EF3~ 8단계 체크리스트, EF2 도입 때 실제로 거친 순서), 계산기 인터페이스 설명을 `base.py` 기준으로 갱신, 루트 `CLAUDE.md`·`backend/CLAUDE.md`의 확장 원칙 문구를 "공통 레이어는 8-1/8-2에서 한 번 일반화, 이후 새 유형은 모듈·테이블·레지스트리 등록만"으로 갱신(사용자 승인)
   - Stage 8 이후 남은 것: 5개년 예측 모델 결정(화면은 연 -1점 단순 가정, API `projection`은 미사용), ~~`stop-dev.ps1`이 기동 중인 vite를 놓치는 문제~~(2026-10-17 해결 — 명령줄 기준 트리 종료·LISTEN만 판정·eflms nginx만 종료·start 중복/중단 가드), EF2 실데이터 투입(사내 파일 헤더가 `ef2_gis.INPUT_COLUMNS` 이름과 맞는지부터)
 
+- [x] **실데이터 임포트 보강(2026-10-19)**: 다른 PC에서 클론 후 설비별 .dat(원본 `schema_eflms.py`/`schema_eflms_gis.py` 컬럼명 그대로)를 넣는 시나리오 점검 — 컬럼명은 EF1 57개·EF2 36개 전부 일치, 변압기 파일 `EF_code`는 모두 EF1(사용자 확인)이라 기존 검사 유지. 실제 파일 변형으로 돌려 찾은 문제 수정: UTF-8 BOM이면 파일 전체 거부 → `utf-8-sig`, 끝 칸 누락 행이 계산 중 `KeyError` rollback → 칸 수 불일치 행 오류, 파일 내 중복 설비가 조용히 덮어써지며 성공 건수 부풀림 → 중복 행 오류. 표기 완화: 따옴표, 정수의 `154000.0`, 날짜 4가지 표기. `nan`/`inf` float 거부, 계산 실패를 저장 전 행 오류(줄 번호)로, `--check`(DB 미반영 점검), CLI 종료 코드 0/1, CP949 콘솔·리다이렉트에서 출력 인코딩 오류로 죽던 문제(`backslashreplace`). pytest 28개 추가(총 168개). 쉼표 CSV·JSON 형식은 미지원(실제 파일이 탭 구분이 아니면 추가 검토)
+
 ## Phase 4 — 인프라 전환
 
 > 사내 유사 프로젝트 `a-ims-prod`(SQLite→PostgreSQL 전환 + Nginx/K8s 배포를 이미 검증한 레포)의 구동 방식을 참고해 아래 순서로 진행. 단계별 실행 계획은 2026-09-29 세션에서 Stage 0~7로 합의됨(각 Stage 종료 시 검증 후 다음 단계 진행).
@@ -46,7 +48,8 @@
 - [x] 포트 커스터마이즈(2026-09-29): 처음엔 `start-dev.ps1`이 포트를 하드코딩하고 `stop-dev.ps1`만 환경변수를 지원해 서로 어긋나는 문제가 있었음(실제로 재현해서 확인) → `backend/.env`의 `BACKEND_PORT`, `frontend/.env`의 `VITE_PORT`, `nginx/.env`의 `NGINX_PORT`를 유일한 원본으로 삼도록 통일. `scripts/_ports.ps1`(start/stop 공용 파싱 로직)이 세 파일을 읽고, `nginx.conf`는 `nginx.conf.template`에서 매 실행 시 값을 채워 생성(런타임 산출물, git 미포함), `vite.config.ts`는 `frontend/.env`(자기 포트)와 `backend/.env`(프록시 타겟)를 직접 읽음. 9001/9002/9003 커스텀 조합으로 start→브라우저 확인→stop→포트 해제, 기본값(8000/5173/8080) 회귀까지 전부 재현 검증
 - [ ] 스냅샷 → 이력(시계열) 구조 전환: 각 입력 도메인 테이블의 `equipment_id` UNIQUE 제약 완화 + "최신값" 조회 뷰 추가
 - [ ] PostgreSQL 전환 후 Alembic 마이그레이션이 여러 backend replica에서 동시 실행되지 않도록 하는 절차 확정
-- [ ] PDEP 실연동 준비 체크리스트 문서화(접속정보·Secret 관리 방식은 사내 담당자 확인 필요, K8s 매니페스트 초안) — 실제 접속정보/시크릿 값은 `.env`/사내 Secret 관리로만 주입
+- [x] **PDEP 실연동 준비 체크리스트 문서화(2026-10-17)**: [DEPLOY_PDEP.md](DEPLOY_PDEP.md) — 사내 담당자 확인 질문 6개, eflms 고유 배포 위험(메모리 세션→replicas 1, `SESSION_SECRET_KEY` 필수, 컨테이너 UTC로 기준일 하루 밀림→`TZ=Asia/Seoul`, migrate Job, `AUTO_SEED_IF_EMPTY=false`, 운영용 nginx `try_files`), 영역별 체크리스트, 완료 판정·롤백, Dockerfile/K8s 매니페스트 초안. 실제 접속정보/시크릿 값은 `.env`/사내 Secret 관리로만 주입
+  - 다음: 사내 답변 수령 후 실제 Dockerfile·운영 nginx 설정·Jenkinsfile 작성(별도 계획 승인), 필요 시 `TZ`/세션 저장소 코드 변경
 
 ## Phase 5 — 인증
 

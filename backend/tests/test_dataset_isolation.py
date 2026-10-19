@@ -17,12 +17,15 @@ from app.services.ingest import ingest_row
 
 
 def _fake_calculate(row: dict) -> dict:
-    if row.get("fake_name") == "BOOM":  # 반영 도중 실패 시나리오용
+    if row.get("fake_name") == "CALCFAIL":  # 계산 실패 → 행 오류(줄 번호) 시나리오용
         raise RuntimeError("계산 실패 시뮬레이션")
     return {**row, "pof_minus": -10, "pof": 90, "cof_minus": -20, "cof": 80, "dof_minus": -30, "dof": 70, "total_score": 83.0}
 
 
 async def _noop_ingest_domain(row, equipment_id, session):
+    # 계산은 DB 쓰기 전에 끝나므로, "반영 도중 실패"는 저장 단계에서 일으킨다.
+    if row.get("fake_name") == "BOOM":
+        raise RuntimeError("저장 실패 시뮬레이션")
     return None
 
 
@@ -135,7 +138,7 @@ async def test_import_failure_mid_way_rolls_back_everything(client, session_fact
             (await session.execute(select(Equipment.equipment_name).where(Equipment.ef_code == "EF99"))).scalars().all()
         )
 
-        # 검증은 통과하지만 두 번째 행 계산에서 실패 — replace로 지운 것까지 되돌아와야 한다.
+        # 검증·계산은 통과하지만 두 번째 행 저장에서 실패 — replace로 지운 것까지 되돌아와야 한다.
         result = await import_file(_write_dat(tmp_path, ["NEW1", "BOOM"]), "EF99", session, replace=True)
 
         assert not result.ok
@@ -145,6 +148,18 @@ async def test_import_failure_mid_way_rolls_back_everything(client, session_fact
             (await session.execute(select(Equipment.equipment_name).where(Equipment.ef_code == "EF99"))).scalars().all()
         )
         assert after_names == before_names
+
+
+async def test_import_calculation_failure_is_a_row_error_and_writes_nothing(client, session_factory, tmp_path):
+    async with session_factory() as session:
+        await _seed_fake(session, n=2)
+        result = await import_file(_write_dat(tmp_path, ["NEW1", "CALCFAIL"]), "EF99", session, replace=True)
+
+        assert not result.ok
+        assert [(e.row_number, e.column) for e in result.row_errors] == [(3, "(계산)")]
+        assert "계산 실패 시뮬레이션" in result.row_errors[0].reason
+        assert result.replaced_rows == 0
+        assert await count_type(session, "EF99") == 2
 
 
 async def test_import_rejects_rows_of_another_type(client, session_factory, tmp_path):

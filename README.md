@@ -125,11 +125,17 @@ cd backend
 **실제 사내 입력파일(.dat, 탭구분) 반영**:
 ```bash
 cd backend
-.venv/Scripts/python -m app.db.import_data --file <파일경로> --ef-code EF1 --replace
+.venv/Scripts/python -m app.db.import_data --file <파일경로> --ef-code EF1 --check     # 먼저 점검(DB 미반영)
+.venv/Scripts/python -m app.db.import_data --file <파일경로> --ef-code EF1 --replace   # 반영
 ```
+- `--check`: 검증과 점수 계산까지만 하고 DB에는 쓰지 않는다. 오류가 있으면 줄 번호·컬럼·사유를 출력하고 종료 코드 1.
 - `--replace`: 해당 유형의 기존 데이터(mock 포함)를 지우고 파일 내용으로 **교체**한다. 빼면 추가/갱신(upsert)만 한다.
 - 파일 하나가 트랜잭션 하나다 — 값 오류가 한 행이라도 있거나 반영 도중 실패하면 아무것도 바뀌지 않는다(`--replace`로 지운 것도 되돌아감).
-- 파일 안 `EF_code` 값이 `--ef-code`와 다르거나 등록되지 않은 유형이면 거부한다.
+- 헤더는 `ref_data/schema_eflms.py`(EF1)·`schema_eflms_gis.py`(EF2)의 `INPUT_COLUMNS` 컬럼명과 같아야 한다(순서 무관). 파일 안 `EF_code` 값이 `--ef-code`와 다르거나 등록되지 않은 유형이면 거부한다.
+- 받아주는 표기: UTF-8(BOM 있어도 됨)·CP949, LF/CRLF, 값을 감싼 따옴표, 정수 칸의 `154000.0`, 날짜 `YYYY-MM-DD`·`YYYY.MM.DD`·`YYYY/MM/DD`·`YYYYMMDD`.
+- 거부하는 것(행 오류): 헤더와 칸 수가 다른 행, 같은 설비(`factory_code` + 설비명)가 파일에 두 번, 빈 숫자/날짜, 소수인 정수, `nan`/`inf`, EF2 허용값 밖 값.
+
+**다른 PC에서 클론해 실데이터로 띄우기**: 위 "백엔드 실행"의 설치(`venv` → `pip install` → `.env` 복사 → `alembic upgrade head`)까지만 하고 **mock 시드는 건너뛴다**. 그다음 설비별 파일을 유형마다 점검 → 반영하고(`--ef-code EF1`에 변압기 파일, `--ef-code EF2`에 GIS 파일), 프론트 `npm install` 후 `scripts/start-dev.ps1`로 기동한다. `AUTO_SEED_IF_EMPTY`는 false(기본값)로 둬야 비어 있는 유형에 mock이 섞이지 않는다.
 
 먼저 아래처럼 샘플 파일로 바로 실행해볼 수 있음(mock 스키마 기준으로 만든 100행짜리 연습용 파일, 실제 회사 파일 아님):
 

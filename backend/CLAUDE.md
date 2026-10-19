@@ -32,9 +32,13 @@ cp .env.example .env                             # 최초 1회, 값은 로컬에
 cd backend
 .venv/Scripts/python -m app.db.import_data --file sample_data/ef1/sample_valid.dat --ef-code EF1            # 추가/갱신
 .venv/Scripts/python -m app.db.import_data --file sample_data/ef1/sample_valid.dat --ef-code EF1 --replace  # EF1만 교체
+.venv/Scripts/python -m app.db.import_data --file sample_data/ef1/sample_valid.dat --ef-code EF1 --check    # 검증·계산만(DB 미반영)
 ```
 
-- 결과는 콘솔 요약 + JSON 로그 한 줄(`app/db/import_data.py`)로 남는다.
+- 결과는 콘솔 요약 + JSON 로그 한 줄(`app/db/import_data.py`)로 남는다. 종료 코드: 성공 0, 실패 1(`--check`도 동일).
+- 처리 순서(`import_service.import_file`): 헤더 매칭 → 행 검증(형식·허용값·칸 수·파일 내 중복) → **전 행 계산**(실패 시 그 행 번호로 행 오류) → `--check`면 여기서 종료 → 저장(한 트랜잭션). 행 번호는 빈 줄을 포함한 실제 파일 줄 번호.
+- 받아주는 표기(2026-10-19): UTF-8 BOM(`utf-8-sig`), 값/헤더를 감싼 따옴표, 정수 칸의 `154000.0`(소수면 거부), 날짜 `YYYY-MM-DD`/`YYYY.MM.DD`/`YYYY/MM/DD`/`YYYYMMDD`(`DATE_FORMATS`). float 칸의 `nan`/`inf`는 거부. 빈 숫자/날짜는 "빈 값" 행 오류(원본 계산식이 빈 값을 처리하지 않음).
+- 헤더와 칸 수가 다른 행, 같은 설비(`factory_code` + 유형의 `NAME_FIELD`)가 파일에 두 번 나오는 행은 행 오류 — 예전엔 각각 계산 중 `KeyError` rollback, 뒤 행이 앞 행을 조용히 덮어쓰기였다.
 - 파일 안에 알려진 컬럼(`ef1_transformer.INPUT_COLUMNS`)에서 값 형식이 틀린 행이 하나라도 있으면 **그 파일은 통째로 반영되지 않는다**(부분 반영 금지) — 오류 목록만 출력됨. 검증 통과 후 반영 도중 실패해도 파일 전체가 rollback된다(파일 1건 = 트랜잭션 1건, `ingest_row`는 commit하지 않음).
 - 행의 `EF_code`가 `--ef-code`와 다르거나 등록되지 않은 유형이면 거부.
 - 모르는 컬럼(헤더가 `INPUT_COLUMNS`의 `name`에 없음)은 실패시키지 않고 `equipment_extra_attribute` 테이블에 원문 그대로 보관된다.
@@ -46,7 +50,7 @@ cd backend
 
 **실제 사내 .dat 파일로 바꾸려면 이 3가지만 확인하면 됨:**
 1. **컬럼 이름 맞추기** — 실제 파일의 헤더는 `app/equipment_types/ef1_transformer.py`의 `INPUT_COLUMNS`에 있는 `name`(영문)과 정확히 일치해야 매칭된다(사내 입력파일은 영문 헤더로만 오는 것으로 확인됨 — `label`(한글)은 각 항목이 무엇인지 설명하는 문서용 메타데이터일 뿐 매칭에는 쓰이지 않는다). 실제 파일 헤더가 다르면 **`INPUT_COLUMNS`의 `name` 값 자체를 실제 헤더 표기에 맞게 고치는 것**이 방법(새 컬럼을 추가할 필요는 없음). 안 맞는 컬럼은 실패하지 않고 `equipment_extra_attribute`로 빠지니, 처음엔 그냥 돌려보고 "미등록 컬럼" 목록으로 뭐가 안 맞는지 확인한 뒤 `name`을 맞춰가는 방식도 가능.
-2. **날짜 형식** — 지금은 `YYYY-MM-DD` 고정(`import_service.py`의 `_cast_value`). 실제 파일이 다른 형식(`YYYY.MM.DD` 등)이면 그 함수의 date 분기만 수정.
+2. **날짜 형식** — `YYYY-MM-DD`, `YYYY.MM.DD`, `YYYY/MM/DD`, `YYYYMMDD`를 받는다(`import_service.py`의 `DATE_FORMATS`/`_parse_date`). 그 외 형식이면 거기에 추가.
 3. **실행 시 `--file`을 실제 파일 경로로** — `python -m app.db.import_data --file <실제파일경로> --ef-code EF1 --replace`(mock을 걷어내고 실데이터로 교체). 인코딩(UTF-8/CP949)은 자동으로 시도하므로 별도 설정 불필요.
 
 ## 등록된 설비유형
