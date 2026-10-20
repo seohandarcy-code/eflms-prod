@@ -30,6 +30,11 @@ ALLOWED_TABLES: list[str] = [
     "gis_sf6_reading",
     "gis_consequence_attribute",
     "gis_design_attribute",
+    "cable_score_detail",
+    "cable_spec",
+    "cable_condition",
+    "cable_consequence_attribute",
+    "cable_design_attribute",
     "equipment_extra_attribute",
 ]
 

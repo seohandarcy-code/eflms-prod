@@ -23,7 +23,7 @@ npm run dev
 - `src/stores/` — Pinia 스토어
 - `src/views/` — 화면 단위 컴포넌트 (`DashboardView.vue` 메인 대시보드, `GuideView.vue` — POF/COF/DOF 지표·판정기준 안내 `/guide`)
 - `src/api/client.ts` — axios 인스턴스, `VITE_API_BASE_URL` 사용
-- `src/components/detail/` — 설비유형별 상세 본문(`Ef1DetailBody.vue`, `Ef2DetailBody.vue`). `EquipmentDetailPanel.vue`는 공통 헤더·점수·차트만 갖고, `type_detail.ef_code`로 본문을 고른다. 본문 클래스(`compact-row`, `raw-*`) 스타일은 패널이 `:deep()`으로 입힌다.
+- `src/components/detail/` — 설비유형별 상세 본문(`Ef1DetailBody.vue`, `Ef2DetailBody.vue`, `Ef3DetailBody.vue`). `EquipmentDetailPanel.vue`는 공통 헤더·점수·차트만 갖고, `type_detail.ef_code`로 본문을 고른다. 본문 클래스(`compact-row`, `raw-*`) 스타일은 패널이 `:deep()`으로 입힌다.
 
 ## 설비유형 (Stage 8-5)
 

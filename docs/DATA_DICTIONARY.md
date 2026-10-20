@@ -122,6 +122,79 @@ mock 범위에선 감점이 한 번도 발생하지 않는 분기가 8개 있다
 | 2026-10-19 | `age_minus`(경과연수) — 사용자 결정으로 전기적 감점에 합산 | 계산만 하고 어디에도 합산하지 않음 | `gis_elec_minus`에 더해 PoF·`total_score`에 반영(사용 1년당 -1). 노화는 차단기·절연물 고장확률 감점(기계적)에도 반영돼 함께 깎인다. 감점 사유 메타데이터에 "경과연수"(전기적) 추가. 테스트는 원본 결과에 `age_minus`를 더한 값과 대조 |
 | 2026-10-19 | `cum_trip_current`(누적 차단 전류) — 실데이터에 소수값 | `dtype: "int"` | `float`(DB 컬럼 마이그레이션 `d7a2c5e8f1b4`). 감점 기준(25 이상·101 초과·500 초과)은 같다. mock 생성 범위는 그대로 |
 
+## EF3(초고압케이블) — Stage 9 구현(2026-10-20, 마이그레이션 `90a898f21182`)
+
+출처: `ref_data/schema_eflms_cable.py`(2026-10-20 수정본 — 첫 검토에서 찾은 실행 오류·로직 의심 9건을 원본 작성자가 고친 뒤 확정). 시스템 계산기(`ef3_cable.py`)는 **원본 공식을 그대로** 옮겼다 — `backend/tests/test_ef3_cable.py`가 같은 입력으로 원본과 전 계산 컬럼을 대조한다. 원본과 다른 점은 계산 기준일(`as_of`)을 받는 것과 입력 허용값뿐이다(EF1·EF2와 같음).
+
+### 공통 테이블 매핑
+
+| 원본 컬럼 | 들어가는 곳 |
+|---|---|
+| `factory_code`, `EF_code`, `voltage`, `operation_start_time` | `equipment` (공통) |
+| `tl_name`(T/L명) | `equipment.equipment_name` |
+| `pof_minus`, `pof`, `cof_minus`, `cof`, `dof_minus`, `dof`, `total_score` | `score_snapshot` (공통) |
+
+### EF3 입력 도메인 테이블
+
+| 테이블 | INPUT_COLUMNS 매핑 | 시점 컬럼 | 축 |
+|---|---|---|---|
+| `cable_spec` | `cable_sq`, `cable_per_phase`, `cable_mva`, `cable_length`, `laying_type`, `mid_joint`, `end_joint` | `updated_at` | 부하율 분모·CoF |
+| `cable_condition` | `max_load`, `max_temp`, `diff_temp`, `failure_rate`, `pd_num`, `sys_cycle_curr`, `svl_leak_curr`, `joint_ex_damage`, `cable_move` | `measured_at` (신규 — 원본엔 날짜 없음) | PoF |
+| `cable_consequence_attribute` | `emerge_resp`, `rep_time` | `updated_at` | CoF |
+| `cable_design_attribute` | `reliability`, `temp_diag`, `pd_diag`, `live_line_diag`, `cable_move_diag`, `offline_diag`, `longlife_insul` | `updated_at` | DoF |
+
+시점 컬럼은 모두 계산 기준일(`today`)이 들어간다. 원본에 진단일 입력이 없어서 화면의 "최근 진단일"은 EF3에서 `cable_condition.measured_at`(반영 기준일)을 쓴다. `cable_sq`·`cable_per_phase`·`voltage`는 계산에 쓰이지 않고 저장·표시만 한다.
+
+### 입력 허용값 (임포트 검증)
+
+원본은 모르는 문자열을 조용히 감점 0으로 처리하므로, 판정에 쓰이는 값만 받는다(오타가 0점으로 섞이지 않게).
+
+| 컬럼 | 라벨 | 허용값 |
+|---|---|---|
+| `laying_type` | 포설방법 | `철탑`, `공동구`, `관로구`, `전력구` |
+| `end_joint` | 종단접속함종류 | `WEBG`, `DEBG, EBA`(쉼표 포함 값 하나 — 탭 구분 파일이라 한 칸), `DEBG` |
+| `emerge_resp` | 비상대응시간 | `24시간이하`, `12시간이하`, `1시간이하`, `1초내` |
+| `rep_time` | 정상화기간_설비교체 | `3개월초과`, `3개월이하` |
+| `offline_diag` | 오프라인진단여부 | `미실시`, `3년이내`, `1년이내` |
+| `temp_diag`, `pd_diag`, `live_line_diag`, `cable_move_diag`, `longlife_insul` | 열화상·PD·활선진단 / 이동량 / 장수명절연물 | `O`, `X` |
+| `joint_ex_damage` | 접속함외관손상여부 | `양호`, `이상` |
+| `cable_mva` | 회선별용량 | 1 이상(부하율 분모) |
+| `voltage`, `cable_sq`, `cable_per_phase`, `reliability` | 전압 / 굵기 / phase당케이블 / 공급신뢰도회선수 | 1 이상(전압은 계산에 안 쓰여 값 제한 없음, 2026-10-20 결정) |
+| `max_load`, `diff_temp`, `failure_rate`, `pd_num`, `sys_cycle_curr`, `svl_leak_curr`, `cable_move`, `cable_length`, `mid_joint` | (수치) | 0 이상 |
+| `max_temp` | 최고온도 | 실수(범위 제한 없음) |
+| `factory_code`, `tl_name` | 사업장명 / T/L명 | 빈 값만 거부 |
+
+### EF3 계산 도메인 테이블 — `cable_score_detail`
+
+`score_snapshot`(공통)에 들어가는 7개를 제외한 나머지 CALCULATED_COLUMNS 전부(29개):
+
+`today`, `operation_year`, `age_minus`, `load_percent`, `load_minus`, `temp_minus`, `diff_temp_minus`, `failure_rate_minus`, `pd_minus`, `sys_cycle_curr_minus`, `svl_leak_curr_minus`, `joint_ex_damage_minus`, `cable_move_minus`, `risk_mva`, `risk_mva_minus`, `laying_type_minus`, `mid_joint_minus`, `end_joint_minus`, `emerge_resp_minus`, `rep_cost`, `rep_cost_minus`, `rep_time_minus`, `reliability_minus`, `temp_diag_minus`, `pd_diag_minus`, `live_line_diag_minus`, `cable_move_diag_minus`, `offline_diag_minus`, `longlife_insul_minus`
+
+### EF3 산출 파이프라인 요약
+
+1. 경과연수: `today` → `operation_year` → `age_minus`(사용 1년당 -1, **PoF에 합산** — EF1과 같고 GIS 원본과 다름)
+2. 부하율: `load_percent = max_load / cable_mva × 100`
+3. PoF = 100 + 경과연수·부하율·최고온도·상간온도차(라벨 "열화상")·온도기반손상률(`round(손상률 × −1000)`)·부분방전횟수·시스순환전류·SVL누설전류·접속함외관·케이블이동량. 원본에 GIS 같은 그룹 구분은 없다
+4. CoF = 100 + 사고영향성(`round(cable_mva × −0.01)`)·포설방법·중간접속함(−개수)·종단접속함·비상대응시간·사고복구비용(`rep_cost = cable_length × 0.0135` 구간 판정, 최소 -2)·정상화기간
+5. DoF = 100 + 공급신뢰도(3·4회선 0, 그 외 -20)·열화상/PD/활선진단·케이블이동량여부·오프라인진단·장수명절연물
+6. `total_score = 0.5*pof + 0.3*cof + 0.2*dof` (EF1·EF2와 동일)
+
+### 원본 그대로 유지하는 판단 (2026-10-20 확정)
+
+| 항목 | 원본 동작 | 처리 |
+|---|---|---|
+| 사고복구비용 | 가장 낮은 구간도 -2 — 감점 0인 케이블이 없음 | 원본대로 |
+| 공급신뢰도 | 1회선도 2회선과 같은 -20 | 원본대로 |
+| 사고영향성 | 회선별용량에 비례(414 → -4, 984 → -10) | 원본대로 |
+| 음수 점수 | 실데이터에선 이론상 가능(PoF 최악 -55 + 경과연수). mock 범위에선 PoF 32~87, CoF 18~91, DoF 50~70(5,000건 기준) | 계산값 그대로 저장, 차트만 0~100 클램프 |
+| 상태 판정 | — | EF1과 같은 `classify_status` 기준 |
+
+mock 범위에선 감점이 한 번도 발생하지 않는 항목이 10개 있다(부하율, 최고온도, 상간온도차, 시스순환전류, SVL누설전류, 비상대응시간, 정상화기간, 열화상·PD·오프라인 진단). mock DoF는 활선진단·이동량진단·장수명절연물이 항상 X라 최대 70이다. 이 분기들은 정답값 단위테스트(`test_ef3_cable.py`의 `BRANCHES`)로 검증한다.
+
+### 화면 라벨
+
+감점 항목 라벨은 원본 계산 라벨에서 "감점"만 뗀다(`diff_temp_minus` → "열화상", `sys_cycle_curr_minus` → "시스템순환전류" 등). 예외: `age_minus`는 원본 라벨 "경과일"이 실제로는 연수라 EF1·EF2와 같은 "경과연수"로 쓴다(2026-10-20 사용자 결정).
+
 ## 미확정/자동 캡처 컬럼
 
 사내 입력파일에 위 목록에 없는 헤더가 오면 `equipment_extra_attribute`(equipment_id, column_name, value, inferred_type, source_file, imported_at)에 자동 보관된다 — 정식 컬럼으로 승격하려면 이 문서와 위 테이블 정의를 함께 갱신하는 마이그레이션이 필요하다.

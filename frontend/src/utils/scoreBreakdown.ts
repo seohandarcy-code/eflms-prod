@@ -1,4 +1,4 @@
-import type { Axis, BreakdownItem, Ef1TypeDetail, Ef2TypeDetail, EquipmentDetail } from "../types/equipment";
+import type { Axis, BreakdownItem, Ef1TypeDetail, Ef2TypeDetail, Ef3TypeDetail, EquipmentDetail } from "../types/equipment";
 
 // 감점 항목 라벨은 백엔드 설비유형 모듈의 BREAKDOWN(/api/equipment-types)이 단일 원본이다(Stage 8-5).
 // 예전처럼 여기에 유형별 라벨을 하드코딩하지 않는다.
@@ -105,10 +105,40 @@ const EF2_EVIDENCE: Record<string, (d: Ef2TypeDetail) => string> = {
   vt_la_minus: (d) => `부품신뢰성강화 ${d.design.vt_la_str}`,
 };
 
+const EF3_EVIDENCE: Record<string, (d: Ef3TypeDetail) => string> = {
+  age_minus: (d) => `경과연수 ${d.score_detail.operation_year}년차`,
+  load_minus: (d) => `부하율 ${d.score_detail.load_percent.toFixed(1)}% (최대부하 ${d.condition.max_load} / 용량 ${d.spec.cable_mva})`,
+  temp_minus: (d) => `최고온도 ${d.condition.max_temp}℃`,
+  diff_temp_minus: (d) => `상간온도차 ${d.condition.diff_temp}℃`,
+  failure_rate_minus: (d) => `온도기반손상률 ${d.condition.failure_rate}`,
+  pd_minus: (d) => `부분방전 ${d.condition.pd_num}회`,
+  sys_cycle_curr_minus: (d) => `시스순환전류 ${d.condition.sys_cycle_curr}`,
+  svl_leak_curr_minus: (d) => `SVL누설전류 ${d.condition.svl_leak_curr}`,
+  joint_ex_damage_minus: (d) => `접속함 외관 ${d.condition.joint_ex_damage}`,
+  cable_move_minus: (d) => `케이블이동량 ${d.condition.cable_move}`,
+
+  risk_mva_minus: (d) => `사고영향성용량 ${d.score_detail.risk_mva}`,
+  laying_type_minus: (d) => `포설방법 ${d.spec.laying_type}`,
+  mid_joint_minus: (d) => `중간접속함 ${d.spec.mid_joint}개`,
+  end_joint_minus: (d) => `종단접속함 ${d.spec.end_joint}`,
+  emerge_resp_minus: (d) => `비상대응시간 ${d.consequence.emerge_resp}`,
+  rep_cost_minus: (d) => `사고복구교체비용 ${d.score_detail.rep_cost.toFixed(1)} (길이 ${d.spec.cable_length.toLocaleString()})`,
+  rep_time_minus: (d) => `정상화기간 ${d.consequence.rep_time}`,
+
+  reliability_minus: (d) => `공급신뢰도 ${d.design.reliability}회선`,
+  temp_diag_minus: (d) => `열화상진단 ${d.design.temp_diag}`,
+  pd_diag_minus: (d) => `PD진단 ${d.design.pd_diag}`,
+  live_line_diag_minus: (d) => `활선진단 ${d.design.live_line_diag}`,
+  cable_move_diag_minus: (d) => `이동량 측정 ${d.design.cable_move_diag}`,
+  offline_diag_minus: (d) => `오프라인진단 ${d.design.offline_diag}`,
+  longlife_insul_minus: (d) => `장수명절연물 ${d.design.longlife_insul}`,
+};
+
 /** 감점 항목 하나의 근거(원본 측정값/판정)를 한 줄 텍스트로 반환한다. 매핑이 없으면 빈 문자열. */
 export function getEvidence(field: string, detail: EquipmentDetail): string {
   const typeDetail = detail.type_detail;
   if (typeDetail.ef_code === "EF1") return EF1_EVIDENCE[field]?.(typeDetail) ?? "";
   if (typeDetail.ef_code === "EF2") return EF2_EVIDENCE[field]?.(typeDetail) ?? "";
+  if (typeDetail.ef_code === "EF3") return EF3_EVIDENCE[field]?.(typeDetail) ?? "";
   return "";
 }

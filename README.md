@@ -2,7 +2,7 @@
 
 변압기(EF1)를 시작으로 전기설비의 자산 건전성을 PoF(고장확률)·CoF(고장영향)·DoF(설계/방어수준) 3축으로 평가하고, 웹 대시보드로 보여주는 사내 시스템. FastAPI 백엔드 + Vue 3 프론트엔드 + SQLite(개발)/PostgreSQL(운영 예정) 구조입니다.
 
-현재 단계: Phase 1(mock 데이터 대시보드) 완료, Phase 2(운영 데이터 임포트 파이프라인) 완료, Phase 3(EF2 GIS 추가 — 설비유형별 계산·조회·화면) 완료, Phase 4(PostgreSQL/Nginx 인프라) 로컬 검증 완료, Phase 5(관리자 로그인/SSO) 로컬 검증 완료. 등록된 설비유형: EF1 변압기, EF2 GIS. 자세한 진행 상황은 [docs/ROADMAP.md](docs/ROADMAP.md) 참고.
+현재 단계: Phase 1(mock 데이터 대시보드) 완료, Phase 2(운영 데이터 임포트 파이프라인) 완료, Phase 3(EF2 GIS·EF3 초고압케이블 추가 — 설비유형별 계산·조회·화면) 완료, Phase 4(PostgreSQL/Nginx 인프라) 로컬 검증 완료, Phase 5(관리자 로그인/SSO) 로컬 검증 완료. 등록된 설비유형: EF1 변압기, EF2 GIS, EF3 초고압케이블. 자세한 진행 상황은 [docs/ROADMAP.md](docs/ROADMAP.md) 참고.
 
 ## 요구 사항
 
@@ -32,7 +32,7 @@ copy .env.example .env
 - `py -3.11`로 버전을 지정한다 — 그냥 `python`은 PC에 따라 3.12 등 다른 버전일 수 있다.
 
 **2) 실파일 두기** — 저장소 루트의 `real_data\` 폴더(git 제외 대상이라 실수로 커밋되지 않음)나 저장소 밖에 둔다.
-설비별 파일 하나씩(변압기 → EF1, GIS → EF2). 헤더는 `ref_data/schema_eflms.py`·`schema_eflms_gis.py`의 컬럼명 그대로면 된다(순서 무관, 탭 구분).
+설비별 파일 하나씩(변압기 → EF1, GIS → EF2, 초고압케이블 → EF3). 헤더는 `ref_data/schema_eflms.py`·`schema_eflms_gis.py`·`schema_eflms_cable.py`의 컬럼명 그대로면 된다(순서 무관, 탭 구분).
 
 **3) 점검 → 반영** (backend 폴더에서, 경로에 한글·공백이 있으면 따옴표)
 ```powershell
@@ -40,6 +40,8 @@ copy .env.example .env
 .venv\Scripts\python -m app.db.import_data --file "..\real_data\변압기.dat" --ef-code EF1 --replace
 .venv\Scripts\python -m app.db.import_data --file "..\real_data\GIS.dat" --ef-code EF2 --check
 .venv\Scripts\python -m app.db.import_data --file "..\real_data\GIS.dat" --ef-code EF2 --replace
+.venv\Scripts\python -m app.db.import_data --file "..\real_data\케이블.dat" --ef-code EF3 --check
+.venv\Scripts\python -m app.db.import_data --file "..\real_data\케이블.dat" --ef-code EF3 --replace
 ```
 - `--check`가 실패하면 줄 번호·컬럼·사유가 나온다 — 파일을 고친 뒤 다시 점검. 실패한 파일은 한 건도 반영되지 않는다.
 - GIS 파일의 `cb_op_char_over`는 쓰지 않는 컬럼이라 "사용 안 하는 컬럼(무시)"으로 표시되고 저장되지 않는다(정상).
@@ -176,10 +178,10 @@ cd backend
 - `--check`: 검증과 점수 계산까지만 하고 DB에는 쓰지 않는다. 오류가 있으면 줄 번호·컬럼·사유를 출력하고 종료 코드 1.
 - `--replace`: 해당 유형의 기존 데이터(mock 포함)를 지우고 파일 내용으로 **교체**한다. 빼면 추가/갱신(upsert)만 한다.
 - 파일 하나가 트랜잭션 하나다 — 값 오류가 한 행이라도 있거나 반영 도중 실패하면 아무것도 바뀌지 않는다(`--replace`로 지운 것도 되돌아감).
-- 헤더는 `ref_data/schema_eflms.py`(EF1)·`schema_eflms_gis.py`(EF2)의 `INPUT_COLUMNS` 컬럼명과 같아야 한다(순서 무관). 파일 안 `EF_code` 값이 `--ef-code`와 다르거나 등록되지 않은 유형이면 거부한다.
+- 헤더는 `ref_data/schema_eflms.py`(EF1)·`schema_eflms_gis.py`(EF2)·`schema_eflms_cable.py`(EF3)의 `INPUT_COLUMNS` 컬럼명과 같아야 한다(순서 무관). 파일 안 `EF_code` 값이 `--ef-code`와 다르거나 등록되지 않은 유형이면 거부한다.
 - GIS의 `cb_op_char_over`는 쓰지 않는 컬럼이라 있어도 건너뛴다(저장 안 함, "사용 안 하는 컬럼"으로 표시). 그 밖에 목록에 없는 컬럼은 "미등록 컬럼"으로 표시되고 `equipment_extra_attribute`에 원문 보관된다.
 - 받아주는 표기: UTF-8(BOM 있어도 됨)·CP949, LF/CRLF, 값을 감싼 따옴표, 정수 칸의 `154000.0`, 날짜 `YYYY-MM-DD`·`YYYY.MM.DD`·`YYYY/MM/DD`·`YYYYMMDD`.
-- 거부하는 것(행 오류): 헤더와 칸 수가 다른 행, 같은 설비(`factory_code` + 설비명)가 파일에 두 번, 빈 숫자/날짜, 소수인 정수, `nan`/`inf`, EF2 허용값 밖 값.
+- 거부하는 것(행 오류): 헤더와 칸 수가 다른 행, 같은 설비(`factory_code` + 설비명)가 파일에 두 번, 빈 숫자/날짜, 소수인 정수, `nan`/`inf`, EF2·EF3 허용값 밖 값(예: EF3 포설방법 `지중`, 종단접속함 `DEBG,EBA`처럼 공백 빠진 표기).
 
 **다른 PC에서 클론해 실데이터로 띄우기**: 위 "다른 PC에서 실데이터로 시작하기" 절의 단계를 그대로 따른다.
 

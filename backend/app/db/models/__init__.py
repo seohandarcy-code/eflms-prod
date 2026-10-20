@@ -1,4 +1,11 @@
 from app.db.models.auth import AllowedUser
+from app.db.models.cable import (
+    CableCondition,
+    CableConsequenceAttribute,
+    CableDesignAttribute,
+    CableScoreDetail,
+    CableSpec,
+)
 from app.db.models.equipment import Equipment, EquipmentType
 from app.db.models.extra import EquipmentExtraAttribute
 from app.db.models.gis import (
@@ -42,4 +49,9 @@ __all__ = [
     "GisConsequenceAttribute",
     "GisDesignAttribute",
     "GisScoreDetail",
+    "CableSpec",
+    "CableCondition",
+    "CableConsequenceAttribute",
+    "CableDesignAttribute",
+    "CableScoreDetail",
 ]

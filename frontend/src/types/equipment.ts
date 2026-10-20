@@ -241,7 +241,83 @@ export interface Ef2TypeDetail {
   score_detail: Ef2ScoreDetail;
 }
 
-export type TypeDetail = Ef1TypeDetail | Ef2TypeDetail;
+/** EF3(초고압케이블) 전용 상세 — EquipmentDetail.type_detail (Stage 9-4). 필드는 backend app/schemas/ef3.py와 1:1 */
+export interface Ef3ScoreDetail {
+  computed_at: string;
+  today: string;
+  operation_year: number;
+  age_minus: number;
+  load_percent: number;
+  load_minus: number;
+  temp_minus: number;
+  diff_temp_minus: number;
+  failure_rate_minus: number;
+  pd_minus: number;
+  sys_cycle_curr_minus: number;
+  svl_leak_curr_minus: number;
+  joint_ex_damage_minus: number;
+  cable_move_minus: number;
+  risk_mva: number;
+  risk_mva_minus: number;
+  laying_type_minus: number;
+  mid_joint_minus: number;
+  end_joint_minus: number;
+  emerge_resp_minus: number;
+  rep_cost: number;
+  rep_cost_minus: number;
+  rep_time_minus: number;
+  reliability_minus: number;
+  temp_diag_minus: number;
+  pd_diag_minus: number;
+  live_line_diag_minus: number;
+  cable_move_diag_minus: number;
+  offline_diag_minus: number;
+  longlife_insul_minus: number;
+}
+
+export interface Ef3TypeDetail {
+  ef_code: "EF3";
+  spec: {
+    updated_at: string;
+    cable_sq: number;
+    cable_per_phase: number;
+    cable_mva: number;
+    cable_length: number;
+    laying_type: string;
+    mid_joint: number;
+    end_joint: string;
+  };
+  condition: {
+    measured_at: string;
+    max_load: number;
+    max_temp: number;
+    diff_temp: number;
+    failure_rate: number;
+    pd_num: number;
+    sys_cycle_curr: number;
+    svl_leak_curr: number;
+    joint_ex_damage: string;
+    cable_move: number;
+  };
+  consequence: {
+    updated_at: string;
+    emerge_resp: string;
+    rep_time: string;
+  };
+  design: {
+    updated_at: string;
+    reliability: number;
+    temp_diag: string;
+    pd_diag: string;
+    live_line_diag: string;
+    cable_move_diag: string;
+    offline_diag: string;
+    longlife_insul: string;
+  };
+  score_detail: Ef3ScoreDetail;
+}
+
+export type TypeDetail = Ef1TypeDetail | Ef2TypeDetail | Ef3TypeDetail;
 
 export interface ProjectionPoint {
   years_ahead: number;

@@ -134,4 +134,18 @@ describe("getEvidence", () => {
     expect(getEvidence("sf6_minus", detail)).toBe("SO2 0 · 누기 없음 · 수분 320 · 순도 96%");
     expect(getEvidence("unknown_minus", detail)).toBe("");
   });
+
+  it("describes EF3 cable deductions from the cable detail", () => {
+    const detail = {
+      type_detail: {
+        ef_code: "EF3",
+        spec: { cable_mva: 414, cable_length: 7408, end_joint: "DEBG, EBA" },
+        condition: { max_load: 380 },
+        score_detail: { load_percent: 91.78743961352657, rep_cost: 100.008 },
+      },
+    } as unknown as EquipmentDetail;
+    expect(getEvidence("load_minus", detail)).toBe("부하율 91.8% (최대부하 380 / 용량 414)");
+    expect(getEvidence("end_joint_minus", detail)).toBe("종단접속함 DEBG, EBA");
+    expect(getEvidence("rep_cost_minus", detail)).toBe("사고복구교체비용 100.0 (길이 7,408)");
+  });
 });
