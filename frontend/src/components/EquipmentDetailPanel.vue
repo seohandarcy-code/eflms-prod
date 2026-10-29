@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { useEquipmentStore } from "../stores/equipment";
 import type { EquipmentDetail } from "../types/equipment";
+import { formatMonth } from "../utils/formatDate";
 import { statusBg, statusColor, statusLabel } from "../utils/statusStyle";
 import PofDistributionChart from "./PofDistributionChart.vue";
 import ScoreProjectionChart from "./ScoreProjectionChart.vue";
@@ -42,10 +43,6 @@ function clampWidth(value: number): number {
   return Math.max(0, Math.min(100, value));
 }
 
-function formatMonth(isoDate: string): string {
-  return isoDate.slice(0, 7);
-}
-
 const color = computed(() => (detail.value ? statusColor(detail.value.status) : "#8891a0"));
 
 // 헤더 부제 — 유형마다 대표 사양이 다르다(EF1 정격용량, EF2 조작방식, EF3 굵기·회선별용량). 본문은 detail/Ef*DetailBody.vue (Stage 8-5).
@@ -67,7 +64,7 @@ const sameTypeList = computed(() => store.equipmentList.filter((item) => item.ef
       <div class="panel-grid">
         <div class="eyebrow">선택된 설비</div>
         <div class="meta">
-          {{ detail.factory_code }} · {{ detail.voltage.toLocaleString() }}V · {{ typeSubtitle }} · 가동 {{ formatMonth(detail.operation_start_time) }}
+          {{ detail.factory_code }} · {{ typeSubtitle }} · 가동 {{ formatMonth(detail.operation_start_time) }}
         </div>
 
         <div class="name-row">

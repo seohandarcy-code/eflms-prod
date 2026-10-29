@@ -106,6 +106,14 @@ async def test_list_last_diag_date_comes_from_each_type(client, session_factory)
     assert set(by_type["EF2"]) == {"2024-11-01"}  # EF2 mock의 SF6 진단일
 
 
+async def test_list_includes_operation_start_time(client, session_factory):
+    """설비목록·점검필요 순위가 전압 대신 가동년월을 보여준다(Stage 10-0) — 모든 유형에 공통인 값."""
+    async with session_factory() as session:
+        await _seed_ef2(session, n=1)
+    items = (await client.get("/api/equipment")).json()
+    assert items and all(len(item["operation_start_time"]) == 10 for item in items)
+
+
 async def test_summary_by_type_adds_up(client, session_factory):
     async with session_factory() as session:
         await _seed_ef2(session, n=4)

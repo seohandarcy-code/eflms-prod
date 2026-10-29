@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { EquipmentSummary } from "../types/equipment";
+import { formatMonth } from "../utils/formatDate";
 import { statusBg, statusColor, statusLabel } from "../utils/statusStyle";
 
 // typeName: 설비유형 이름(예: 변압기, GIS). 주면 카드에 유형 배지를 붙인다(Stage 8-5).
@@ -24,7 +25,7 @@ const color = computed(() => statusColor(props.summary.status));
     <div class="card-head">
       <div>
         <span class="name">{{ summary.equipment_name }}</span>
-        <span class="meta"><span v-if="typeName" class="type-badge">{{ typeName }}</span>{{ summary.factory_code }} · {{ summary.voltage.toLocaleString() }}V</span>
+        <span class="meta"><span v-if="typeName" class="type-badge">{{ typeName }}</span>{{ summary.factory_code }} · 가동 {{ formatMonth(summary.operation_start_time) }}</span>
       </div>
       <span class="chip" :style="{ background: statusBg(summary.status), color }">
         <span class="dot" :style="{ background: color }"></span>

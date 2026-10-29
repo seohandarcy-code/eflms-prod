@@ -74,6 +74,7 @@ async def list_equipment(
             ef_code=equipment.ef_code,
             equipment_name=equipment.equipment_name,
             voltage=equipment.voltage,
+            operation_start_time=equipment.operation_start_time,
             pof=score.pof,
             cof=score.cof,
             dof=score.dof,

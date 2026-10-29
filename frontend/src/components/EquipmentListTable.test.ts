@@ -10,6 +10,7 @@ const items: EquipmentSummary[] = [
     ef_code: "EF1",
     equipment_name: "TR1",
     voltage: 22900,
+    operation_start_time: "2015-03-01",
     pof: 90,
     cof: 90,
     dof: 90,
@@ -23,6 +24,7 @@ const items: EquipmentSummary[] = [
     ef_code: "EF1",
     equipment_name: "BANK3",
     voltage: 154000,
+    operation_start_time: "2008-11-01",
     pof: 22,
     cof: 36,
     dof: 14,
@@ -46,6 +48,13 @@ describe("EquipmentListTable", () => {
     const wrapper = mount(EquipmentListTable, { props: { items: mixed, activeId: null, typeNames: { EF1: "변압기" } } });
     const typeCells = wrapper.findAll("tbody tr").map((row) => row.findAll("td")[1].text());
     expect(typeCells).toEqual(["변압기", "EF2"]);
+  });
+
+  it("shows the operation month instead of voltage (Stage 10-0)", () => {
+    const wrapper = mount(EquipmentListTable, { props: { items, activeId: null } });
+    expect(wrapper.findAll("thead th").map((th) => th.text())).toContain("가동년월");
+    expect(wrapper.findAll("tbody tr")[0].findAll("td")[3].text()).toBe("2015-03");
+    expect(wrapper.text()).not.toContain("22,900V");
   });
 
   it("emits select with the equipment id when a row is clicked", async () => {

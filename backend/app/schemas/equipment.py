@@ -18,6 +18,7 @@ class EquipmentSummary(BaseModel):
     ef_code: str
     equipment_name: str
     voltage: int
+    operation_start_time: date
     pof: int
     cof: int
     dof: int

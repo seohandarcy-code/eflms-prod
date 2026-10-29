@@ -9,6 +9,7 @@ import EquipmentDetailPanel from "../components/EquipmentDetailPanel.vue";
 import MultiSelectFilter from "../components/MultiSelectFilter.vue";
 import { getEvidence, getReasonsByAxis } from "../utils/scoreBreakdown";
 import type { ReasonsByAxis } from "../utils/scoreBreakdown";
+import { formatMonth } from "../utils/formatDate";
 import { statusColor, statusLabel } from "../utils/statusStyle";
 import type { EquipmentDetail, EquipmentSummary } from "../types/equipment";
 
@@ -350,7 +351,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
                         {{ statusLabel(entry.item.status) }} · 종합점수 {{ entry.item.total_score.toFixed(1) }}
                       </span>
                     </div>
-                    <div class="reason-meta">{{ store.typeNames[entry.item.ef_code] ?? entry.item.ef_code }} · {{ entry.item.factory_code }} · {{ entry.item.voltage.toLocaleString() }}V</div>
+                    <div class="reason-meta">{{ store.typeNames[entry.item.ef_code] ?? entry.item.ef_code }} · {{ entry.item.factory_code }} · 가동 {{ formatMonth(entry.item.operation_start_time) }}</div>
 
                     <div class="axis-grid">
                       <div class="axis-col">
@@ -417,7 +418,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
           </div>
 
           <div class="list-controls">
-            <input v-model="searchQuery" type="text" class="search-input" placeholder="설비명 검색 (예: BANK3)" />
+            <input v-model="searchQuery" type="text" class="search-input" placeholder="설비명·설비코드 검색 (예: BANK3)" />
             <select v-model="sortKey" class="sort-select">
               <option v-for="(label, key) in SORT_LABELS" :key="key" :value="key">{{ label }}</option>
             </select>

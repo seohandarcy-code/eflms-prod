@@ -9,6 +9,7 @@ const summary: EquipmentSummary = {
   ef_code: "EF1",
   equipment_name: "TR1",
   voltage: 22900,
+  operation_start_time: "2015-03-01",
   pof: 90,
   cof: 90,
   dof: 90,
@@ -41,6 +42,12 @@ describe("EquipmentCard", () => {
   it("shows the equipment type badge when a type name is given", () => {
     const wrapper = mount(EquipmentCard, { props: { summary: { ...summary, ef_code: "EF2" }, typeName: "GIS" } });
     expect(wrapper.find(".type-badge").text()).toBe("GIS");
+  });
+
+  it("shows the operation month instead of voltage (Stage 10-0)", () => {
+    const wrapper = mount(EquipmentCard, { props: { summary } });
+    expect(wrapper.find(".meta").text()).toContain("H1 · 가동 2015-03");
+    expect(wrapper.text()).not.toContain("22,900V");
   });
 
   it("emits select with the equipment id when clicked", async () => {

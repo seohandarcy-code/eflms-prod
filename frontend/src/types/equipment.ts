@@ -6,6 +6,7 @@ export interface EquipmentSummary {
   ef_code: string;
   equipment_name: string;
   voltage: number;
+  operation_start_time: string;
   pof: number;
   cof: number;
   dof: number;
