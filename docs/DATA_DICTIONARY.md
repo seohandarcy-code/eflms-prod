@@ -274,6 +274,23 @@ mock 범위(5,000건)는 PoF 68~89, CoF 약 60~96, DoF 85~94다. mock에선 감�
 
 감점 항목 라벨은 원본 계산 라벨에서 "감점"만 뗀다(`age_minus` → 원본 그대로 "경과년수"). 그룹은 원본 소계 라벨에서 접두어를 뗀 이름이다 — PoF 내구성·열적·물리적, CoF 계통·비용·기간, DoF 계통·비용·복구시간(2026-10-29 결정). 상세 패널 부제는 `eqp_id_name · eqp_building eqp_floor · eqp_disting`(예: `hvcb3 · 화성UT1동 2F · 11U`).
 
+## 값 없음(N/A) 처리 — Stage 11(2026-10-29, 마이그레이션 `b7f98e26abb7`)
+
+사내 입력파일에서 값이 없는 칸을 `N/A`로 적으면 null로 저장한다(EF1~EF4 공통, 사용자 결정 — 권장안).
+
+| 항목 | 규칙 |
+|---|---|
+| N/A로 인정하는 표기 | `N/A`, `n/a`, `#N/A`(엑셀 수식 오류) — 앞뒤 공백·대소문자 무시. `NA`·`-`·`없음` 등은 N/A가 아니다(그 컬럼의 형식·허용값 검사를 그대로 받음) |
+| 빈 칸 | **지금처럼 오류** — 실수로 빠뜨린 값을 잡기 위해 N/A와 구분한다 |
+| N/A를 받지 않는 컬럼 | `factory_code`, `EF_code`, 유형별 설비명(`NAME_FIELD`: EF1 `transformer_name`, EF2 `gis_name`, EF3 `tl_name`, EF4 `eqp_id`), `operation_start_time`(경과연수 계산), `voltage`(공통 필수 + EF2 누설전류 판정) → 행 오류 "N/A 불가(필수 컬럼)" |
+| 계산 | 공식이 null 값을 **읽으면** 그 감점은 **0**(평가하지 않음), 파생값은 null(그 파생값을 쓰는 감점도 0). null을 읽지 않는 공식은 원래대로 — null 없는 행의 결과는 원본과 완전히 같다. 구현: `backend/app/equipment_types/na.py`의 `evaluate()`를 네 유형의 `calculate()`가 공통으로 쓴다 |
+| 저장 | 유형별 입력 테이블의 입력 컬럼 전부와 null이 될 수 있는 파생값(EF1 `dga_tcg`·`dga_diag`·`dielec_str_te_avg`·`dielec_str_te_diag`·`acid_measure_desc`·`moisture_desc`·`furan_total`·`furan_total_per_year`·`furan_desc`·`oltc_diag`·`capa_times_load`, EF3 `load_percent`·`risk_mva`·`rep_cost`)이 null 허용. 감점(`_minus`)·계산 기준일 컬럼(`updated_at`/`measured_at`/`today`)·공통 테이블은 NOT NULL 그대로 |
+| 화면 | 상세 화면·근거 툴팁·패널 부제에서 null은 "N/A"(단위·소수 서식 없이). 가이드 "종합점수 계산"에 "N/A 항목은 감점 0 — 점수가 실제보다 높게 보일 수 있음" 안내 |
+| 임포트 결과 | `--check`/반영 결과에 "N/A n칸 → null로 저장, 해당 항목 감점 0: 컬럼 n건" 표시(JSON 로그 `na_values`) |
+| 되돌리기 | 마이그레이션 downgrade는 null이 하나도 없을 때만 — 남아 있으면 테이블·컬럼을 알려주고 멈춘다 |
+
+예전 동작(참고): 숫자·날짜·허용값 컬럼의 `N/A`는 행 오류로 파일 전체가 거부됐고, 허용값이 없는 EF1 판정 문자열 19개(부분방전진단·OLTC·열화상·소음·화재·설계속성 등)는 `"N/A"` 글자 그대로 저장돼 `'양호'`/`'정상'`이 아니라는 이유로 **감점이 붙었다**(예: 부분방전진단 N/A → -20). 이제는 null → 감점 0.
+
 ## 미확정/자동 캡처 컬럼
 
 사내 입력파일에 위 목록에 없는 헤더가 오면 `equipment_extra_attribute`(equipment_id, column_name, value, inferred_type, source_file, imported_at)에 자동 보관된다 — 정식 컬럼으로 승격하려면 이 문서와 위 테이블 정의를 함께 갱신하는 마이그레이션이 필요하다.

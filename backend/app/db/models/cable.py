@@ -19,13 +19,13 @@ class CableSpec(Base):
 
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
     updated_at: Mapped[date] = mapped_column(Date)
-    cable_sq: Mapped[int] = mapped_column(Integer)
-    cable_per_phase: Mapped[int] = mapped_column(Integer)
-    cable_mva: Mapped[int] = mapped_column(Integer)
-    cable_length: Mapped[int] = mapped_column(Integer)
-    laying_type: Mapped[str] = mapped_column(String(20))
-    mid_joint: Mapped[int] = mapped_column(Integer)
-    end_joint: Mapped[str] = mapped_column(String(20))
+    cable_sq: Mapped[int | None] = mapped_column(Integer)
+    cable_per_phase: Mapped[int | None] = mapped_column(Integer)
+    cable_mva: Mapped[int | None] = mapped_column(Integer)
+    cable_length: Mapped[int | None] = mapped_column(Integer)
+    laying_type: Mapped[str | None] = mapped_column(String(20))
+    mid_joint: Mapped[int | None] = mapped_column(Integer)
+    end_joint: Mapped[str | None] = mapped_column(String(20))
 
 
 class CableCondition(Base):
@@ -35,15 +35,15 @@ class CableCondition(Base):
 
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
     measured_at: Mapped[date] = mapped_column(Date)
-    max_load: Mapped[int] = mapped_column(Integer)
-    max_temp: Mapped[float] = mapped_column(Float)
-    diff_temp: Mapped[float] = mapped_column(Float)
-    failure_rate: Mapped[float] = mapped_column(Float)
-    pd_num: Mapped[int] = mapped_column(Integer)
-    sys_cycle_curr: Mapped[float] = mapped_column(Float)
-    svl_leak_curr: Mapped[float] = mapped_column(Float)
-    joint_ex_damage: Mapped[str] = mapped_column(String(10))
-    cable_move: Mapped[float] = mapped_column(Float)
+    max_load: Mapped[int | None] = mapped_column(Integer)
+    max_temp: Mapped[float | None] = mapped_column(Float)
+    diff_temp: Mapped[float | None] = mapped_column(Float)
+    failure_rate: Mapped[float | None] = mapped_column(Float)
+    pd_num: Mapped[int | None] = mapped_column(Integer)
+    sys_cycle_curr: Mapped[float | None] = mapped_column(Float)
+    svl_leak_curr: Mapped[float | None] = mapped_column(Float)
+    joint_ex_damage: Mapped[str | None] = mapped_column(String(10))
+    cable_move: Mapped[float | None] = mapped_column(Float)
 
 
 class CableConsequenceAttribute(Base):
@@ -53,8 +53,8 @@ class CableConsequenceAttribute(Base):
 
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
     updated_at: Mapped[date] = mapped_column(Date)
-    emerge_resp: Mapped[str] = mapped_column(String(20))
-    rep_time: Mapped[str] = mapped_column(String(20))
+    emerge_resp: Mapped[str | None] = mapped_column(String(20))
+    rep_time: Mapped[str | None] = mapped_column(String(20))
 
 
 class CableDesignAttribute(Base):
@@ -64,13 +64,13 @@ class CableDesignAttribute(Base):
 
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
     updated_at: Mapped[date] = mapped_column(Date)
-    reliability: Mapped[int] = mapped_column(Integer)
-    temp_diag: Mapped[str] = mapped_column(String(10))
-    pd_diag: Mapped[str] = mapped_column(String(10))
-    live_line_diag: Mapped[str] = mapped_column(String(10))
-    cable_move_diag: Mapped[str] = mapped_column(String(10))
-    offline_diag: Mapped[str] = mapped_column(String(20))
-    longlife_insul: Mapped[str] = mapped_column(String(10))
+    reliability: Mapped[int | None] = mapped_column(Integer)
+    temp_diag: Mapped[str | None] = mapped_column(String(10))
+    pd_diag: Mapped[str | None] = mapped_column(String(10))
+    live_line_diag: Mapped[str | None] = mapped_column(String(10))
+    cable_move_diag: Mapped[str | None] = mapped_column(String(10))
+    offline_diag: Mapped[str | None] = mapped_column(String(20))
+    longlife_insul: Mapped[str | None] = mapped_column(String(10))
 
 
 class CableScoreDetail(Base):
@@ -84,7 +84,7 @@ class CableScoreDetail(Base):
     today: Mapped[date] = mapped_column(Date)
     operation_year: Mapped[float] = mapped_column(Float)
     age_minus: Mapped[int] = mapped_column(Integer)
-    load_percent: Mapped[float] = mapped_column(Float)
+    load_percent: Mapped[float | None] = mapped_column(Float)
     load_minus: Mapped[int] = mapped_column(Integer)
     temp_minus: Mapped[int] = mapped_column(Integer)
     diff_temp_minus: Mapped[int] = mapped_column(Integer)
@@ -95,13 +95,13 @@ class CableScoreDetail(Base):
     joint_ex_damage_minus: Mapped[int] = mapped_column(Integer)
     cable_move_minus: Mapped[int] = mapped_column(Integer)
 
-    risk_mva: Mapped[int] = mapped_column(Integer)
+    risk_mva: Mapped[int | None] = mapped_column(Integer)
     risk_mva_minus: Mapped[int] = mapped_column(Integer)
     laying_type_minus: Mapped[int] = mapped_column(Integer)
     mid_joint_minus: Mapped[int] = mapped_column(Integer)
     end_joint_minus: Mapped[int] = mapped_column(Integer)
     emerge_resp_minus: Mapped[int] = mapped_column(Integer)
-    rep_cost: Mapped[float] = mapped_column(Float)
+    rep_cost: Mapped[float | None] = mapped_column(Float)
     rep_cost_minus: Mapped[int] = mapped_column(Integer)
     rep_time_minus: Mapped[int] = mapped_column(Integer)
 

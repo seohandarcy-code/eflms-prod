@@ -20,11 +20,11 @@ class SwitchgearSpec(Base):
 
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
     updated_at: Mapped[date] = mapped_column(Date)
-    eqp_id_name: Mapped[str] = mapped_column(String(50))
-    eqp_building: Mapped[str] = mapped_column(String(50))
-    eqp_disting: Mapped[str] = mapped_column(String(20))
-    eqp_floor: Mapped[str] = mapped_column(String(20))
-    install_building: Mapped[str] = mapped_column(String(20))
+    eqp_id_name: Mapped[str | None] = mapped_column(String(50))
+    eqp_building: Mapped[str | None] = mapped_column(String(50))
+    eqp_disting: Mapped[str | None] = mapped_column(String(20))
+    eqp_floor: Mapped[str | None] = mapped_column(String(20))
+    install_building: Mapped[str | None] = mapped_column(String(20))
 
 
 class SwitchgearCondition(Base):
@@ -34,14 +34,14 @@ class SwitchgearCondition(Base):
 
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
     measured_at: Mapped[date] = mapped_column(Date)
-    part_thermal_chk: Mapped[str] = mapped_column(String(10))
-    elec_room_avg_temp: Mapped[int] = mapped_column(Integer)
-    temp_diff_chk: Mapped[int] = mapped_column(Integer)
-    max_temp_chk: Mapped[int] = mapped_column(Integer)
-    load_chk: Mapped[float] = mapped_column(Float)
-    ex_box_chk: Mapped[str] = mapped_column(String(10))
-    noise_chk: Mapped[str] = mapped_column(String(10))
-    bolt_chk: Mapped[str] = mapped_column(String(10))
+    part_thermal_chk: Mapped[str | None] = mapped_column(String(10))
+    elec_room_avg_temp: Mapped[int | None] = mapped_column(Integer)
+    temp_diff_chk: Mapped[int | None] = mapped_column(Integer)
+    max_temp_chk: Mapped[int | None] = mapped_column(Integer)
+    load_chk: Mapped[float | None] = mapped_column(Float)
+    ex_box_chk: Mapped[str | None] = mapped_column(String(10))
+    noise_chk: Mapped[str | None] = mapped_column(String(10))
+    bolt_chk: Mapped[str | None] = mapped_column(String(10))
 
 
 class SwitchgearConsequenceAttribute(Base):
@@ -51,13 +51,13 @@ class SwitchgearConsequenceAttribute(Base):
 
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
     updated_at: Mapped[date] = mapped_column(Date)
-    scale_dam_chk: Mapped[float] = mapped_column(Float)
-    sup_sys_chk: Mapped[str] = mapped_column(String(10))
-    prod_chk: Mapped[str] = mapped_column(String(10))
-    op_chk: Mapped[str] = mapped_column(String(10))
-    replace_chk: Mapped[float] = mapped_column(Float)
-    recovery_time_chk: Mapped[float] = mapped_column(Float)
-    replace_time_chk: Mapped[int] = mapped_column(Integer)
+    scale_dam_chk: Mapped[float | None] = mapped_column(Float)
+    sup_sys_chk: Mapped[str | None] = mapped_column(String(10))
+    prod_chk: Mapped[str | None] = mapped_column(String(10))
+    op_chk: Mapped[str | None] = mapped_column(String(10))
+    replace_chk: Mapped[float | None] = mapped_column(Float)
+    recovery_time_chk: Mapped[float | None] = mapped_column(Float)
+    replace_time_chk: Mapped[int | None] = mapped_column(Integer)
 
 
 class SwitchgearDesignAttribute(Base):
@@ -67,12 +67,12 @@ class SwitchgearDesignAttribute(Base):
 
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
     updated_at: Mapped[date] = mapped_column(Date)
-    reliability: Mapped[str] = mapped_column(String(10))
-    ato: Mapped[str] = mapped_column(String(10))
-    cb_inspect: Mapped[str] = mapped_column(String(10))
-    relay_chk: Mapped[str] = mapped_column(String(10))
-    online_diag: Mapped[str] = mapped_column(String(10))
-    part_shortage: Mapped[str] = mapped_column(String(10))
+    reliability: Mapped[str | None] = mapped_column(String(10))
+    ato: Mapped[str | None] = mapped_column(String(10))
+    cb_inspect: Mapped[str | None] = mapped_column(String(10))
+    relay_chk: Mapped[str | None] = mapped_column(String(10))
+    online_diag: Mapped[str | None] = mapped_column(String(10))
+    part_shortage: Mapped[str | None] = mapped_column(String(10))
 
 
 class SwitchgearScoreDetail(Base):

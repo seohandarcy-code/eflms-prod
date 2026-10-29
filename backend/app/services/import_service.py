@@ -12,6 +12,10 @@
 실제 파일에서 흔한 표기 차이(UTF-8 BOM, 값을 감싼 따옴표, `154000.0` 같은 정수의 실수 표기,
 `YYYY.MM.DD`/`YYYY/MM/DD`/`YYYYMMDD` 날짜)는 받아주고, 값 자체가 틀린 것(소수 정수, NaN,
 빈 숫자/날짜, 칸 수 불일치, 파일 안 중복 설비)은 행 오류로 막는다.
+
+값 없음 표기(`N/A`·`n/a`·`#N/A`)는 null로 저장한다 — 계산에서 그 항목은 감점 0(app/equipment_types/na.py).
+단 설비를 식별하거나 공통 테이블에 필수인 컬럼(사업장·설비유형·설비명·가동년월·전압)은 N/A를 거부한다.
+빈 칸은 실수로 빠뜨린 값일 수 있어 지금처럼 오류다(Stage 11, 2026-10-29 결정).
 """
 from __future__ import annotations
 
@@ -22,9 +26,15 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import EquipmentExtraAttribute
+from app.equipment_types.na import is_na_token
 from app.equipment_types.registry import UnknownEquipmentTypeError, get_module
 from app.services.dataset_service import count_type, reset_type
 from app.services.ingest import ingest_row
+
+
+# N/A(null)를 받지 않는 컬럼 — 설비 식별(+ 유형별 NAME_FIELD)과 공통 equipment의 필수 값.
+# 가동년월은 경과연수 계산에, 전압은 EF2 누설전류 판정에도 쓰인다.
+NOT_NULLABLE_COLUMNS = frozenset({"factory_code", "EF_code", "operation_start_time", "voltage"})
 
 
 def _match_column(columns_by_name: dict[str, dict], header: str) -> dict | None:
@@ -126,6 +136,7 @@ class ImportResult:
     ignored_columns: list[str] = field(default_factory=list)  # 유형이 IGNORED_COLUMNS로 선언한, 건너뛴 컬럼
     dry_run: bool = False
     existing_rows: int = 0  # dry_run일 때 현재 그 유형의 설비 수(--replace면 지워질 수)
+    na_values: dict[str, int] = field(default_factory=dict)  # 컬럼 → N/A(null로 저장)인 칸 수
 
     @property
     def ok(self) -> bool:
@@ -224,6 +235,15 @@ async def import_file(
             if col is None:
                 if raw_value.strip():
                     extras[h.strip()] = raw_value.strip()
+                continue
+            if is_na_token(raw_value):
+                if col["name"] in NOT_NULLABLE_COLUMNS or col["name"] == module.NAME_FIELD:
+                    result.row_errors.append(
+                        RowError(row_number=i, column=col["name"], raw_value=raw_value, reason="N/A 불가(필수 컬럼)")
+                    )
+                else:
+                    row[col["name"]] = None
+                    result.na_values[col["name"]] = result.na_values.get(col["name"], 0) + 1
                 continue
             try:
                 value = _cast_value(raw_value, col["dtype"])

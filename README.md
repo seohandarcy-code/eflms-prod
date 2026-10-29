@@ -183,6 +183,7 @@ cd backend
 - 헤더는 `ref_data/schema_eflms.py`(EF1)·`schema_eflms_gis.py`(EF2)·`schema_eflms_cable.py`(EF3)·`schema_eflms_subaejeon.py`(EF4)의 `INPUT_COLUMNS` 컬럼명과 같아야 한다(순서 무관). 파일 안 `EF_code` 값이 `--ef-code`와 다르거나 등록되지 않은 유형이면 거부한다.
 - GIS의 `cb_op_char_over`는 쓰지 않는 컬럼이라 있어도 건너뛴다(저장 안 함, "사용 안 하는 컬럼"으로 표시). 그 밖에 목록에 없는 컬럼은 "미등록 컬럼"으로 표시되고 `equipment_extra_attribute`에 원문 보관된다.
 - 받아주는 표기: UTF-8(BOM 있어도 됨)·CP949, LF/CRLF, 값을 감싼 따옴표, 정수 칸의 `154000.0`, 날짜 `YYYY-MM-DD`·`YYYY.MM.DD`·`YYYY/MM/DD`·`YYYYMMDD`.
+- 값 없음: `N/A`·`n/a`·`#N/A`는 null로 저장되고 그 항목은 감점 0(평가 안 함, 화면에 "N/A"). 단 사업장·설비명·가동년월·전압은 N/A 불가. 빈 칸은 N/A가 아니라 오류다 — `docs/DATA_DICTIONARY.md` "값 없음(N/A) 처리".
 - 거부하는 것(행 오류): 헤더와 칸 수가 다른 행, 같은 설비(`factory_code` + 설비명)가 파일에 두 번, 빈 숫자/날짜, 소수인 정수, `nan`/`inf`, EF2~EF4 허용값 밖 값(예: EF3 포설방법 `지중`, 종단접속함 `DEBG,EBA`처럼 공백 빠진 표기, EF4 점검결과 `양호`/`불량` 외 표기·목록에 없는 설치건물), EF4 온도의 소수(원본 양식대로 정수).
 
 **다른 PC에서 클론해 실데이터로 띄우기**: 위 "다른 PC에서 실데이터로 시작하기" 절의 단계를 그대로 따른다.

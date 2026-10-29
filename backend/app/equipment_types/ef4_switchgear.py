@@ -33,6 +33,7 @@ from app.db.models import (
     SwitchgearScoreDetail,
     SwitchgearSpec,
 )
+from app.equipment_types.na import evaluate
 from app.schemas.ef4 import (
     Ef4Detail,
     SwitchgearConditionOut,
@@ -284,11 +285,8 @@ CALCULATED_COLUMNS = [
 def calculate(input_row: dict, as_of: date | None = None) -> dict:
     """input_row(INPUT_COLUMNS 값들)를 받아 전체 계산 컬럼을 더한 dict를 반환한다.
     원본을 바꾸지 않도록 복사본에 계산한다. as_of는 계산 기준일(기본 오늘)."""
-    row = dict(input_row)
-    row["_as_of"] = as_of or date.today()
-    for col in CALCULATED_COLUMNS:
-        row[col["name"]] = col["formula"](row)
-    del row["_as_of"]
+    # N/A(null) 입력을 읽는 공식은 감점 0 / 파생값 null — app/equipment_types/na.py (Stage 11)
+    row = evaluate(input_row, CALCULATED_COLUMNS, as_of)
     # 원본에 전압 입력이 없다 — 공통 equipment.voltage(필수)에는 0을 넣는다(Stage 10-0, 화면 미표시).
     row["voltage"] = 0
     return row

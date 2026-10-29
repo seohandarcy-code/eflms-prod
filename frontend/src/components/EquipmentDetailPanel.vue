@@ -3,6 +3,7 @@ import { computed, ref, watch } from "vue";
 import { useEquipmentStore } from "../stores/equipment";
 import type { EquipmentDetail } from "../types/equipment";
 import { formatMonth } from "../utils/formatDate";
+import { na } from "../utils/formatValue";
 import { statusBg, statusColor, statusLabel } from "../utils/statusStyle";
 import PofDistributionChart from "./PofDistributionChart.vue";
 import ScoreProjectionChart from "./ScoreProjectionChart.vue";
@@ -49,10 +50,10 @@ const color = computed(() => (detail.value ? statusColor(detail.value.status) : 
 // 헤더 부제 — 유형마다 대표 사양이 다르다(EF1 정격용량, EF2 조작방식, EF3 굵기·회선별용량, EF4 설비명·설치위치). 본문은 detail/Ef*DetailBody.vue (Stage 8-5).
 const typeSubtitle = computed(() => {
   const typeDetail = detail.value?.type_detail;
-  if (typeDetail?.ef_code === "EF1") return `ONAN ${typeDetail.spec.onan_val}MVA`;
-  if (typeDetail?.ef_code === "EF2") return `조작방식 ${typeDetail.operation.op_type}`;
-  if (typeDetail?.ef_code === "EF3") return `${typeDetail.spec.cable_sq}sq × ${typeDetail.spec.cable_per_phase} · ${typeDetail.spec.cable_mva}MVA`;
-  if (typeDetail?.ef_code === "EF4") return `${typeDetail.spec.eqp_id_name} · ${typeDetail.spec.eqp_building} ${typeDetail.spec.eqp_floor} · ${typeDetail.spec.eqp_disting}`;
+  if (typeDetail?.ef_code === "EF1") return `ONAN ${na(typeDetail.spec.onan_val, { unit: "MVA" })}`;
+  if (typeDetail?.ef_code === "EF2") return `조작방식 ${na(typeDetail.operation.op_type)}`;
+  if (typeDetail?.ef_code === "EF3") return `${na(typeDetail.spec.cable_sq, { unit: "sq" })} × ${na(typeDetail.spec.cable_per_phase)} · ${na(typeDetail.spec.cable_mva, { unit: "MVA" })}`;
+  if (typeDetail?.ef_code === "EF4") return `${na(typeDetail.spec.eqp_id_name)} · ${na(typeDetail.spec.eqp_building)} ${na(typeDetail.spec.eqp_floor)} · ${na(typeDetail.spec.eqp_disting)}`;
   return "";
 });
 // POF 분포는 같은 설비유형끼리 비교한다(유형마다 감점 체계가 달라서).

@@ -43,6 +43,7 @@ async def run(path: str, ef_code: str, replace: bool, check: bool = False) -> bo
                 "row_errors": [asdict(e) for e in result.row_errors],
                 "unknown_columns": result.unknown_columns,
                 "ignored_columns": result.ignored_columns,
+                "na_values": result.na_values,
             },
             ensure_ascii=False,
             default=str,
@@ -71,6 +72,9 @@ async def run(path: str, ef_code: str, replace: bool, check: bool = False) -> bo
             print(f"  - {e.row_number}행 {e.column}: '{e.raw_value}' ({e.reason})")
     if result.ignored_columns:
         print(f"  사용 안 하는 컬럼(무시, 저장 안 함): {', '.join(result.ignored_columns)}")
+    if result.ok and result.na_values:
+        detail = ", ".join(f"{name} {count}건" for name, count in result.na_values.items())
+        print(f"  N/A {sum(result.na_values.values())}칸 → 값 없음(null)으로 저장, 해당 항목 감점 0: {detail}")
     return result.ok
 
 

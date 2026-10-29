@@ -8,46 +8,46 @@ from pydantic import BaseModel, ConfigDict
 class CableSpecOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     updated_at: date
-    cable_sq: int
-    cable_per_phase: int
-    cable_mva: int
-    cable_length: int
-    laying_type: str
-    mid_joint: int
-    end_joint: str
+    cable_sq: int | None
+    cable_per_phase: int | None
+    cable_mva: int | None
+    cable_length: int | None
+    laying_type: str | None
+    mid_joint: int | None
+    end_joint: str | None
 
 
 class CableConditionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     measured_at: date
-    max_load: int
-    max_temp: float
-    diff_temp: float
-    failure_rate: float
-    pd_num: int
-    sys_cycle_curr: float
-    svl_leak_curr: float
-    joint_ex_damage: str
-    cable_move: float
+    max_load: int | None
+    max_temp: float | None
+    diff_temp: float | None
+    failure_rate: float | None
+    pd_num: int | None
+    sys_cycle_curr: float | None
+    svl_leak_curr: float | None
+    joint_ex_damage: str | None
+    cable_move: float | None
 
 
 class CableConsequenceAttributeOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     updated_at: date
-    emerge_resp: str
-    rep_time: str
+    emerge_resp: str | None
+    rep_time: str | None
 
 
 class CableDesignAttributeOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     updated_at: date
-    reliability: int
-    temp_diag: str
-    pd_diag: str
-    live_line_diag: str
-    cable_move_diag: str
-    offline_diag: str
-    longlife_insul: str
+    reliability: int | None
+    temp_diag: str | None
+    pd_diag: str | None
+    live_line_diag: str | None
+    cable_move_diag: str | None
+    offline_diag: str | None
+    longlife_insul: str | None
 
 
 class CableScoreDetailOut(BaseModel):
@@ -56,7 +56,7 @@ class CableScoreDetailOut(BaseModel):
     today: date
     operation_year: float
     age_minus: int
-    load_percent: float
+    load_percent: float | None
     load_minus: int
     temp_minus: int
     diff_temp_minus: int
@@ -66,13 +66,13 @@ class CableScoreDetailOut(BaseModel):
     svl_leak_curr_minus: int
     joint_ex_damage_minus: int
     cable_move_minus: int
-    risk_mva: int
+    risk_mva: int | None
     risk_mva_minus: int
     laying_type_minus: int
     mid_joint_minus: int
     end_joint_minus: int
     emerge_resp_minus: int
-    rep_cost: float
+    rep_cost: float | None
     rep_cost_minus: int
     rep_time_minus: int
     reliability_minus: int

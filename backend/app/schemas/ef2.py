@@ -8,55 +8,55 @@ from pydantic import BaseModel, ConfigDict
 class GisOperationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     measured_at: date
-    op_type: str
-    cb_op_num: int
-    rated_trip_count: int
-    cum_trip_current: float
-    load_percent: float
-    leakage_curr: float
+    op_type: str | None
+    cb_op_num: int | None
+    rated_trip_count: int | None
+    cum_trip_current: float | None
+    load_percent: float | None
+    leakage_curr: float | None
 
 
 class GisDiagnosisOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     measured_at: date
-    part_dischar_pat: str
-    elec_room_max_temp: int
+    part_dischar_pat: str | None
+    elec_room_max_temp: int | None
 
 
 class GisSf6ReadingOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    diag_time: date
-    sf6_so2: float
-    sf6_leak: str
-    sf6_h2o: float
-    sf6_purity: float
+    diag_time: date | None
+    sf6_so2: float | None
+    sf6_leak: str | None
+    sf6_h2o: float | None
+    sf6_purity: float | None
 
 
 class GisConsequenceAttributeOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     updated_at: date
-    in_vol: str
-    capa_times_load: str
-    fire_spread: str
-    env_loc: str
-    emerge_resp_pat: str
-    rep_cost: str
-    rep_time: str
+    in_vol: str | None
+    capa_times_load: str | None
+    fire_spread: str | None
+    env_loc: str | None
+    emerge_resp_pat: str | None
+    rep_cost: str | None
+    rep_time: str | None
 
 
 class GisDesignAttributeOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     updated_at: date
-    in_line_num: str
-    ato: str
-    reliability: str
-    online_diag: str
-    offline_diag: str
-    tbm: str
-    conn_rev: str
-    leak_str: str
-    insul_str: str
-    vt_la_str: str
+    in_line_num: str | None
+    ato: str | None
+    reliability: str | None
+    online_diag: str | None
+    offline_diag: str | None
+    tbm: str | None
+    conn_rev: str | None
+    leak_str: str | None
+    insul_str: str | None
+    vt_la_str: str | None
 
 
 class GisScoreDetailOut(BaseModel):

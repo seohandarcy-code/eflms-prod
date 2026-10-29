@@ -69,6 +69,7 @@ function groupItems(items: BreakdownItem[]): { group: string | null; items: Brea
         <h2>종합점수 계산</h2>
         <p class="lead">세 축의 점수를 아래 비율로 가중합해 종합점수를 만듭니다 — POF의 비중이 가장 크고, DOF가 가장 작습니다. 모든 설비유형에 같은 비율을 쓰므로 유형이 달라도 종합점수로 함께 비교할 수 있습니다.</p>
         <div class="formula">종합점수 = 0.5 × POF + 0.3 × COF + 0.2 × DOF</div>
+        <p class="lead">입력 데이터에 값이 없어 <b>N/A</b>로 들어온 항목은 평가하지 않습니다 — 그 항목의 감점은 0이고, 상세 화면에는 값이 "N/A"로 표시됩니다. 따라서 N/A가 많은 설비는 실제보다 점수가 높게 보일 수 있습니다.</p>
       </section>
 
       <section v-for="info in store.equipmentTypes" :key="info.ef_code" class="card">

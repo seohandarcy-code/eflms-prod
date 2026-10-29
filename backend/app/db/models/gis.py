@@ -18,12 +18,12 @@ class GisOperation(Base):
 
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
     measured_at: Mapped[date] = mapped_column(Date)
-    op_type: Mapped[str] = mapped_column(String(20))
-    cb_op_num: Mapped[int] = mapped_column(Integer)
-    rated_trip_count: Mapped[int] = mapped_column(Integer)
-    cum_trip_current: Mapped[float] = mapped_column(Float)
-    load_percent: Mapped[float] = mapped_column(Float)
-    leakage_curr: Mapped[float] = mapped_column(Float)
+    op_type: Mapped[str | None] = mapped_column(String(20))
+    cb_op_num: Mapped[int | None] = mapped_column(Integer)
+    rated_trip_count: Mapped[int | None] = mapped_column(Integer)
+    cum_trip_current: Mapped[float | None] = mapped_column(Float)
+    load_percent: Mapped[float | None] = mapped_column(Float)
+    leakage_curr: Mapped[float | None] = mapped_column(Float)
 
 
 class GisDiagnosis(Base):
@@ -33,8 +33,8 @@ class GisDiagnosis(Base):
 
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
     measured_at: Mapped[date] = mapped_column(Date)
-    part_dischar_pat: Mapped[str] = mapped_column(String(10))
-    elec_room_max_temp: Mapped[int] = mapped_column(Integer)
+    part_dischar_pat: Mapped[str | None] = mapped_column(String(10))
+    elec_room_max_temp: Mapped[int | None] = mapped_column(Integer)
 
 
 class GisSf6Reading(Base):
@@ -43,11 +43,11 @@ class GisSf6Reading(Base):
     __tablename__ = "gis_sf6_reading"
 
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
-    diag_time: Mapped[date] = mapped_column(Date)
-    sf6_so2: Mapped[float] = mapped_column(Float)
-    sf6_leak: Mapped[str] = mapped_column(String(10))
-    sf6_h2o: Mapped[float] = mapped_column(Float)
-    sf6_purity: Mapped[float] = mapped_column(Float)
+    diag_time: Mapped[date | None] = mapped_column(Date)
+    sf6_so2: Mapped[float | None] = mapped_column(Float)
+    sf6_leak: Mapped[str | None] = mapped_column(String(10))
+    sf6_h2o: Mapped[float | None] = mapped_column(Float)
+    sf6_purity: Mapped[float | None] = mapped_column(Float)
 
 
 class GisConsequenceAttribute(Base):
@@ -57,13 +57,13 @@ class GisConsequenceAttribute(Base):
 
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
     updated_at: Mapped[date] = mapped_column(Date)
-    in_vol: Mapped[str] = mapped_column(String(10))
-    capa_times_load: Mapped[str] = mapped_column(String(10))
-    fire_spread: Mapped[str] = mapped_column(String(10))
-    env_loc: Mapped[str] = mapped_column(String(10))
-    emerge_resp_pat: Mapped[str] = mapped_column(String(10))
-    rep_cost: Mapped[str] = mapped_column(String(10))
-    rep_time: Mapped[str] = mapped_column(String(10))
+    in_vol: Mapped[str | None] = mapped_column(String(10))
+    capa_times_load: Mapped[str | None] = mapped_column(String(10))
+    fire_spread: Mapped[str | None] = mapped_column(String(10))
+    env_loc: Mapped[str | None] = mapped_column(String(10))
+    emerge_resp_pat: Mapped[str | None] = mapped_column(String(10))
+    rep_cost: Mapped[str | None] = mapped_column(String(10))
+    rep_time: Mapped[str | None] = mapped_column(String(10))
 
 
 class GisDesignAttribute(Base):
@@ -73,16 +73,16 @@ class GisDesignAttribute(Base):
 
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
     updated_at: Mapped[date] = mapped_column(Date)
-    in_line_num: Mapped[str] = mapped_column(String(10))
-    ato: Mapped[str] = mapped_column(String(10))
-    reliability: Mapped[str] = mapped_column(String(10))
-    online_diag: Mapped[str] = mapped_column(String(10))
-    offline_diag: Mapped[str] = mapped_column(String(10))
-    tbm: Mapped[str] = mapped_column(String(10))
-    conn_rev: Mapped[str] = mapped_column(String(10))
-    leak_str: Mapped[str] = mapped_column(String(10))
-    insul_str: Mapped[str] = mapped_column(String(10))
-    vt_la_str: Mapped[str] = mapped_column(String(10))
+    in_line_num: Mapped[str | None] = mapped_column(String(10))
+    ato: Mapped[str | None] = mapped_column(String(10))
+    reliability: Mapped[str | None] = mapped_column(String(10))
+    online_diag: Mapped[str | None] = mapped_column(String(10))
+    offline_diag: Mapped[str | None] = mapped_column(String(10))
+    tbm: Mapped[str | None] = mapped_column(String(10))
+    conn_rev: Mapped[str | None] = mapped_column(String(10))
+    leak_str: Mapped[str | None] = mapped_column(String(10))
+    insul_str: Mapped[str | None] = mapped_column(String(10))
+    vt_la_str: Mapped[str | None] = mapped_column(String(10))
 
 
 class GisScoreDetail(Base):

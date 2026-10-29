@@ -8,47 +8,47 @@ from pydantic import BaseModel, ConfigDict
 class SwitchgearSpecOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     updated_at: date
-    eqp_id_name: str
-    eqp_building: str
-    eqp_disting: str
-    eqp_floor: str
-    install_building: str
+    eqp_id_name: str | None
+    eqp_building: str | None
+    eqp_disting: str | None
+    eqp_floor: str | None
+    install_building: str | None
 
 
 class SwitchgearConditionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     measured_at: date
-    part_thermal_chk: str
-    elec_room_avg_temp: int
-    temp_diff_chk: int
-    max_temp_chk: int
-    load_chk: float
-    ex_box_chk: str
-    noise_chk: str
-    bolt_chk: str
+    part_thermal_chk: str | None
+    elec_room_avg_temp: int | None
+    temp_diff_chk: int | None
+    max_temp_chk: int | None
+    load_chk: float | None
+    ex_box_chk: str | None
+    noise_chk: str | None
+    bolt_chk: str | None
 
 
 class SwitchgearConsequenceAttributeOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     updated_at: date
-    scale_dam_chk: float
-    sup_sys_chk: str
-    prod_chk: str
-    op_chk: str
-    replace_chk: float
-    recovery_time_chk: float
-    replace_time_chk: int
+    scale_dam_chk: float | None
+    sup_sys_chk: str | None
+    prod_chk: str | None
+    op_chk: str | None
+    replace_chk: float | None
+    recovery_time_chk: float | None
+    replace_time_chk: int | None
 
 
 class SwitchgearDesignAttributeOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     updated_at: date
-    reliability: str
-    ato: str
-    cb_inspect: str
-    relay_chk: str
-    online_diag: str
-    part_shortage: str
+    reliability: str | None
+    ato: str | None
+    cb_inspect: str | None
+    relay_chk: str | None
+    online_diag: str | None
+    part_shortage: str | None
 
 
 class SwitchgearScoreDetailOut(BaseModel):
