@@ -27,10 +27,7 @@ describe("detail body with N/A (null) values", () => {
       condition: { measured_at: "2026-10-29", part_thermal_chk: "양호", elec_room_avg_temp: 25, temp_diff_chk: 0, max_temp_chk: null, load_chk: null, ex_box_chk: "양호", noise_chk: "양호", bolt_chk: "양호" },
       consequence: {}, design: { reliability: "O", ato: "적용" }, score_detail: { cb_stat: 1 },
     } as unknown as Ef4TypeDetail;
-    const compact = mount(Ef4DetailBody, { props: { typeDetail, part: "compact" } }).text();
-    expect(compact).toContain("N/A 1F");
-    expect(compact).toContain("CLIP N/A · 부하율 N/A");
-    const raw = mount(Ef4DetailBody, { props: { typeDetail, part: "raw" } }).text();
+    const raw = mount(Ef4DetailBody, { props: { typeDetail } }).text();
     expect(raw).toContain("설치건물N/A");
   });
 });

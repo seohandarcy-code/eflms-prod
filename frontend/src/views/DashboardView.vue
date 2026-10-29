@@ -303,7 +303,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
 
           <div class="list-header">
             <div class="list-title">
-              POF·COF·DOF 지수 3차원 분포도
+              POF(설비상태)·COF(고장영향성)·DOF(고장예방력) 지수 3차원 분포도
               <span class="guide-link-wrap">
                 <RouterLink to="/guide" class="guide-link">?</RouterLink>
                 <div class="guide-tooltip">

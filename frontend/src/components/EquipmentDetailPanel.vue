@@ -93,13 +93,6 @@ const sameTypeList = computed(() => store.equipmentList.filter((item) => item.ef
             <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.dof) + '%', background: color }" /></div>
             <span class="bar-value mono">{{ detail.score.dof }}</span>
           </div>
-
-          <div class="compact-details">
-            <Ef1DetailBody v-if="detail.type_detail.ef_code === 'EF1'" :type-detail="detail.type_detail" part="compact" />
-            <Ef2DetailBody v-else-if="detail.type_detail.ef_code === 'EF2'" :type-detail="detail.type_detail" part="compact" />
-            <Ef3DetailBody v-else-if="detail.type_detail.ef_code === 'EF3'" :type-detail="detail.type_detail" part="compact" />
-            <Ef4DetailBody v-else-if="detail.type_detail.ef_code === 'EF4'" :type-detail="detail.type_detail" part="compact" />
-          </div>
         </div>
 
         <div class="chart-cell chart-cell-1">
@@ -119,10 +112,10 @@ const sameTypeList = computed(() => store.equipmentList.filter((item) => item.ef
         </button>
 
         <div v-if="showRaw" class="raw-groups">
-          <Ef1DetailBody v-if="detail.type_detail.ef_code === 'EF1'" :type-detail="detail.type_detail" part="raw" />
-          <Ef2DetailBody v-else-if="detail.type_detail.ef_code === 'EF2'" :type-detail="detail.type_detail" part="raw" />
-          <Ef3DetailBody v-else-if="detail.type_detail.ef_code === 'EF3'" :type-detail="detail.type_detail" part="raw" />
-          <Ef4DetailBody v-else-if="detail.type_detail.ef_code === 'EF4'" :type-detail="detail.type_detail" part="raw" />
+          <Ef1DetailBody v-if="detail.type_detail.ef_code === 'EF1'" :type-detail="detail.type_detail" />
+          <Ef2DetailBody v-else-if="detail.type_detail.ef_code === 'EF2'" :type-detail="detail.type_detail" />
+          <Ef3DetailBody v-else-if="detail.type_detail.ef_code === 'EF3'" :type-detail="detail.type_detail" />
+          <Ef4DetailBody v-else-if="detail.type_detail.ef_code === 'EF4'" :type-detail="detail.type_detail" />
         </div>
       </div>
     </template>
@@ -221,58 +214,38 @@ const sameTypeList = computed(() => store.equipmentList.filter((item) => item.ef
 .chart-cell-2 {
   grid-area: chart2;
 }
+/* 왼쪽 칸(420×150)은 POF·COF·DOF 막대만 — 요약 4줄을 빼고 칸 전체를 채운다(2026-10-29).
+   막대는 길이가 약 4배(90→320px)라 두께는 2배(5→10px)만 키워 납작한 비율을 유지한다. */
 .left-col {
   grid-area: info;
   display: flex;
-  flex-direction: row;
-  gap: 20px;
 }
 .score-bars {
-  flex: 0 0 170px;
+  flex: 1;
   display: grid;
-  grid-template-columns: 34px 1fr 34px;
-  gap: 8px 10px;
-  align-content: start;
+  grid-template-columns: 40px 1fr 40px;
+  grid-template-rows: repeat(3, 1fr);
+  column-gap: 12px;
   align-items: center;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
   color: #8891a0;
 }
 .bar-track {
-  height: 5px;
+  height: 10px;
   background: #eef0f3;
-  border-radius: 3px;
+  border-radius: 5px;
   overflow: hidden;
 }
 .bar-fill {
   height: 100%;
+  border-radius: 5px;
 }
 .bar-value {
-  font-size: 11px;
+  font-size: 14px;
+  font-weight: 700;
   color: #4a5361;
   text-align: right;
-}
-.compact-details {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border-left: 1px solid #eef0f3;
-  padding-left: 16px;
-}
-.panel :deep(.compact-row) {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.panel :deep(.compact-label) {
-  font-size: 11px;
-  font-weight: 600;
-  color: #8891a0;
-}
-.panel :deep(.compact-value) {
-  font-size: 12px;
-  color: #1a2230;
 }
 .panel :deep(.mono) {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
