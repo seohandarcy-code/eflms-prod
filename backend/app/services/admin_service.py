@@ -35,6 +35,11 @@ ALLOWED_TABLES: list[str] = [
     "cable_condition",
     "cable_consequence_attribute",
     "cable_design_attribute",
+    "switchgear_score_detail",
+    "switchgear_spec",
+    "switchgear_condition",
+    "switchgear_consequence_attribute",
+    "switchgear_design_attribute",
     "equipment_extra_attribute",
 ]
 

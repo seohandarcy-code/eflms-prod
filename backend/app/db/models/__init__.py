@@ -27,6 +27,13 @@ from app.db.models.readings import (
     TransformerSpec,
 )
 from app.db.models.scoring import ScoreSnapshot, TransformerScoreDetail
+from app.db.models.switchgear import (
+    SwitchgearCondition,
+    SwitchgearConsequenceAttribute,
+    SwitchgearDesignAttribute,
+    SwitchgearScoreDetail,
+    SwitchgearSpec,
+)
 
 __all__ = [
     "AllowedUser",
@@ -54,4 +61,9 @@ __all__ = [
     "CableConsequenceAttribute",
     "CableDesignAttribute",
     "CableScoreDetail",
+    "SwitchgearSpec",
+    "SwitchgearCondition",
+    "SwitchgearConsequenceAttribute",
+    "SwitchgearDesignAttribute",
+    "SwitchgearScoreDetail",
 ]

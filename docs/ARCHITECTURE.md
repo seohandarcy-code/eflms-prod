@@ -24,6 +24,8 @@
 
 **EF3(초고압케이블) 전용 도메인 테이블**(Stage 9) — 입력: `cable_spec`, `cable_condition`, `cable_consequence_attribute`, `cable_design_attribute` / 계산: `cable_score_detail`. 계산기 `backend/app/equipment_types/ef3_cable.py`. 아래 "새 설비유형 추가 절차"를 그대로 따라 공통 레이어·기존 유형 코드 변경 없이 붙였다.
 
+**EF4(수배전반) 전용 도메인 테이블**(Stage 10) — 입력: `switchgear_spec`, `switchgear_condition`, `switchgear_consequence_attribute`, `switchgear_design_attribute` / 계산: `switchgear_score_detail`. 계산기 `backend/app/equipment_types/ef4_switchgear.py`. 원본에 전압이 없어 공통 `equipment.voltage`에는 0을 넣는다(계산기가 채움 — 공통 적재 코드 불변). 같은 Stage에서 공통 화면의 전압 표시를 가동년월로 바꿨다(10-0, 목록 API에 `operation_start_time` 추가 — 테이블 변경 없음).
+
 **설비유형 확장 원칙**: 공통 레이어는 EF2 도입 때 한 번 일반화했다(Stage 8-1 `equipment` 정리, 8-2 레지스트리·플러그인화 — 승인된 1회성 예외). 이후 새 설비유형(EF3~)은 **새 계산기 모듈 + 새 도메인 테이블 + 레지스트리 등록만** 추가하고, `equipment_type`/`equipment`/`score_snapshot` 공통 레이어와 기존 유형 코드는 변경하지 않는다(개방-폐쇄 원칙). 절차는 아래 "새 설비유형 추가 절차".
 
 ## 계산 로직 — "설비 타입 계산기 레지스트리"
@@ -72,8 +74,8 @@ mock 생성기(ref_data 로직 이식)     ─┐
 | 엔드포인트 | 내용 |
 |---|---|
 | `GET /api/equipment-types` | 등록된 유형, 유형별 설비 수, 감점 항목 메타데이터(`breakdown` — 축별 `field`/`label`/`group`/`summed`) |
-| `GET /api/equipment?ef_code=&factory_code=` | 공통 요약 목록. `ef_code`를 빼면 전체 유형. 최근 진단일은 유형별 기준(EF1 DGA, EF2 SF6, EF3 상태값 측정일) |
-| `GET /api/equipment/{id}` | 공통 헤더 + `score` + `type_detail`(`ef_code`로 구분되는 union: EF1/EF2/EF3 전용 상세) + `projection` |
+| `GET /api/equipment?ef_code=&factory_code=` | 공통 요약 목록. `ef_code`를 빼면 전체 유형. 최근 진단일은 유형별 기준(EF1 DGA, EF2 SF6, EF3 상태값 측정일, EF4 점검결과 반영일). 항목마다 `operation_start_time`(가동년월, Stage 10-0) 포함 |
+| `GET /api/equipment/{id}` | 공통 헤더 + `score` + `type_detail`(`ef_code`로 구분되는 union: EF1~EF4 전용 상세) + `projection` |
 | `GET /api/summary?ef_code=` | KPI + `by_type`(유형별 합계·교체검토·즉시교체) |
 
 - 서비스(`equipment_service`)는 공통 테이블만 직접 읽고, 유형별 정보는 설비유형 모듈의 `last_diag_dates`/`load_detail`/`load_inputs`에 맡긴다 — 새 유형은 모듈과 `app/schemas/<유형>.py` 상세 스키마, `TypeDetail` union 한 줄만 추가한다.

@@ -1,4 +1,4 @@
-import type { Axis, BreakdownItem, Ef1TypeDetail, Ef2TypeDetail, Ef3TypeDetail, EquipmentDetail } from "../types/equipment";
+import type { Axis, BreakdownItem, Ef1TypeDetail, Ef2TypeDetail, Ef3TypeDetail, Ef4TypeDetail, EquipmentDetail } from "../types/equipment";
 
 // 감점 항목 라벨은 백엔드 설비유형 모듈의 BREAKDOWN(/api/equipment-types)이 단일 원본이다(Stage 8-5).
 // 예전처럼 여기에 유형별 라벨을 하드코딩하지 않는다.
@@ -134,11 +134,43 @@ const EF3_EVIDENCE: Record<string, (d: Ef3TypeDetail) => string> = {
   longlife_insul_minus: (d) => `장수명절연물 ${d.design.longlife_insul}`,
 };
 
+const EF4_EVIDENCE: Record<string, (d: Ef4TypeDetail) => string> = {
+  age_minus: (d) => `경과년수 ${d.score_detail.operation_year}년차`,
+  cb_stat_minus: (d) => `차단기상태점수 ${d.score_detail.cb_stat.toFixed(4)} (사용 ${d.score_detail.cb_op_year}년)`,
+  part_thermal_chk_minus: (d) => `각종부품열화여부 ${d.condition.part_thermal_chk}`,
+  elec_room_avg_temp_minus: (d) => `전기실평균온도 ${d.condition.elec_room_avg_temp}℃`,
+  temp_diff_chk_minus: (d) => `각상별온도편차 ${d.condition.temp_diff_chk}℃`,
+  max_temp_chk_minus: (d) => `차단기CLIP최고온도 ${d.condition.max_temp_chk}℃`,
+  load_minus: (d) => `부하율 ${(d.condition.load_chk * 100).toFixed(0)}%`,
+  ex_box_chk_minus: (d) => `외함정상상태 ${d.condition.ex_box_chk}`,
+  noise_chk_minus: (d) => `차단기소음 ${d.condition.noise_chk}`,
+  bolt_chk_minus: (d) => `BOLT풀림 ${d.condition.bolt_chk}`,
+
+  scale_dam_chk_minus: (d) => `피해규모 ${d.consequence.scale_dam_chk}`,
+  install_building_minus: (d) => `설치건물 ${d.spec.install_building}`,
+  sup_sys_chk_minus: (d) => `공급계통 ${d.consequence.sup_sys_chk}`,
+  prod_chk_minus: (d) => `${d.consequence.prod_chk} 설비`,
+  op_chk_minus: (d) => `상시가동 ${d.consequence.op_chk}`,
+  replace_chk_minus: (d) => `교체비용 ${d.consequence.replace_chk}`,
+  recovery_time_chk_minus: (d) => `복구시부하정상동작시간 ${d.consequence.recovery_time_chk}`,
+  replace_time_chk_minus: (d) => `설비교체기간 ${d.consequence.replace_time_chk}`,
+
+  reliability_minus: (d) => `이중화 ${d.design.reliability}`,
+  ato_minus: (d) => `ATO ${d.design.ato}`,
+  cb_inspect_minus: (d) => `차단기정밀점검 ${d.design.cb_inspect}`,
+  relay_chk_minus: (d) => `계전기점검 ${d.design.relay_chk}`,
+  online_diag_minus: (d) => `온라인진단 ${d.design.online_diag}`,
+  part_shortage_minus: (d) => `부품 ${d.design.part_shortage}`,
+  ct_use_minus: (d) => `관통형CT ${d.score_detail.ct_use} (${d.score_detail.operation_start_year}년 설치)`,
+  spec_use_minus: (d) => `장수명FAN ${d.score_detail.longlife_fan_use} · 조명등 ${d.score_detail.lighting_use}`,
+};
+
 /** 감점 항목 하나의 근거(원본 측정값/판정)를 한 줄 텍스트로 반환한다. 매핑이 없으면 빈 문자열. */
 export function getEvidence(field: string, detail: EquipmentDetail): string {
   const typeDetail = detail.type_detail;
   if (typeDetail.ef_code === "EF1") return EF1_EVIDENCE[field]?.(typeDetail) ?? "";
   if (typeDetail.ef_code === "EF2") return EF2_EVIDENCE[field]?.(typeDetail) ?? "";
   if (typeDetail.ef_code === "EF3") return EF3_EVIDENCE[field]?.(typeDetail) ?? "";
+  if (typeDetail.ef_code === "EF4") return EF4_EVIDENCE[field]?.(typeDetail) ?? "";
   return "";
 }

@@ -10,16 +10,24 @@ from datetime import date, timedelta
 import pytest
 from sqlalchemy import select
 
-from app.db.models import CableScoreDetail, Equipment, GisScoreDetail, ScoreSnapshot, TransformerScoreDetail
-from app.equipment_types import ef1_transformer, ef2_gis, ef3_cable
+from app.db.models import (
+    CableScoreDetail,
+    Equipment,
+    GisScoreDetail,
+    ScoreSnapshot,
+    SwitchgearScoreDetail,
+    TransformerScoreDetail,
+)
+from app.equipment_types import ef1_transformer, ef2_gis, ef3_cable, ef4_switchgear
 from app.services.ingest import ingest_row
 
 MODULES = {
     "EF1": (ef1_transformer, TransformerScoreDetail),
     "EF2": (ef2_gis, GisScoreDetail),
     "EF3": (ef3_cable, CableScoreDetail),
+    "EF4": (ef4_switchgear, SwitchgearScoreDetail),
 }
-# EF1은 계산 결과 키와 DB 컬럼 이름이 다른 항목이 있다(ef1_transformer.ingest_domain의 매핑). EF2·EF3은 전부 같다.
+# EF1은 계산 결과 키와 DB 컬럼 이름이 다른 항목이 있다(ef1_transformer.ingest_domain의 매핑). EF2~EF4는 전부 같다.
 DB_TO_CALC = {"oltc_96t_minus": "oltc_96T_minus", "first_voltage": "1st_voltage", "first_voltage_minus": "1st_voltage_minus"}
 
 
@@ -35,7 +43,13 @@ async def _seed_ef3(session, n=3):
     return ids
 
 
-@pytest.mark.parametrize("ef_code", ["EF1", "EF2", "EF3"])
+async def _seed_ef4(session, n=3):
+    ids = [await ingest_row(ef4_switchgear.calculate(ef4_switchgear.generate_input_row()), session) for _ in range(n)]
+    await session.commit()
+    return ids
+
+
+@pytest.mark.parametrize("ef_code", ["EF1", "EF2", "EF3", "EF4"])
 async def test_load_inputs_round_trip_reproduces_stored_scores(client, session_factory, ef_code):
     module, detail_model = MODULES[ef_code]
     async with session_factory() as session:
@@ -43,6 +57,8 @@ async def test_load_inputs_round_trip_reproduces_stored_scores(client, session_f
             await _seed_ef2(session)
         if ef_code == "EF3":
             await _seed_ef3(session)
+        if ef_code == "EF4":
+            await _seed_ef4(session)
         ids = (await session.execute(select(Equipment.equipment_id).where(Equipment.ef_code == ef_code))).scalars().all()
         assert ids
         detail_columns = [c.name for c in detail_model.__table__.columns if c.name not in ("equipment_id", "computed_at")]
@@ -58,7 +74,7 @@ async def test_load_inputs_round_trip_reproduces_stored_scores(client, session_f
                 assert calc_value == pytest.approx(getattr(stored_detail, name)), (eq_id, name)
 
 
-@pytest.mark.parametrize("module", [ef1_transformer, ef2_gis, ef3_cable])
+@pytest.mark.parametrize("module", [ef1_transformer, ef2_gis, ef3_cable, ef4_switchgear])
 def test_as_of_default_is_today_and_shifts_operation_year(module):
     row = module.generate_input_row()
     assert module.calculate(row) == module.calculate(row, as_of=date.today())
@@ -130,6 +146,7 @@ async def test_equipment_types_metadata(client, session_factory):
     async with session_factory() as session:
         await _seed_ef2(session, n=2)
         await _seed_ef3(session, n=1)
+        await _seed_ef4(session, n=1)
     types = {t["ef_code"]: t for t in (await client.get("/api/equipment-types")).json()}
     assert types["EF1"]["equipment_count"] == 3 and types["EF2"]["equipment_count"] == 2
     ef1_pof = {i["field"]: i for i in types["EF1"]["breakdown"]["pof"]}

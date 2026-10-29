@@ -2,13 +2,14 @@
 
 새 설비유형은 모듈을 만들고 아래 _REGISTRY에 한 줄 추가하는 것으로 등록한다.
 """
-from app.equipment_types import ef1_transformer, ef2_gis, ef3_cable
+from app.equipment_types import ef1_transformer, ef2_gis, ef3_cable, ef4_switchgear
 from app.equipment_types.base import EquipmentTypeModule
 
 _REGISTRY: dict[str, EquipmentTypeModule] = {
     ef1_transformer.EF_CODE: ef1_transformer,
     ef2_gis.EF_CODE: ef2_gis,
     ef3_cable.EF_CODE: ef3_cable,
+    ef4_switchgear.EF_CODE: ef4_switchgear,
 }
 
 

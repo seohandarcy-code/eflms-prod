@@ -318,7 +318,98 @@ export interface Ef3TypeDetail {
   score_detail: Ef3ScoreDetail;
 }
 
-export type TypeDetail = Ef1TypeDetail | Ef2TypeDetail | Ef3TypeDetail;
+/** EF4(수배전반) 전용 상세 — EquipmentDetail.type_detail (Stage 10-4). 필드는 backend app/schemas/ef4.py와 1:1 */
+export interface Ef4ScoreDetail {
+  computed_at: string;
+  today: string;
+  operation_year: number;
+  age_minus: number;
+  cb_op_year: number;
+  cb_stat: number;
+  cb_stat_minus: number;
+  durability_minus: number;
+  part_thermal_chk_minus: number;
+  elec_room_avg_temp_minus: number;
+  temp_diff_chk_minus: number;
+  max_temp_chk_minus: number;
+  load_minus: number;
+  thermal_minus: number;
+  ex_box_chk_minus: number;
+  noise_chk_minus: number;
+  bolt_chk_minus: number;
+  phy_minus: number;
+  scale_dam_chk_minus: number;
+  install_building_minus: number;
+  sup_sys_chk_minus: number;
+  cof_sys_minus: number;
+  prod_chk_minus: number;
+  op_chk_minus: number;
+  replace_chk_minus: number;
+  cof_cost_minus: number;
+  recovery_time_chk_minus: number;
+  replace_time_chk_minus: number;
+  cof_recov_minus: number;
+  operation_start_year: number;
+  reliability_minus: number;
+  ato_minus: number;
+  dof_sys_minus: number;
+  cb_inspect_minus: number;
+  relay_chk_minus: number;
+  online_diag_minus: number;
+  dof_cost_minus: number;
+  part_shortage_minus: number;
+  ct_use: string;
+  ct_use_minus: number;
+  longlife_fan_use: string;
+  lighting_use: string;
+  spec_use_minus: number;
+  dof_recov_minus: number;
+}
+
+export interface Ef4TypeDetail {
+  ef_code: "EF4";
+  spec: {
+    updated_at: string;
+    eqp_id_name: string;
+    eqp_building: string;
+    eqp_disting: string;
+    eqp_floor: string;
+    install_building: string;
+  };
+  condition: {
+    measured_at: string;
+    part_thermal_chk: string;
+    elec_room_avg_temp: number;
+    temp_diff_chk: number;
+    max_temp_chk: number;
+    load_chk: number;
+    ex_box_chk: string;
+    noise_chk: string;
+    bolt_chk: string;
+  };
+  consequence: {
+    updated_at: string;
+    scale_dam_chk: number;
+    sup_sys_chk: string;
+    prod_chk: string;
+    op_chk: string;
+    replace_chk: number;
+    recovery_time_chk: number;
+    replace_time_chk: number;
+  };
+  design: {
+    updated_at: string;
+    reliability: string;
+    ato: string;
+    cb_inspect: string;
+    relay_chk: string;
+    online_diag: string;
+    part_shortage: string;
+  };
+  score_detail: Ef4ScoreDetail;
+}
+
+export type TypeDetail = Ef1TypeDetail | Ef2TypeDetail | Ef3TypeDetail | Ef4TypeDetail;
 
 export interface ProjectionPoint {
   years_ahead: number;

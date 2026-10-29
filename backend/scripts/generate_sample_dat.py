@@ -45,11 +45,16 @@ def write_valid(module: EquipmentTypeModule, path: Path, rows: int = 100) -> Non
 def write_with_errors(module: EquipmentTypeModule, path: Path, rows: int = 100) -> None:
     header = _header_row(module)
     lines = ["\t".join(header)]
-    voltage_idx = header.index("voltage")
+    # 3번째 행의 숫자 값 하나를 숫자가 아닌 값으로 깨뜨린다 — 전압이 있으면 전압(EF1~EF3),
+    # 없으면(EF4) 첫 번째 정수 컬럼.
+    if "voltage" in header:
+        broken_idx = header.index("voltage")
+    else:
+        broken_idx = next(i for i, col in enumerate(module.INPUT_COLUMNS) if col["dtype"] == "int")
     for i in range(rows):
         cells = _data_row(module)
-        if i == 2:  # 3번째 행의 전압 값을 숫자가 아닌 값으로 깨뜨린다
-            cells[voltage_idx] = "확인필요"
+        if i == 2:
+            cells[broken_idx] = "확인필요"
         lines.append("\t".join(cells))
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

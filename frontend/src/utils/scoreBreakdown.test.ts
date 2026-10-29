@@ -148,4 +148,19 @@ describe("getEvidence", () => {
     expect(getEvidence("end_joint_minus", detail)).toBe("종단접속함 DEBG, EBA");
     expect(getEvidence("rep_cost_minus", detail)).toBe("사고복구교체비용 100.0 (길이 7,408)");
   });
+
+  it("describes EF4 switchgear deductions from the switchgear detail", () => {
+    const detail = {
+      type_detail: {
+        ef_code: "EF4",
+        spec: { install_building: "FAB동" },
+        condition: { load_chk: 0.62, max_temp_chk: 33 },
+        score_detail: { ct_use: "미적용", operation_start_year: 2008, longlife_fan_use: "미적용", lighting_use: "미적용" },
+      },
+    } as unknown as EquipmentDetail;
+    expect(getEvidence("load_minus", detail)).toBe("부하율 62%");
+    expect(getEvidence("install_building_minus", detail)).toBe("설치건물 FAB동");
+    expect(getEvidence("max_temp_chk_minus", detail)).toBe("차단기CLIP최고온도 33℃");
+    expect(getEvidence("ct_use_minus", detail)).toBe("관통형CT 미적용 (2008년 설치)");
+  });
 });

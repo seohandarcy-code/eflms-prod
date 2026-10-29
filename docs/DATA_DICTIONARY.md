@@ -1,4 +1,4 @@
-# 데이터 사전 (EF1 · 변압기 / EF2 · GIS)
+# 데이터 사전 (EF1 변압기 · EF2 GIS · EF3 초고압케이블 · EF4 수배전반)
 
 설비유형별 출처(INPUT_COLUMNS / CALCULATED_COLUMNS) — 컬럼 상세는 원본 파일의 `label`/`dtype`을 그대로 따른다. 아래는 각 컬럼이 어느 도메인 테이블로 들어가는지의 매핑이다.
 
@@ -6,16 +6,20 @@
 |---|---|---|
 | EF1 변압기 | `ref_data/schema_eflms.py` | `backend/app/equipment_types/ef1_transformer.py` |
 | EF2 GIS | `ref_data/schema_eflms_gis.py` | `backend/app/equipment_types/ef2_gis.py` |
+| EF3 초고압케이블 | `ref_data/schema_eflms_cable.py` | `backend/app/equipment_types/ef3_cable.py` |
+| EF4 수배전반 | `ref_data/schema_eflms_subaejeon.py` | `backend/app/equipment_types/ef4_switchgear.py` |
 
 ## 공통 테이블
 
 | 테이블 | 컬럼 |
 |---|---|
 | `equipment_type` | `ef_code`(PK), `name`, `description` |
-| `equipment` | `equipment_id`(PK), `factory_code`, `ef_code`(FK), `equipment_name`, `voltage`, `operation_start_time`, `created_at` — `UNIQUE(factory_code, ef_code, equipment_name)`. `equipment_name`에는 설비유형 원본의 이름 컬럼이 들어간다(EF1 `transformer_name`, EF2 `gis_name`) |
+| `equipment` | `equipment_id`(PK), `factory_code`, `ef_code`(FK), `equipment_name`, `voltage`, `operation_start_time`, `created_at` — `UNIQUE(factory_code, ef_code, equipment_name)`. `equipment_name`에는 설비유형 원본의 이름 컬럼이 들어간다(EF1 `transformer_name`, EF2 `gis_name`, EF3 `tl_name`, EF4 `eqp_id`). `voltage`는 원본에 전압이 없는 유형(EF4)에선 0 |
 | `score_snapshot` | `equipment_id`(FK), `pof_minus`, `pof`, `cof_minus`, `cof`, `dof_minus`, `dof`, `total_score`, `computed_at` |
 
 > **Stage 8-1(2026-10-16, 마이그레이션 `8a1c4e2f9b70`)**: `equipment`에서 변압기 전용 요소를 걷어냈다 — `transformer_name` → `equipment_name`, `onan_val`/`onaf_val`은 EF1 전용 `transformer_spec`으로 값 이관. 사내 EF1 입력파일 헤더는 그대로 `transformer_name`/`ONAN_val`/`ONAF_val`이다(적재 시 매핑). 이 1회성 예외 이후로는 공통 레이어를 바꾸지 않는다.
+
+> **Stage 10-0(2026-10-29, 사용자 결정)**: 공통 화면(점검필요 순위, 상세 패널 헤더, 설비목록 카드·리스트)에서 전압 표시를 빼고 가동년월(`operation_start_time`)을 보여준다 — 앞으로 추가될 모든 유형에 공통으로 있는 값이어야 해서다. 테이블은 그대로이고, 목록 API(`GET /api/equipment`)에 `operation_start_time` 필드만 **추가**했다(`voltage`도 응답에 남김 — 옛 화면과 호환).
 
 ## EF1 입력 도메인 테이블
 
@@ -194,6 +198,81 @@ mock 범위에선 감점이 한 번도 발생하지 않는 항목이 10개 있�
 ### 화면 라벨
 
 감점 항목 라벨은 원본 계산 라벨에서 "감점"만 뗀다(`diff_temp_minus` → "열화상", `sys_cycle_curr_minus` → "시스템순환전류" 등). 예외: `age_minus`는 원본 라벨 "경과일"이 실제로는 연수라 EF1·EF2와 같은 "경과연수"로 쓴다(2026-10-20 사용자 결정).
+
+## EF4(수배전반) — Stage 10 구현(2026-10-29, 마이그레이션 `6e6b51952ee7`)
+
+출처: `ref_data/schema_eflms_subaejeon.py`(2026-10-29 수정본 — 첫 검토에서 찾은 실행 오류 3건, 로직 의심 3건, 라벨 오기를 원본 작성자가 고친 뒤 확정). 시스템 계산기(`ef4_switchgear.py`)는 **원본 공식을 그대로** 옮겼다 — `backend/tests/test_ef4_switchgear.py`가 같은 입력으로 원본과 전 계산 컬럼을 대조한다. 원본과 다른 점은 계산 기준일(`as_of`), 입력 허용값, 전압 0 채움뿐이다.
+
+### 공통 테이블 매핑
+
+| 원본 컬럼 | 들어가는 곳 |
+|---|---|
+| `factory_code`, `EF_code`, `operation_start_time` | `equipment` (공통) |
+| `eqp_id`(설비코드) | `equipment.equipment_name` — 설비 담당자가 설비코드로 검색하므로 코드를 설비명으로 쓴다(2026-10-29 결정) |
+| (없음) | `equipment.voltage` = **0** — 원본에 전압 입력이 없고 공통 컬럼은 필수라 계산기가 0을 채운다. 공통 화면은 전압을 표시하지 않는다(Stage 10-0) |
+| `pof_minus`, `pof`, `cof_minus`, `cof`, `dof_minus`, `dof`, `total_score` | `score_snapshot` (공통) |
+
+### EF4 입력 도메인 테이블
+
+| 테이블 | INPUT_COLUMNS 매핑 | 시점 컬럼 | 축 |
+|---|---|---|---|
+| `switchgear_spec` | `eqp_id_name`, `eqp_building`, `eqp_disting`, `eqp_floor`, `install_building` | `updated_at` | 식별·위치, CoF(설치건물) |
+| `switchgear_condition` | `part_thermal_chk`, `elec_room_avg_temp`, `temp_diff_chk`, `max_temp_chk`, `load_chk`, `ex_box_chk`, `noise_chk`, `bolt_chk` | `measured_at` (신규 — 원본엔 날짜 없음) | PoF |
+| `switchgear_consequence_attribute` | `scale_dam_chk`, `sup_sys_chk`, `prod_chk`, `op_chk`, `replace_chk`, `recovery_time_chk`, `replace_time_chk` | `updated_at` | CoF |
+| `switchgear_design_attribute` | `reliability`, `ato`, `cb_inspect`, `relay_chk`, `online_diag`, `part_shortage` | `updated_at` | DoF |
+
+시점 컬럼은 모두 계산 기준일(`today`)이 들어간다. 원본에 진단일 입력이 없어서 화면의 "최근 진단일"은 EF4에서 `switchgear_condition.measured_at`(반영 기준일)을 쓴다. `eqp_id_name`·`eqp_building`(실제 건물명)·`eqp_disting`·`eqp_floor`는 계산에 쓰이지 않고 저장·표시만 한다 — 계산용 건물 분류는 `install_building`이다.
+
+### 입력 허용값 (임포트 검증)
+
+원본은 모르는 문자열을 조용히 감점(`양호` 외 전부 감점)하거나 무감점(모르는 건물 0점) 처리하므로, 판정에 쓰이는 값만 받는다(2026-10-29 결정 — 원본 mock이 한 값만 만드는 컬럼의 반대값은 추정값).
+
+| 컬럼 | 라벨 | 허용값 |
+|---|---|---|
+| `part_thermal_chk`, `ex_box_chk`, `noise_chk`, `bolt_chk` | 각종부품열화 / 외함 / 차단기소음 / BOLT풀림 | `양호`, `불량` |
+| `install_building` | 설치건물 | `FAB동`, `UT동`, `GCS동`, `변전소`, `그린동`, `사무동`, `기타` (감점식에 있는 값 전부) |
+| `sup_sys_chk` / `prod_chk` / `op_chk` | 공급계통 / 생산비생산 / 상시가동 | `일반`·`비상` / `생산`·`비생산` / `가동`·`비가동` |
+| `reliability` | 공급신뢰도(이중화여부) | `O`, `X` |
+| `ato` / `online_diag` | ATO구성 / 온라인진단 | `적용`, `미적용` |
+| `cb_inspect`, `relay_chk` | 차단기정밀점검 / 계전기점검 | `미실시`, `실시` |
+| `part_shortage` | 부품단종여부 | `공급가능`, `단종` |
+| `temp_diff_chk`, `load_chk`, `scale_dam_chk`, `replace_chk`, `recovery_time_chk`, `replace_time_chk` | (수치) | 0 이상. `load_chk`는 0~1 비율(판정 기준 0.5·0.8) |
+| `elec_room_avg_temp`, `max_temp_chk` | 전기실평균온도 / 차단기CLIP최고온도 | 정수(범위 제한 없음) |
+| `factory_code`, `eqp_id`, `eqp_id_name`, `eqp_building`, `eqp_disting`, `eqp_floor` | 사업장명 / 설비코드 / 설비명 / 설치건물명 / 설비식별 / 층 | 빈 값만 거부 |
+
+온도 3개(`elec_room_avg_temp`, `temp_diff_chk`, `max_temp_chk`)는 원본 양식대로 **int**다(2026-10-29 결정) — 실데이터에 소수가 있으면 `--check`가 줄 번호와 함께 거부한다. 소수 허용이 필요해지면 EF2 `cum_trip_current`처럼 마이그레이션으로 float 전환.
+
+### EF4 계산 도메인 테이블 — `switchgear_score_detail`
+
+`score_snapshot`(공통)에 들어가는 7개를 제외한 나머지 CALCULATED_COLUMNS 전부(43개, 소계·판정값 포함):
+
+`today`, `operation_year`, `age_minus`, `cb_op_year`, `cb_stat`, `cb_stat_minus`, `durability_minus`, `part_thermal_chk_minus`, `elec_room_avg_temp_minus`, `temp_diff_chk_minus`, `max_temp_chk_minus`, `load_minus`, `thermal_minus`, `ex_box_chk_minus`, `noise_chk_minus`, `bolt_chk_minus`, `phy_minus`, `scale_dam_chk_minus`, `install_building_minus`, `sup_sys_chk_minus`, `cof_sys_minus`, `prod_chk_minus`, `op_chk_minus`, `replace_chk_minus`, `cof_cost_minus`, `recovery_time_chk_minus`, `replace_time_chk_minus`, `cof_recov_minus`, `operation_start_year`, `reliability_minus`, `ato_minus`, `dof_sys_minus`, `cb_inspect_minus`, `relay_chk_minus`, `online_diag_minus`, `dof_cost_minus`, `part_shortage_minus`, `ct_use`, `ct_use_minus`, `longlife_fan_use`, `lighting_use`, `spec_use_minus`, `dof_recov_minus`
+
+### EF4 산출 파이프라인 요약
+
+1. PoF = 100 + 내구성 + 열적 + 물리적
+   - 내구성(`durability_minus`) = 경과년수(사용 1년당 -1) + 차단기고장확률(`cb_stat = e^(−(사용연수/39.24)^7.03)`, 감점 `round((cb_stat − 1) × 100 × 4.5)`)
+   - 열적(`thermal_minus`) = 각종부품열화(-4) + 전기실온도(30℃ 초과 1℃당 -2) + 각상별온도편차(-4/-8) + 차단기CLIP최고온도(-4/-8) + 부하율(-4/-8)
+   - 물리적(`phy_minus`) = 외함·소음·BOLT(`양호` 아니면 각 -1)
+2. CoF = 100 + 계통(피해규모 `round(−6 × 값 ÷ 1000)`·5,000 초과 -30, 설치건물, 공급계통) + 비용(생산, 상시가동, 교체비용) + 기간(복구시간, 설비교체기간)
+3. DoF = 100 + 계통(이중화, ATO) + 비용(차단기정밀점검, 계전기점검, 온라인진단) + 복구시간(부품단종, 관통형CT — 2010년 이전 설치면 미적용 -1, 스펙강화 — 장수명FAN 2015년~·조명등 2018년~ 둘 다 적용이 아니면 -1)
+4. `total_score = 0.5*pof + 0.3*cof + 0.2*dof` (EF1~EF3과 동일)
+
+### 원본 그대로 유지하는 판단 (2026-10-29 확정)
+
+| 항목 | 원본 동작 | 처리 |
+|---|---|---|
+| 관통형CT 감점 | 미적용 -1 | 원본대로(원본 작성자 확인) |
+| 피해규모 반올림 | Python `round` — .5는 짝수 쪽(750 → -4.5 → -4, 엑셀 ROUND는 -5) | 원본대로(사용자 결정) |
+| 차단기고장확률 | ×4.5 배율이라 노후 설비에서 급증(20년 -4, 25년 -19, 30년 -63, 35년 -162) | 원본대로. mock은 2005~2015년 가동이라 최대 약 -5 |
+| 음수 점수 | 실데이터에선 30년 넘은 설비부터 PoF 음수 가능 | 계산값 그대로 저장, 차트만 0~100 클램프 |
+| 상태 판정 | — | EF1과 같은 `classify_status` 기준 |
+
+mock 범위(5,000건)는 PoF 68~89, CoF 약 60~96, DoF 85~94다. mock에선 감점이 한 번도 발생하지 않는 항목이 8개 있다(부품열화·전기실온도·온도편차·CLIP최고온도·외함·소음·BOLT·부품단종) — mock 생성기가 해당 입력을 항상 최상 값으로 만들기 때문이다. 반대로 차단기정밀점검·계전기점검·온라인진단은 항상 감점(합계 -5)이다. 이 분기들은 정답값 단위테스트(`test_ef4_switchgear.py`의 `BRANCHES`)로 검증한다.
+
+### 화면 라벨
+
+감점 항목 라벨은 원본 계산 라벨에서 "감점"만 뗀다(`age_minus` → 원본 그대로 "경과년수"). 그룹은 원본 소계 라벨에서 접두어를 뗀 이름이다 — PoF 내구성·열적·물리적, CoF 계통·비용·기간, DoF 계통·비용·복구시간(2026-10-29 결정). 상세 패널 부제는 `eqp_id_name · eqp_building eqp_floor · eqp_disting`(예: `hvcb3 · 화성UT1동 2F · 11U`).
 
 ## 미확정/자동 캡처 컬럼
 
