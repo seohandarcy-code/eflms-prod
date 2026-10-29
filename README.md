@@ -1,6 +1,6 @@
 # EFLMS — 전기설비수명관리시스템
 
-변압기(EF1)를 시작으로 전기설비의 자산 건전성을 PoF(고장확률)·CoF(고장영향)·DoF(설계/방어수준) 3축으로 평가하고, 웹 대시보드로 보여주는 사내 시스템. FastAPI 백엔드 + Vue 3 프론트엔드 + SQLite(개발)/PostgreSQL(운영 예정) 구조입니다.
+변압기(EF1)를 시작으로 전기설비의 자산 건전성을 PoF(설비상태)·CoF(고장영향성)·DoF(고장예방력) 3축으로 평가하고, 웹 대시보드로 보여주는 사내 시스템. FastAPI 백엔드 + Vue 3 프론트엔드 + SQLite(개발)/PostgreSQL(운영 예정) 구조입니다.
 
 현재 단계: Phase 1(mock 데이터 대시보드) 완료, Phase 2(운영 데이터 임포트 파이프라인) 완료, Phase 3(EF2 GIS·EF3 초고압케이블·EF4 수배전반 추가 — 설비유형별 계산·조회·화면) 완료, Phase 4(PostgreSQL/Nginx 인프라) 로컬 검증 완료, Phase 5(관리자 로그인/SSO) 로컬 검증 완료. 등록된 설비유형: EF1 변압기, EF2 GIS, EF3 초고압케이블, EF4 수배전반. 자세한 진행 상황은 [docs/ROADMAP.md](docs/ROADMAP.md) 참고.
 

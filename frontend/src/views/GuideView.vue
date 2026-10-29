@@ -49,17 +49,17 @@ function groupItems(items: BreakdownItem[]): { group: string | null; items: Brea
         <div class="axis-cards">
           <div class="axis-card">
             <div class="axis-name">POF</div>
-            <div class="axis-full">고장확률 (Probability of Failure)</div>
+            <div class="axis-full">설비상태 (Probability of Failure)</div>
             <p>설비 자체의 상태·진단 결과를 바탕으로, 이 설비가 실제로 고장날 가능성이 얼마나 되는지를 나타냅니다. 변압기는 Furan·부분방전·절연내력 시험 등, GIS는 차단기 동작이력·SF6 가스·부분방전 등 설비유형마다 다른 진단 결과가 반영됩니다(아래 "각 축을 구성하는 항목").</p>
           </div>
           <div class="axis-card">
             <div class="axis-name">COF</div>
-            <div class="axis-full">고장영향 (Consequence of Failure)</div>
+            <div class="axis-full">고장영향성 (Consequence of Failure)</div>
             <p>이 설비가 실제로 고장 났을 때 파급되는 영향의 크기입니다. 전압·용량이 클수록, 화재 확산 위험이 크거나 비상대응·교체에 시간과 비용이 많이 들수록 영향이 큰 것으로 평가됩니다.</p>
           </div>
           <div class="axis-card">
             <div class="axis-name">DOF</div>
-            <div class="axis-full">설계/방어수준 (Degree of Failure protection)</div>
+            <div class="axis-full">고장예방력 (Degree of Failure protection)</div>
             <p>고장이 나더라도 피해를 줄여줄 예비 설비·보호 장치가 얼마나 갖춰져 있는지입니다. 예비화·자동전환, 상시 감시와 정기 점검, 설계 강화 여부 등이 반영됩니다(설비유형별 항목은 아래).</p>
           </div>
         </div>
