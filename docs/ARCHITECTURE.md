@@ -28,6 +28,8 @@
 
 **EF5(UPS) 전용 도메인 테이블**(Stage 13) — 입력: `ups_spec`, `ups_condition`, `ups_consequence_attribute`, `ups_design_attribute` / 계산: `ups_score_detail`. 계산기 `backend/app/equipment_types/ef5_ups.py`. 전압은 EF4처럼 0. 같은 Stage에서 점수 지표를 모든 유형 공통으로 소수 첫째 자리로 바꿨다(13-0, `score_snapshot` 점수 컬럼 FLOAT — 사용자 승인 공통 테이블 변경, `docs/DATA_DICTIONARY.md` "점수 지표 소수 첫째 자리").
 
+**EF6(VDP) 전용 도메인 테이블**(Stage 14) — 입력: `vdp_spec`, `vdp_condition`, `vdp_consequence_attribute`, `vdp_design_attribute` / 계산: `vdp_score_detail`. 계산기 `backend/app/equipment_types/ef6_vdp.py`. 지금은 EF5(UPS)와 구조·공식이 거의 같지만(모델type만 다름) 앞으로 달라질 수 있어 모듈·테이블·화면을 공유하지 않고 독립으로 붙였다.
+
 **설비유형 확장 원칙**: 공통 레이어는 EF2 도입 때 한 번 일반화했다(Stage 8-1 `equipment` 정리, 8-2 레지스트리·플러그인화 — 승인된 1회성 예외). 이후 새 설비유형(EF3~)은 **새 계산기 모듈 + 새 도메인 테이블 + 레지스트리 등록만** 추가하고, `equipment_type`/`equipment`/`score_snapshot` 공통 레이어와 기존 유형 코드는 변경하지 않는다(개방-폐쇄 원칙). 절차는 아래 "새 설비유형 추가 절차".
 
 ## 계산 로직 — "설비 타입 계산기 레지스트리"
@@ -76,8 +78,8 @@ mock 생성기(ref_data 로직 이식)     ─┐
 | 엔드포인트 | 내용 |
 |---|---|
 | `GET /api/equipment-types` | 등록된 유형, 유형별 설비 수, 감점 항목 메타데이터(`breakdown` — 축별 `field`/`label`/`group`/`summed`) |
-| `GET /api/equipment?ef_code=&factory_code=` | 공통 요약 목록. `ef_code`를 빼면 전체 유형. 최근 진단일은 유형별 기준(EF1 DGA, EF2 SF6, EF3 상태값 측정일, EF4·EF5 점검결과 반영일). 항목마다 `operation_start_time`(가동년월, Stage 10-0) 포함 |
-| `GET /api/equipment/{id}` | 공통 헤더 + `score` + `type_detail`(`ef_code`로 구분되는 union: EF1~EF5 전용 상세) + `projection` |
+| `GET /api/equipment?ef_code=&factory_code=` | 공통 요약 목록. `ef_code`를 빼면 전체 유형. 최근 진단일은 유형별 기준(EF1 DGA, EF2 SF6, EF3 상태값 측정일, EF4·EF5·EF6 점검결과 반영일). 항목마다 `operation_start_time`(가동년월, Stage 10-0) 포함 |
+| `GET /api/equipment/{id}` | 공통 헤더 + `score` + `type_detail`(`ef_code`로 구분되는 union: EF1~EF6 전용 상세) + `projection` |
 | `GET /api/summary?ef_code=` | KPI + `by_type`(유형별 합계·교체검토·즉시교체) |
 
 - 서비스(`equipment_service`)는 공통 테이블만 직접 읽고, 유형별 정보는 설비유형 모듈의 `last_diag_dates`/`load_detail`/`load_inputs`에 맡긴다 — 새 유형은 모듈과 `app/schemas/<유형>.py` 상세 스키마, `TypeDetail` union 한 줄만 추가한다.

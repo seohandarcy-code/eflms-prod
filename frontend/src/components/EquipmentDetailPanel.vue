@@ -12,6 +12,7 @@ import Ef2DetailBody from "./detail/Ef2DetailBody.vue";
 import Ef3DetailBody from "./detail/Ef3DetailBody.vue";
 import Ef4DetailBody from "./detail/Ef4DetailBody.vue";
 import Ef5DetailBody from "./detail/Ef5DetailBody.vue";
+import Ef6DetailBody from "./detail/Ef6DetailBody.vue";
 
 const props = defineProps<{ equipmentId: number }>();
 
@@ -48,7 +49,7 @@ function clampWidth(value: number): number {
 
 const color = computed(() => (detail.value ? statusColor(detail.value.status) : "#8891a0"));
 
-// 헤더 부제 — 유형마다 대표 사양이 다르다(EF1 정격용량, EF2 조작방식, EF3 굵기·회선별용량, EF4 설비명·설치위치, EF5 라인·제작사 모델명·정격용량). 본문은 detail/Ef*DetailBody.vue (Stage 8-5).
+// 헤더 부제 — 유형마다 대표 사양이 다르다(EF1 정격용량, EF2 조작방식, EF3 굵기·회선별용량, EF4 설비명·설치위치, EF5·EF6 라인·제작사 모델명·정격용량). 본문은 detail/Ef*DetailBody.vue (Stage 8-5).
 const typeSubtitle = computed(() => {
   const typeDetail = detail.value?.type_detail;
   if (typeDetail?.ef_code === "EF1") return `ONAN ${na(typeDetail.spec.onan_val, { unit: "MVA" })}`;
@@ -56,6 +57,7 @@ const typeSubtitle = computed(() => {
   if (typeDetail?.ef_code === "EF3") return `${na(typeDetail.spec.cable_sq, { unit: "sq" })} × ${na(typeDetail.spec.cable_per_phase)} · ${na(typeDetail.spec.cable_mva, { unit: "MVA" })}`;
   if (typeDetail?.ef_code === "EF4") return `${na(typeDetail.spec.eqp_id_name)} · ${na(typeDetail.spec.eqp_building)} ${na(typeDetail.spec.eqp_floor)} · ${na(typeDetail.spec.eqp_disting)}`;
   if (typeDetail?.ef_code === "EF5") return `${na(typeDetail.spec.line_no)} · ${na(typeDetail.spec.manufacturer)} ${na(typeDetail.spec.model_name)} · ${na(typeDetail.spec.capa)}`;
+  if (typeDetail?.ef_code === "EF6") return `${na(typeDetail.spec.line_no)} · ${na(typeDetail.spec.manufacturer)} ${na(typeDetail.spec.model_name)} · ${na(typeDetail.spec.capa)}`;
   return "";
 });
 // POF 분포는 같은 설비유형끼리 비교한다(유형마다 감점 체계가 달라서).
@@ -119,6 +121,7 @@ const sameTypeList = computed(() => store.equipmentList.filter((item) => item.ef
           <Ef3DetailBody v-else-if="detail.type_detail.ef_code === 'EF3'" :type-detail="detail.type_detail" />
           <Ef4DetailBody v-else-if="detail.type_detail.ef_code === 'EF4'" :type-detail="detail.type_detail" />
           <Ef5DetailBody v-else-if="detail.type_detail.ef_code === 'EF5'" :type-detail="detail.type_detail" />
+          <Ef6DetailBody v-else-if="detail.type_detail.ef_code === 'EF6'" :type-detail="detail.type_detail" />
         </div>
       </div>
     </template>

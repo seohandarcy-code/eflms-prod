@@ -45,6 +45,11 @@ ALLOWED_TABLES: list[str] = [
     "ups_condition",
     "ups_consequence_attribute",
     "ups_design_attribute",
+    "vdp_score_detail",
+    "vdp_spec",
+    "vdp_condition",
+    "vdp_consequence_attribute",
+    "vdp_design_attribute",
     "equipment_extra_attribute",
 ]
 

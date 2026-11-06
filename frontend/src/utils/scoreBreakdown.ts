@@ -1,5 +1,5 @@
 import { na } from "./formatValue";
-import type { Axis, BreakdownItem, Ef1TypeDetail, Ef2TypeDetail, Ef3TypeDetail, Ef4TypeDetail, Ef5TypeDetail, EquipmentDetail } from "../types/equipment";
+import type { Axis, BreakdownItem, Ef1TypeDetail, Ef2TypeDetail, Ef3TypeDetail, Ef4TypeDetail, Ef5TypeDetail, Ef6TypeDetail, EquipmentDetail } from "../types/equipment";
 
 // 감점 항목 라벨은 백엔드 설비유형 모듈의 BREAKDOWN(/api/equipment-types)이 단일 원본이다(Stage 8-5).
 // 예전처럼 여기에 유형별 라벨을 하드코딩하지 않는다.
@@ -198,6 +198,38 @@ const EF5_EVIDENCE: Record<string, (d: Ef5TypeDetail) => string> = {
   online_diag_minus: (d) => `온라인진단 ${na(d.design.online_diag)}`,
 };
 
+const EF6_EVIDENCE: Record<string, (d: Ef6TypeDetail) => string> = {
+  age_minus: (d) => `경과년수 ${na(d.score_detail.operation_year, { unit: "년차" })}`,
+  cb_stat_minus: (d) => `차단기상태점수 ${na(d.score_detail.cb_stat, { digits: 4 })} (사용수명 ${na(d.score_detail.cb_life_year, { digits: 1, unit: "년" })} · 전기실 ${na(d.condition.elec_room_max_temp, { unit: "℃" })})`,
+  cap_stat_minus: (d) => `커패시터상태점수 ${na(d.score_detail.cap_stat, { digits: 4 })} (사용 ${na(d.score_detail.cap_life_year, { digits: 1, unit: "년" })} · 전기실 ${na(d.condition.elec_room_max_temp, { unit: "℃" })})`,
+  fan_stat_minus: (d) => `fan상태점수 ${na(d.score_detail.fan_stat, { digits: 4 })} (사용수명 ${na(d.score_detail.fan_life_year, { digits: 1, unit: "년" })} · 교체 ${na(d.condition.fan_replace_no, { unit: "회" })})`,
+  igbt_stat_minus: (d) => `igbt상태점수 ${na(d.score_detail.igbt_stat, { digits: 4 })} (사용 ${na(d.score_detail.igbt_life_year, { digits: 1, unit: "년" })})`,
+  board_stat_minus: (d) => `보드상태점수 ${na(d.score_detail.board_stat, { digits: 4 })} (사용 ${na(d.score_detail.board_life_year, { digits: 1, unit: "년" })})`,
+  elec_room_max_temp_minus: (d) => `전기실최대온도 ${na(d.condition.elec_room_max_temp, { unit: "℃" })}`,
+  load_minus: (d) => `부하율 ${na(d.condition.load, { unit: "%" })}`,
+  mod_cir_curr_minus: (d) => `모듈간순환전류 ${na(d.condition.mod_cir_curr)}`,
+  mod_vol_diff_minus: (d) => `모듈간출력전압차이 ${na(d.condition.mod_vol_diff)}`,
+  noise_minus: (d) => `소음 ${na(d.condition.noise)}`,
+  thermal_img_chk_minus: (d) => `열화상 ${na(d.condition.thermal_img_chk)}`,
+  ex_box_chk_minus: (d) => `외함점검 ${na(d.condition.ex_box_chk)}`,
+
+  capa_times_load_minus: (d) => `부하량 ${na(d.score_detail.capa_times_load, { digits: 1 })} (정격용량 ${na(d.spec.capa, { locale: true })} × 부하율 ${na(d.condition.load, { unit: "%" })})`,
+  ins_build_rank_minus: (d) => `설치건물등급 ${na(d.consequence.ins_build_rank)}`,
+  fire_spread_rank_minus: (d) => `화재확산등급 ${na(d.consequence.fire_spread_rank)}`,
+  emerge_resp_minus: (d) => `전력재공급시간등급 ${na(d.consequence.emerge_resp)}`,
+  rep_time_minus: (d) => `정상화기간등급 ${na(d.consequence.rep_time)}`,
+  rep_cost_minus: (d) => `사고복구비용등급 ${na(d.consequence.rep_cost)}`,
+
+  sys_rel_minus: (d) => `계통신뢰도 ${na(d.design.sys_rel)}`,
+  emerge_sys_minus: (d) => `비상계통전력공급 ${na(d.design.emerge_sys)}`,
+  fac_rel_minus: (d) => `설비신뢰도 ${na(d.design.fac_rel)}`,
+  part_shortage_minus: (d) => `설비모델 ${na(d.design.part_shortage)}`,
+  model_type_minus: (d) => `모델type ${na(d.design.model_type)}`,
+  switching_type_minus: (d) => `스위칭 ${na(d.design.switching_type)}`,
+  igbt_rev_minus: (d) => `IGBT ${na(d.design.igbt_rev)}`,
+  online_diag_minus: (d) => `온라인진단 ${na(d.design.online_diag)}`,
+};
+
 /** 감점 항목 하나의 근거(원본 측정값/판정)를 한 줄 텍스트로 반환한다. 매핑이 없으면 빈 문자열. */
 export function getEvidence(field: string, detail: EquipmentDetail): string {
   const typeDetail = detail.type_detail;
@@ -206,5 +238,6 @@ export function getEvidence(field: string, detail: EquipmentDetail): string {
   if (typeDetail.ef_code === "EF3") return EF3_EVIDENCE[field]?.(typeDetail) ?? "";
   if (typeDetail.ef_code === "EF4") return EF4_EVIDENCE[field]?.(typeDetail) ?? "";
   if (typeDetail.ef_code === "EF5") return EF5_EVIDENCE[field]?.(typeDetail) ?? "";
+  if (typeDetail.ef_code === "EF6") return EF6_EVIDENCE[field]?.(typeDetail) ?? "";
   return "";
 }

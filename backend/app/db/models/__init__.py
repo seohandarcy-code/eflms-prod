@@ -41,6 +41,13 @@ from app.db.models.ups import (
     UpsScoreDetail,
     UpsSpec,
 )
+from app.db.models.vdp import (
+    VdpCondition,
+    VdpConsequenceAttribute,
+    VdpDesignAttribute,
+    VdpScoreDetail,
+    VdpSpec,
+)
 
 __all__ = [
     "AllowedUser",
@@ -78,4 +85,9 @@ __all__ = [
     "UpsConsequenceAttribute",
     "UpsDesignAttribute",
     "UpsScoreDetail",
+    "VdpSpec",
+    "VdpCondition",
+    "VdpConsequenceAttribute",
+    "VdpDesignAttribute",
+    "VdpScoreDetail",
 ]

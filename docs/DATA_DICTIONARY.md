@@ -14,7 +14,7 @@
 | 테이블 | 컬럼 |
 |---|---|
 | `equipment_type` | `ef_code`(PK), `name`, `description` |
-| `equipment` | `equipment_id`(PK), `factory_code`, `ef_code`(FK), `equipment_name`, `voltage`, `operation_start_time`, `created_at` — `UNIQUE(factory_code, ef_code, equipment_name)`. `equipment_name`에는 설비유형 원본의 이름 컬럼이 들어간다(EF1 `transformer_name`, EF2 `gis_name`, EF3 `tl_name`, EF4·EF5 `eqp_id`). `voltage`는 원본에 전압이 없는 유형(EF4·EF5)에선 0 |
+| `equipment` | `equipment_id`(PK), `factory_code`, `ef_code`(FK), `equipment_name`, `voltage`, `operation_start_time`, `created_at` — `UNIQUE(factory_code, ef_code, equipment_name)`. `equipment_name`에는 설비유형 원본의 이름 컬럼이 들어간다(EF1 `transformer_name`, EF2 `gis_name`, EF3 `tl_name`, EF4·EF5·EF6 `eqp_id`). `voltage`는 원본에 전압이 없는 유형(EF4·EF5·EF6)에선 0 |
 | `score_snapshot` | `equipment_id`(FK), `pof_minus`, `pof`, `cof_minus`, `cof`, `dof_minus`, `dof`, `total_score`, `computed_at` — 점수 컬럼은 모두 FLOAT, 소수 첫째 자리(Stage 13-0) |
 
 > **Stage 8-1(2026-10-16, 마이그레이션 `8a1c4e2f9b70`)**: `equipment`에서 변압기 전용 요소를 걷어냈다 — `transformer_name` → `equipment_name`, `onan_val`/`onaf_val`은 EF1 전용 `transformer_spec`으로 값 이관. 사내 EF1 입력파일 헤더는 그대로 `transformer_name`/`ONAN_val`/`ONAF_val`이다(적재 시 매핑). 이 1회성 예외 이후로는 공통 레이어를 바꾸지 않는다.
@@ -347,6 +347,39 @@ mock 범위(5,000건)는 PoF 68~89, CoF 약 60~96, DoF 85~94다. mock에선 감�
 ### 화면 라벨
 
 감점 항목 라벨은 원본 계산 라벨에서 "감점"만 뗀다(예: "fan고장확률감점" → "fan고장확률"). 원본에 소계가 없어 그룹 없이 나열한다(EF3과 같음). 원본 데이터 보기는 POF 구성(설비정보 → 부품 고장확률 → 운전·점검 소그룹) · COF 구성 · DOF 구성.
+
+## EF6(VDP) — Stage 14 구현(2026-11-06, 마이그레이션 `95615a3edbeb`)
+
+출처: `ref_data/schema_eflms_vdp.py`(2026-11-06 작성본 — 첫 검토에서 `EF_code`가 UPS와 같은 `EF5`였던 것을 작성자가 `EF6`으로 수정). 지금은 EF5(UPS)와 공식이 같고 다른 점은 **모델type 감점(콘덴서 -2 / 공용배터리 0)**과 mock 생성값(라인·제작사·모델명)뿐이다. 앞으로 달라질 수 있어 **UPS와 완전히 분리해** 계산기(`ef6_vdp.py`)·테이블·화면을 따로 두었다(사용자 결정 — 실데이터도 UPS와 다르게 운영). 시스템 계산기는 원본 공식을 그대로 옮기고, 소수 감점만 소수 첫째 자리로 반올림한다 — `backend/tests/test_ef6_vdp.py`가 원본과 대조한다.
+
+### 공통 테이블 매핑
+
+UPS와 같다: `factory_code`·`EF_code`·`operation_start_time` → `equipment`, `eqp_id` → `equipment.equipment_name`, `equipment.voltage` = 0, 점수 → `score_snapshot`(소수 첫째 자리).
+
+### EF6 입력 도메인 테이블
+
+| 테이블 | INPUT_COLUMNS 매핑 | 시점 컬럼 | 축 |
+|---|---|---|---|
+| `vdp_spec` | `line_no`, `manufacturer`, `model_name`, `capa` | `updated_at` | 설비정보(계산 미사용), CoF(정격용량) |
+| `vdp_condition` | `fan_replace_no`, `elec_room_max_temp`, `load`, `mod_cir_curr`, `mod_vol_diff`, `noise`, `thermal_img_chk`, `ex_box_chk` | `measured_at` (신규 — 원본엔 날짜 없음) | PoF(부하율은 CoF 부하량에도 쓰임) |
+| `vdp_consequence_attribute` | `ins_build_rank`, `fire_spread_rank`, `emerge_resp`, `rep_time`, `rep_cost` | `updated_at` | CoF |
+| `vdp_design_attribute` | `sys_rel`, `emerge_sys`, `fac_rel`, `part_shortage`, `model_type`, `switching_type`, `igbt_rev`, `online_diag` | `updated_at` | DoF |
+
+계산 테이블 `vdp_score_detail`은 `score_snapshot` 7개를 뺀 계산 컬럼 41개(감점 FLOAT, null 가능 컬럼은 UPS와 같음). 화면의 "최근 진단일"은 `vdp_condition.measured_at`.
+
+### 입력 허용값 (2026-11-06 결정 — 권장안)
+
+UPS 절의 표와 같고 **`model_type`만 `콘덴서`, `공용배터리`**다(UPS 값 `변압기`/`무변압기`는 거부). 전기실최대온도·부하율은 소수, 팬교체횟수·순환전류·전압차·소음·정격용량은 정수, 숫자는 0 이상, 라인·제작사·모델명은 빈 값만 거부.
+
+### 산출 파이프라인 / 원본 그대로 유지하는 판단
+
+UPS 절과 같다(온도 보정 와이블 5종, 차단기 7.5년 1회 교체, fan 사용수명 max(0, …), 25℃ 미만 가점, 사고영향성·열화상·외함 소수 첫째 자리, 축 점수 = 100 + 반올림된 감점). DoF의 모델type만 `콘덴서` -2. 공식이 바뀌면 이 절에 VDP 쪽 차이를 따로 적는다.
+
+**mock 범위**: UPS와 같은 생성 규칙이라(팬교체 0, 2005~2015년 설치) 사용 16년 이상이면 fan 고장확률 -300 → PoF 음수가 많다. mock 모델type은 전부 `콘덴서`(-2). 실데이터는 UPS와 따로 운영한다.
+
+### 화면 라벨
+
+UPS와 같다 — 원본 라벨에서 "감점"만 떼고 그룹 없이 나열, 원본 데이터 보기는 POF 구성(설비정보 → 부품 고장확률 → 운전·점검) · COF 구성 · DOF 구성.
 
 ## 값 없음(N/A) 처리 — Stage 11(2026-10-29, 마이그레이션 `b7f98e26abb7`)
 

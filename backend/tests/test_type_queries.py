@@ -18,8 +18,9 @@ from app.db.models import (
     SwitchgearScoreDetail,
     TransformerScoreDetail,
     UpsScoreDetail,
+    VdpScoreDetail,
 )
-from app.equipment_types import ef1_transformer, ef2_gis, ef3_cable, ef4_switchgear, ef5_ups
+from app.equipment_types import ef1_transformer, ef2_gis, ef3_cable, ef4_switchgear, ef5_ups, ef6_vdp
 from app.services.ingest import ingest_row
 
 MODULES = {
@@ -28,8 +29,9 @@ MODULES = {
     "EF3": (ef3_cable, CableScoreDetail),
     "EF4": (ef4_switchgear, SwitchgearScoreDetail),
     "EF5": (ef5_ups, UpsScoreDetail),
+    "EF6": (ef6_vdp, VdpScoreDetail),
 }
-# EF1은 계산 결과 키와 DB 컬럼 이름이 다른 항목이 있다(ef1_transformer.ingest_domain의 매핑). EF2~EF5는 전부 같다.
+# EF1은 계산 결과 키와 DB 컬럼 이름이 다른 항목이 있다(ef1_transformer.ingest_domain의 매핑). EF2~EF6은 전부 같다.
 DB_TO_CALC = {"oltc_96t_minus": "oltc_96T_minus", "first_voltage": "1st_voltage", "first_voltage_minus": "1st_voltage_minus"}
 
 
@@ -57,7 +59,13 @@ async def _seed_ef5(session, n=3):
     return ids
 
 
-@pytest.mark.parametrize("ef_code", ["EF1", "EF2", "EF3", "EF4", "EF5"])
+async def _seed_ef6(session, n=3):
+    ids = [await ingest_row(ef6_vdp.calculate(ef6_vdp.generate_input_row()), session) for _ in range(n)]
+    await session.commit()
+    return ids
+
+
+@pytest.mark.parametrize("ef_code", ["EF1", "EF2", "EF3", "EF4", "EF5", "EF6"])
 async def test_load_inputs_round_trip_reproduces_stored_scores(client, session_factory, ef_code):
     module, detail_model = MODULES[ef_code]
     async with session_factory() as session:
@@ -69,6 +77,8 @@ async def test_load_inputs_round_trip_reproduces_stored_scores(client, session_f
             await _seed_ef4(session)
         if ef_code == "EF5":
             await _seed_ef5(session)
+        if ef_code == "EF6":
+            await _seed_ef6(session)
         ids = (await session.execute(select(Equipment.equipment_id).where(Equipment.ef_code == ef_code))).scalars().all()
         assert ids
         detail_columns = [c.name for c in detail_model.__table__.columns if c.name not in ("equipment_id", "computed_at")]
@@ -84,7 +94,7 @@ async def test_load_inputs_round_trip_reproduces_stored_scores(client, session_f
                 assert calc_value == pytest.approx(getattr(stored_detail, name)), (eq_id, name)
 
 
-@pytest.mark.parametrize("module", [ef1_transformer, ef2_gis, ef3_cable, ef4_switchgear, ef5_ups])
+@pytest.mark.parametrize("module", [ef1_transformer, ef2_gis, ef3_cable, ef4_switchgear, ef5_ups, ef6_vdp])
 def test_as_of_default_is_today_and_shifts_operation_year(module):
     row = module.generate_input_row()
     assert module.calculate(row) == module.calculate(row, as_of=date.today())
