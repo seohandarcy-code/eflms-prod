@@ -12,12 +12,13 @@ class ScoreSnapshot(Base):
     __tablename__ = "score_snapshot"
 
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
-    pof_minus: Mapped[int] = mapped_column(Integer)
-    pof: Mapped[int] = mapped_column(Integer)
-    cof_minus: Mapped[int] = mapped_column(Integer)
-    cof: Mapped[int] = mapped_column(Integer)
-    dof_minus: Mapped[int] = mapped_column(Integer)
-    dof: Mapped[int] = mapped_column(Integer)
+    # 소수 첫째 자리(2026-11-06, 마이그레이션 e1a5c0d3f7b2) — app/equipment_types/rounding.py
+    pof_minus: Mapped[float] = mapped_column(Float)
+    pof: Mapped[float] = mapped_column(Float)
+    cof_minus: Mapped[float] = mapped_column(Float)
+    cof: Mapped[float] = mapped_column(Float)
+    dof_minus: Mapped[float] = mapped_column(Float)
+    dof: Mapped[float] = mapped_column(Float)
     total_score: Mapped[float] = mapped_column(Float)
     computed_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 

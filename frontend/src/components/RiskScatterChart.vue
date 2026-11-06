@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import Plotly from "plotly.js-gl3d-dist-min";
 import type { Data, Layout, PlotlyHTMLElement } from "plotly.js";
 import type { EquipmentStatus, EquipmentSummary } from "../types/equipment";
+import { formatScore } from "../utils/formatValue";
 import { statusColor, statusLabel } from "../utils/statusStyle";
 
 const props = withDefaults(
@@ -291,7 +292,7 @@ const typeLegend = computed(() => {
         <div class="hc-status" :style="{ color: statusColor(hoveredItem.status) }">
           {{ statusLabel(hoveredItem.status) }} · {{ typeNames[hoveredItem.ef_code] ?? hoveredItem.ef_code }}
         </div>
-        <div class="hc-axes">POF {{ hoveredItem.pof }} · COF {{ hoveredItem.cof }} · DOF {{ hoveredItem.dof }}</div>
+        <div class="hc-axes">POF {{ formatScore(hoveredItem.pof) }} · COF {{ formatScore(hoveredItem.cof) }} · DOF {{ formatScore(hoveredItem.dof) }}</div>
       </div>
     </div>
 

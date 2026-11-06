@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import type { EquipmentSummary } from "../types/equipment";
 import { formatMonth } from "../utils/formatDate";
+import { formatScore } from "../utils/formatValue";
 import { statusBg, statusColor, statusLabel } from "../utils/statusStyle";
 
 // typeName: 설비유형 이름(예: 변압기, GIS). 주면 카드에 유형 배지를 붙인다(Stage 8-5).
@@ -37,17 +38,17 @@ const color = computed(() => statusColor(props.summary.status));
       <div class="bar-row">
         <span>POF</span>
         <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.pof) + '%', background: color }" /></div>
-        <span class="bar-value mono">{{ summary.pof }}</span>
+        <span class="bar-value mono">{{ formatScore(summary.pof) }}</span>
       </div>
       <div class="bar-row">
         <span>COF</span>
         <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.cof) + '%', background: color }" /></div>
-        <span class="bar-value mono">{{ summary.cof }}</span>
+        <span class="bar-value mono">{{ formatScore(summary.cof) }}</span>
       </div>
       <div class="bar-row">
         <span>DOF</span>
         <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(summary.dof) + '%', background: color }" /></div>
-        <span class="bar-value mono">{{ summary.dof }}</span>
+        <span class="bar-value mono">{{ formatScore(summary.dof) }}</span>
       </div>
       <div class="foot">
         <span class="score">종합점수 {{ summary.total_score.toFixed(1) }}</span>

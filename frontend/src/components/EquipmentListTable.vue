@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { EquipmentSummary } from "../types/equipment";
 import { formatMonth } from "../utils/formatDate";
+import { formatScore } from "../utils/formatValue";
 import { statusBg, statusColor, statusLabel } from "../utils/statusStyle";
 
 // typeNames: ef_code → 설비유형 이름. 비어 있으면 코드를 그대로 보여준다(Stage 8-5).
@@ -38,9 +39,9 @@ const emit = defineEmits<{ select: [equipmentId: number] }>();
         <td>{{ typeNames[item.ef_code] ?? item.ef_code }}</td>
         <td>{{ item.factory_code }}</td>
         <td class="mono">{{ formatMonth(item.operation_start_time) }}</td>
-        <td class="num mono">{{ item.pof }}</td>
-        <td class="num mono">{{ item.cof }}</td>
-        <td class="num mono">{{ item.dof }}</td>
+        <td class="num mono">{{ formatScore(item.pof) }}</td>
+        <td class="num mono">{{ formatScore(item.cof) }}</td>
+        <td class="num mono">{{ formatScore(item.dof) }}</td>
         <td class="num mono score">{{ item.total_score.toFixed(1) }}</td>
         <td>
           <span class="chip" :style="{ background: statusBg(item.status), color: statusColor(item.status) }">

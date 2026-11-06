@@ -10,6 +10,7 @@ import MultiSelectFilter from "../components/MultiSelectFilter.vue";
 import { getEvidence, getReasonsByAxis } from "../utils/scoreBreakdown";
 import type { ReasonsByAxis } from "../utils/scoreBreakdown";
 import { formatMonth } from "../utils/formatDate";
+import { formatScore } from "../utils/formatValue";
 import { statusColor, statusLabel } from "../utils/statusStyle";
 import type { EquipmentDetail, EquipmentSummary } from "../types/equipment";
 
@@ -355,7 +356,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
 
                     <div class="axis-grid">
                       <div class="axis-col">
-                        <div class="axis-head">POF <b>{{ entry.item.pof }}</b></div>
+                        <div class="axis-head">POF <b>{{ formatScore(entry.item.pof) }}</b></div>
                         <div
                           v-for="reason in entry.reasons.pof"
                           :key="reason.label"
@@ -363,12 +364,12 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
                           @mouseenter="onReasonEnter($event, reason, entry.detail, statusColor(entry.item.status))"
                           @mouseleave="onReasonLeave"
                         >
-                          <span class="reason-label">{{ reason.label }}</span> <span class="neg">{{ reason.value }}</span>
+                          <span class="reason-label">{{ reason.label }}</span> <span class="neg">{{ formatScore(reason.value) }}</span>
                         </div>
                         <div v-if="entry.reasons.pof.length === 0" class="axis-empty">감점 없음</div>
                       </div>
                       <div class="axis-col">
-                        <div class="axis-head">COF <b>{{ entry.item.cof }}</b></div>
+                        <div class="axis-head">COF <b>{{ formatScore(entry.item.cof) }}</b></div>
                         <div
                           v-for="reason in entry.reasons.cof"
                           :key="reason.label"
@@ -376,12 +377,12 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
                           @mouseenter="onReasonEnter($event, reason, entry.detail, statusColor(entry.item.status))"
                           @mouseleave="onReasonLeave"
                         >
-                          <span class="reason-label">{{ reason.label }}</span> <span class="neg">{{ reason.value }}</span>
+                          <span class="reason-label">{{ reason.label }}</span> <span class="neg">{{ formatScore(reason.value) }}</span>
                         </div>
                         <div v-if="entry.reasons.cof.length === 0" class="axis-empty">감점 없음</div>
                       </div>
                       <div class="axis-col">
-                        <div class="axis-head">DOF <b>{{ entry.item.dof }}</b></div>
+                        <div class="axis-head">DOF <b>{{ formatScore(entry.item.dof) }}</b></div>
                         <div
                           v-for="reason in entry.reasons.dof"
                           :key="reason.label"
@@ -389,7 +390,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
                           @mouseenter="onReasonEnter($event, reason, entry.detail, statusColor(entry.item.status))"
                           @mouseleave="onReasonLeave"
                         >
-                          <span class="reason-label">{{ reason.label }}</span> <span class="neg">{{ reason.value }}</span>
+                          <span class="reason-label">{{ reason.label }}</span> <span class="neg">{{ formatScore(reason.value) }}</span>
                         </div>
                         <div v-if="entry.reasons.dof.length === 0" class="axis-empty">감점 없음</div>
                       </div>
@@ -400,7 +401,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
                   <div v-if="hoveredReason" class="reason-tooltip" :style="{ top: `${hoveredReason.top}px`, left: `${hoveredReason.left}px`, borderColor: hoveredReason.color }">
                     <div class="rt-head">
                       <span class="rt-label">{{ hoveredReason.label }}</span>
-                      <span class="rt-value">{{ hoveredReason.value }}</span>
+                      <span class="rt-value">{{ formatScore(hoveredReason.value) }}</span>
                     </div>
                     <div class="rt-evidence">{{ hoveredReason.evidence }}</div>
                   </div>

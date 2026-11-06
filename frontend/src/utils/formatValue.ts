@@ -9,6 +9,12 @@ export interface NaOptions {
 
 export const NA_TEXT = "N/A";
 
+// 점수 지표(POF·COF·DOF, 감점 항목, 종합점수)는 모든 설비유형에서 소수 첫째 자리로 보여준다(2026-11-06).
+// 백엔드가 이미 소수 첫째 자리로 반올림해 내려주므로(app/equipment_types/rounding.py) 여기서는 자릿수만 맞춘다.
+export function formatScore(value: number): string {
+  return value.toFixed(1);
+}
+
 export function na(value: number | string | null | undefined, opts: NaOptions = {}): string {
   if (value === null || value === undefined) return NA_TEXT;
   if (typeof value === "number") {

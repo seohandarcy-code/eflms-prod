@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mount } from "@vue/test-utils";
-import { na } from "./formatValue";
+import { formatScore, na } from "./formatValue";
 import Ef4DetailBody from "../components/detail/Ef4DetailBody.vue";
 import type { Ef4TypeDetail } from "../types/equipment";
 
@@ -29,5 +29,14 @@ describe("detail body with N/A (null) values", () => {
     } as unknown as Ef4TypeDetail;
     const raw = mount(Ef4DetailBody, { props: { typeDetail } }).text();
     expect(raw).toContain("설치건물N/A");
+  });
+});
+
+describe("formatScore", () => {
+  it("shows score indicators with one decimal for every type", () => {
+    expect(formatScore(22)).toBe("22.0");
+    expect(formatScore(-0.3)).toBe("-0.3");
+    expect(formatScore(86.3)).toBe("86.3");
+    expect(formatScore(-24.8)).toBe("-24.8");
   });
 });

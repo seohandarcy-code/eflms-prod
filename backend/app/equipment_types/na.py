@@ -9,10 +9,13 @@
 - null을 읽지 않고 끝나는 공식은 원래대로 계산한다 — null이 없는 행의 결과는 원본과 완전히 같다
   (각 유형의 원본 대조 테스트가 그대로 통과).
 
-각 설비유형 모듈의 calculate()가 evaluate()로 CALCULATED_COLUMNS를 돌린다.
+각 설비유형 모듈의 calculate()가 evaluate()로 CALCULATED_COLUMNS를 돌린다. 점수 지표(POF·COF·DOF
+감점/점수, 종합점수)는 계산 직후 소수 첫째 자리로 반올림한다(app/equipment_types/rounding.py, 2026-11-06).
 """
 from datetime import date
 from typing import Any
+
+from app.equipment_types.rounding import SCORE_FIELDS, round1
 
 # 임포트가 null로 저장하는 표기(앞뒤 공백 제거·대소문자 무시 후 비교)
 NA_TOKENS = frozenset({"N/A", "#N/A"})
@@ -45,5 +48,7 @@ def evaluate(input_row: dict, columns: list[dict[str, Any]], as_of: date | None)
             row[col["name"]] = col["formula"](row)
         except _MissingValue:
             row[col["name"]] = 0 if col["name"].endswith("_minus") else None
+        if col["name"] in SCORE_FIELDS and row[col["name"]] is not None:
+            row[col["name"]] = round1(row[col["name"]])
     del row["_as_of"]
     return dict(row)

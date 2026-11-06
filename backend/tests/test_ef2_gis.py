@@ -32,6 +32,7 @@ from app.db.models import (
     TransformerSpec,
 )
 from app.equipment_types import ef2_gis
+from app.equipment_types.rounding import SCORE_FIELDS, round1
 from app.services.dataset_service import count_type
 from app.services.import_service import _check_allowed, import_file
 from app.services.ingest import ingest_row
@@ -175,7 +176,9 @@ def test_matches_reference_formulas(ref):
         ours = ef2_gis.calculate(row)
         theirs = _expected(ref, row)
         for name in CALC_NAMES:
-            assert ours[name] == theirs[name], (name, row)
+            # 점수 지표는 소수 첫째 자리로 반올림해 저장한다(2026-11-06) — 원본 값에 같은 반올림을 적용해 비교
+            expected = round1(theirs[name]) if name in SCORE_FIELDS else theirs[name]
+            assert ours[name] == expected, (name, row)
 
 
 def test_age_minus_is_added_to_electrical_unlike_reference(ref):

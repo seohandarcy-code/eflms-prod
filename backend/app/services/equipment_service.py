@@ -27,7 +27,7 @@ from app.schemas.equipment import (
 PROJECTION_YEARS = 5
 
 
-def classify_status(pof: int, cof: int, dof: int) -> EquipmentStatus:
+def classify_status(pof: float, cof: float, dof: float) -> EquipmentStatus:
     """정상/교체검토/즉시교체 3단계 판정.
 
     COF·DOF가 둘 다 60 초과면 완화된 POF 기준(정상 >50 / 교체검토 30~50 / 즉시교체 <30)을,

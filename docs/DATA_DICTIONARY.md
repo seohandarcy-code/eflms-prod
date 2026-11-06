@@ -15,7 +15,7 @@
 |---|---|
 | `equipment_type` | `ef_code`(PK), `name`, `description` |
 | `equipment` | `equipment_id`(PK), `factory_code`, `ef_code`(FK), `equipment_name`, `voltage`, `operation_start_time`, `created_at` — `UNIQUE(factory_code, ef_code, equipment_name)`. `equipment_name`에는 설비유형 원본의 이름 컬럼이 들어간다(EF1 `transformer_name`, EF2 `gis_name`, EF3 `tl_name`, EF4 `eqp_id`). `voltage`는 원본에 전압이 없는 유형(EF4)에선 0 |
-| `score_snapshot` | `equipment_id`(FK), `pof_minus`, `pof`, `cof_minus`, `cof`, `dof_minus`, `dof`, `total_score`, `computed_at` |
+| `score_snapshot` | `equipment_id`(FK), `pof_minus`, `pof`, `cof_minus`, `cof`, `dof_minus`, `dof`, `total_score`, `computed_at` — 점수 컬럼은 모두 FLOAT, 소수 첫째 자리(Stage 13-0) |
 
 > **Stage 8-1(2026-10-16, 마이그레이션 `8a1c4e2f9b70`)**: `equipment`에서 변압기 전용 요소를 걷어냈다 — `transformer_name` → `equipment_name`, `onan_val`/`onaf_val`은 EF1 전용 `transformer_spec`으로 값 이관. 사내 EF1 입력파일 헤더는 그대로 `transformer_name`/`ONAN_val`/`ONAF_val`이다(적재 시 매핑). 이 1회성 예외 이후로는 공통 레이어를 바꾸지 않는다.
 
@@ -290,6 +290,19 @@ mock 범위(5,000건)는 PoF 68~89, CoF 약 60~96, DoF 85~94다. mock에선 감�
 | 되돌리기 | 마이그레이션 downgrade는 null이 하나도 없을 때만 — 남아 있으면 테이블·컬럼을 알려주고 멈춘다 |
 
 예전 동작(참고): 숫자·날짜·허용값 컬럼의 `N/A`는 행 오류로 파일 전체가 거부됐고, 허용값이 없는 EF1 판정 문자열 19개(부분방전진단·OLTC·열화상·소음·화재·설계속성 등)는 `"N/A"` 글자 그대로 저장돼 `'양호'`/`'정상'`이 아니라는 이유로 **감점이 붙었다**(예: 부분방전진단 N/A → -20). 이제는 null → 감점 0.
+
+## 점수 지표 소수 첫째 자리 — Stage 13-0(2026-11-06, 마이그레이션 `e1a5c0d3f7b2`)
+
+EF5(UPS) 원본이 소수 감점(사고영향성·열화상·외함)을 내면서, 점수 지표를 모든 설비유형에서 소수 첫째 자리로 저장·표시하기로 했다(사용자 결정 — (가) 방식).
+
+| 항목 | 규칙 |
+|---|---|
+| 대상 | POF·COF·DOF 감점(`pof_minus` 등), POF·COF·DOF, 종합점수(`total_score`) — 계산 직후 `na.evaluate()`가 반올림(`app/equipment_types/rounding.py`의 `SCORE_FIELDS`) |
+| 반올림 | 엑셀 ROUND처럼 5에서 올림(0에서 먼 쪽): -0.25 → **-0.3**, 69.19999 → 69.2. 파이썬 `round()`(짝수 쪽, -0.25 → -0.2)는 쓰지 않는다 |
+| 원본 수식 | 원본 안의 정수 반올림(`round()`/`int()`)은 그대로 — 원본 엑셀 결과와 계속 일치. EF1~EF4는 감점이 모두 정수라 **값은 바뀌지 않고** 표시만 `22` → `22.0` |
+| 저장 | `score_snapshot`의 `pof_minus`·`pof`·`cof_minus`·`cof`·`dof_minus`·`dof` INTEGER → FLOAT(공통 테이블 변경 — 사용자 승인). 마이그레이션이 기존 `total_score`도 소수 첫째 자리로 맞춘다(차이 0.05 이내). 되돌리기는 소수 값이 없을 때만 |
+| 판정 | 기준은 그대로(`> 60`, `>= 40` 등). 소수 점수는 그대로 비교한다 — 예: COF 60.3은 60 초과 |
+| 화면 | 점검필요 순위(축 점수·감점 사유), 설비목록 카드·리스트, 선택된 설비 막대, 3D 그래프 정보, 원본 데이터 보기의 "○○ 감점" 칸을 소수 첫째 자리로(`formatScore()`, `na(…, { digits: 1 })`) |
 
 ## 미확정/자동 캡처 컬럼
 

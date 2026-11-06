@@ -64,6 +64,7 @@ cd backend
 
 - EF2~EF4는 임포트 허용값(`choices`/`min`/`max`/`required`)을 선언해 둬서 오류값(예: EF2 소문자 `c`·154k/345k 외 전압·순도 100 초과, EF3 원본 판정에 없는 포설방법·회선별용량 0, EF4 `양호`/`불량` 외 점검결과·목록에 없는 설치건물)을 행 오류로 거부한다. EF4는 원본에 전압이 없어 `calculate()`가 `voltage=0`을 채운다(공통 `equipment.voltage` 필수). 목록은 `docs/DATA_DICTIONARY.md` 각 유형 절.
 - 값 없음: 입력파일의 `N/A`·`n/a`·`#N/A`는 null로 저장되고 계산에서 그 감점은 0이다(`app/equipment_types/na.py`의 `evaluate()` — 네 유형의 `calculate()`가 공통 사용, Stage 11). 사업장·`EF_code`·설비명·가동년월·전압은 N/A 불가(`import_service.NOT_NULLABLE_COLUMNS` + `NAME_FIELD`). 새 유형도 `calculate()`에서 `evaluate()`를 쓰고 입력 컬럼을 null 허용으로 둔다.
+- 점수 지표(POF·COF·DOF 감점/점수, 종합점수)는 `na.evaluate()`가 소수 첫째 자리로 반올림한다(엑셀 ROUND식 5에서 올림, `app/equipment_types/rounding.py`, Stage 13-0). 원본 수식 안의 정수 반올림은 그대로 두고, 원본 대조 테스트는 원본 값에 같은 반올림을 적용해 비교한다. `score_snapshot` 점수 컬럼은 FLOAT.
 - 원본엔 있지만 쓰지 않는 컬럼은 모듈의 `IGNORED_COLUMNS`(선택 속성)에 넣는다 — 임포트가 저장하지 않고 건너뛰고 결과에 "사용 안 하는 컬럼"으로 표시(미등록 컬럼처럼 `equipment_extra_attribute`에 쌓이지 않음). 현재 EF2 `cb_op_char_over`(2026-10-19 미사용 결정).
 - 조회 API는 설비유형별로 동작한다(Stage 8-4, `docs/ARCHITECTURE.md` "조회 API"). 상세는 `type_detail`(EF1~EF4 union), 유형별 스키마는 `app/schemas/ef1.py`~`ef4.py`. 화면은 8-5 전까지 `ef_code=EF1`만 요청한다.
 - 설비유형 모듈의 조회용 인터페이스: `BREAKDOWN`(감점 라벨 메타), `calculate(row, as_of=)`(계산 기준일), `load_inputs`(저장값 → 계산 입력 복원 — 재계산하면 저장 점수와 같아야 함, `tests/test_type_queries.py`), `last_diag_dates`, `load_detail`.

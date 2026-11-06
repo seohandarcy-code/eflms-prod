@@ -20,9 +20,9 @@ class EquipmentSummary(BaseModel):
     equipment_name: str
     voltage: int
     operation_start_time: date
-    pof: int
-    cof: int
-    dof: int
+    pof: float
+    cof: float
+    dof: float
     total_score: float
     status: EquipmentStatus
     last_diag_date: date | None = None
@@ -30,12 +30,12 @@ class EquipmentSummary(BaseModel):
 
 class ScoreSnapshotOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    pof_minus: int
-    pof: int
-    cof_minus: int
-    cof: int
-    dof_minus: int
-    dof: int
+    pof_minus: float
+    pof: float
+    cof_minus: float
+    cof: float
+    dof_minus: float
+    dof: float
     total_score: float
     computed_at: datetime
 
@@ -51,9 +51,9 @@ class ProjectionPoint(BaseModel):
 
     years_ahead: int
     as_of: date
-    pof: int
-    cof: int
-    dof: int
+    pof: float
+    cof: float
+    dof: float
     total_score: float
 
 

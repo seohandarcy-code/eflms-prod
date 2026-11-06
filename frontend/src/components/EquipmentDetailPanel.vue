@@ -3,7 +3,7 @@ import { computed, ref, watch } from "vue";
 import { useEquipmentStore } from "../stores/equipment";
 import type { EquipmentDetail } from "../types/equipment";
 import { formatMonth } from "../utils/formatDate";
-import { na } from "../utils/formatValue";
+import { formatScore, na } from "../utils/formatValue";
 import { statusBg, statusColor, statusLabel } from "../utils/statusStyle";
 import PofDistributionChart from "./PofDistributionChart.vue";
 import ScoreProjectionChart from "./ScoreProjectionChart.vue";
@@ -85,13 +85,13 @@ const sameTypeList = computed(() => store.equipmentList.filter((item) => item.ef
           <div class="score-bars">
             <span>POF</span>
             <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.pof) + '%', background: color }" /></div>
-            <span class="bar-value mono">{{ detail.score.pof }}</span>
+            <span class="bar-value mono">{{ formatScore(detail.score.pof) }}</span>
             <span>COF</span>
             <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.cof) + '%', background: color }" /></div>
-            <span class="bar-value mono">{{ detail.score.cof }}</span>
+            <span class="bar-value mono">{{ formatScore(detail.score.cof) }}</span>
             <span>DOF</span>
             <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.dof) + '%', background: color }" /></div>
-            <span class="bar-value mono">{{ detail.score.dof }}</span>
+            <span class="bar-value mono">{{ formatScore(detail.score.dof) }}</span>
           </div>
         </div>
 
