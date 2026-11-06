@@ -40,6 +40,11 @@ ALLOWED_TABLES: list[str] = [
     "switchgear_condition",
     "switchgear_consequence_attribute",
     "switchgear_design_attribute",
+    "ups_score_detail",
+    "ups_spec",
+    "ups_condition",
+    "ups_consequence_attribute",
+    "ups_design_attribute",
     "equipment_extra_attribute",
 ]
 

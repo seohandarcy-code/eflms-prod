@@ -34,6 +34,13 @@ from app.db.models.switchgear import (
     SwitchgearScoreDetail,
     SwitchgearSpec,
 )
+from app.db.models.ups import (
+    UpsCondition,
+    UpsConsequenceAttribute,
+    UpsDesignAttribute,
+    UpsScoreDetail,
+    UpsSpec,
+)
 
 __all__ = [
     "AllowedUser",
@@ -66,4 +73,9 @@ __all__ = [
     "SwitchgearConsequenceAttribute",
     "SwitchgearDesignAttribute",
     "SwitchgearScoreDetail",
+    "UpsSpec",
+    "UpsCondition",
+    "UpsConsequenceAttribute",
+    "UpsDesignAttribute",
+    "UpsScoreDetail",
 ]

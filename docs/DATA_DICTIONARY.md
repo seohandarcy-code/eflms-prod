@@ -14,7 +14,7 @@
 | 테이블 | 컬럼 |
 |---|---|
 | `equipment_type` | `ef_code`(PK), `name`, `description` |
-| `equipment` | `equipment_id`(PK), `factory_code`, `ef_code`(FK), `equipment_name`, `voltage`, `operation_start_time`, `created_at` — `UNIQUE(factory_code, ef_code, equipment_name)`. `equipment_name`에는 설비유형 원본의 이름 컬럼이 들어간다(EF1 `transformer_name`, EF2 `gis_name`, EF3 `tl_name`, EF4 `eqp_id`). `voltage`는 원본에 전압이 없는 유형(EF4)에선 0 |
+| `equipment` | `equipment_id`(PK), `factory_code`, `ef_code`(FK), `equipment_name`, `voltage`, `operation_start_time`, `created_at` — `UNIQUE(factory_code, ef_code, equipment_name)`. `equipment_name`에는 설비유형 원본의 이름 컬럼이 들어간다(EF1 `transformer_name`, EF2 `gis_name`, EF3 `tl_name`, EF4·EF5 `eqp_id`). `voltage`는 원본에 전압이 없는 유형(EF4·EF5)에선 0 |
 | `score_snapshot` | `equipment_id`(FK), `pof_minus`, `pof`, `cof_minus`, `cof`, `dof_minus`, `dof`, `total_score`, `computed_at` — 점수 컬럼은 모두 FLOAT, 소수 첫째 자리(Stage 13-0) |
 
 > **Stage 8-1(2026-10-16, 마이그레이션 `8a1c4e2f9b70`)**: `equipment`에서 변압기 전용 요소를 걷어냈다 — `transformer_name` → `equipment_name`, `onan_val`/`onaf_val`은 EF1 전용 `transformer_spec`으로 값 이관. 사내 EF1 입력파일 헤더는 그대로 `transformer_name`/`ONAN_val`/`ONAF_val`이다(적재 시 매핑). 이 1회성 예외 이후로는 공통 레이어를 바꾸지 않는다.
@@ -273,6 +273,80 @@ mock 범위(5,000건)는 PoF 68~89, CoF 약 60~96, DoF 85~94다. mock에선 감�
 ### 화면 라벨
 
 감점 항목 라벨은 원본 계산 라벨에서 "감점"만 뗀다(`age_minus` → 원본 그대로 "경과년수"). 그룹은 원본 소계 라벨에서 접두어를 뗀 이름이다 — PoF 내구성·열적·물리적, CoF 계통·비용·기간, DoF 계통·비용·복구시간(2026-10-29 결정). 상세 패널 부제는 `eqp_id_name · eqp_building eqp_floor · eqp_disting`(예: `hvcb3 · 화성UT1동 2F · 11U`).
+
+## EF5(UPS) — Stage 13 구현(2026-11-06, 마이그레이션 `7edeafa442e4`)
+
+출처: `ref_data/schema_eflms_ups.py`(2026-11-06 수정본 — 첫 검토에서 찾은 문법 오류, 온도 보정 와이블식 오기(`(η×2)^((25−T)/10)` → `η × 2^((25−T)/10)`), 팬 사용수명 음수 시 계산 오류를 원본 작성자가 고친 뒤 확정. 차단기 형상계수 8.55는 작성자 확인). 시스템 계산기(`ef5_ups.py`)는 **원본 공식을 그대로** 옮기고, 소수 감점만 소수 첫째 자리로 반올림한다 — `backend/tests/test_ef5_ups.py`가 같은 입력으로 원본과 대조한다.
+
+### 공통 테이블 매핑
+
+| 원본 컬럼 | 들어가는 곳 |
+|---|---|
+| `factory_code`, `EF_code`, `operation_start_time`(설치년월) | `equipment` (공통) |
+| `eqp_id`(설비코드) | `equipment.equipment_name` — EF4와 같이 설비코드를 설비명으로 쓴다 |
+| (없음) | `equipment.voltage` = **0** — 원본에 전압 입력이 없어 계산기가 채운다(EF4와 같음) |
+| `pof_minus`, `pof`, `cof_minus`, `cof`, `dof_minus`, `dof`, `total_score` | `score_snapshot` (공통, 소수 첫째 자리) |
+
+### EF5 입력 도메인 테이블
+
+| 테이블 | INPUT_COLUMNS 매핑 | 시점 컬럼 | 축 |
+|---|---|---|---|
+| `ups_spec` | `line_no`, `manufacturer`, `model_name`, `capa` | `updated_at` | 설비정보(계산 미사용), CoF(정격용량) |
+| `ups_condition` | `fan_replace_no`, `elec_room_max_temp`, `load`, `mod_cir_curr`, `mod_vol_diff`, `noise`, `thermal_img_chk`, `ex_box_chk` | `measured_at` (신규 — 원본엔 날짜 없음) | PoF(부하율은 CoF 부하량에도 쓰임) |
+| `ups_consequence_attribute` | `ins_build_rank`, `fire_spread_rank`, `emerge_resp`, `rep_time`, `rep_cost` | `updated_at` | CoF |
+| `ups_design_attribute` | `sys_rel`, `emerge_sys`, `fac_rel`, `part_shortage`, `model_type`, `switching_type`, `igbt_rev`, `online_diag` | `updated_at` | DoF |
+
+시점 컬럼은 모두 계산 기준일(`today`)이 들어간다. 화면의 "최근 진단일"은 `ups_condition.measured_at`(반영 기준일, EF4와 같음). 입력 컬럼은 처음부터 null 허용(N/A).
+
+### 입력 허용값 (임포트 검증, 2026-11-06 결정 — 권장안)
+
+| 컬럼 | 라벨 | 허용값 |
+|---|---|---|
+| `thermal_img_chk`, `ex_box_chk` | 열화상 / 외함점검 | `정상`, `이상` |
+| `ins_build_rank`, `fire_spread_rank`, `emerge_resp`, `rep_time`, `rep_cost` | 설치건물 / 화재확산 / 전력재공급시간 / 정상화기간 / 사고복구비용 등급 | `A`, `B`, `C` |
+| `sys_rel` | 계통신뢰도등급 | `N`, `N+1`, `N+N` |
+| `emerge_sys` | 비상계통전력공급등급 | `불가`, `EMG`, `타설비` |
+| `fac_rel` | 설비신뢰도등급 | `N`, `N+1` |
+| `part_shortage` | 설비모델단종여부등급 | `공급가능`, `단종` |
+| `model_type` | 모델type등급 | `변압기`, `무변압기` |
+| `switching_type` | 스위칭동작등급 | `2레벨PWM`, `3레벨PWM` |
+| `igbt_rev` | igbt개선등급 | `600V`, `1200V` |
+| `online_diag` | 온라인진단등급 | `미적용`, `적용` |
+| `elec_room_max_temp`, `load` | 전기실최대온도 / 부하율(%) | 소수, 0 이상 |
+| `fan_replace_no`, `mod_cir_curr`, `mod_vol_diff`, `noise`, `capa` | 팬교체횟수 / 모듈간순환전류 / 모듈간출력전압차이 / 소음 / 정격용량 | 정수(원본 샘플대로), 0 이상 |
+| `factory_code`, `eqp_id`, `line_no`, `manufacturer`, `model_name` | 사업장명 / 설비코드 / 라인 / 제작사 / 모델명 | 빈 값만 거부 |
+
+### EF5 계산 도메인 테이블 — `ups_score_detail`
+
+`score_snapshot`(공통)에 들어가는 7개를 제외한 나머지 CALCULATED_COLUMNS 전부(41개). 감점 컬럼은 FLOAT(소수 첫째 자리). null 가능: 전기실최대온도가 N/A면 부품 5종 상태점수(`cb_stat` 등), 팬교체횟수가 N/A면 `fan_life_year`, 부하율·정격용량이 N/A면 `capa_times_load`.
+
+### EF5 산출 파이프라인 요약
+
+1. PoF = 100 + 감점 합계(원본에 소계 없음)
+   - 경과년수(사용 1년당 -1)
+   - 부품 5종 고장확률: `R = e^(−(t / (η × 2^((25 − T)/10)))^β)`, 감점 `round((R − 1) × 100 × 3)` — T는 전기실최대온도(10℃ 낮을 때마다 수명 2배). η/β: 차단기 37.44/8.55, 커패시터 25.67/7.21, fan 20.22/7.9, IGBT 311205.69/0.45, 보드 283.18/0.7
+   - 사용수명 t: 차단기 `사용년수 − 7.5 × 교체횟수`(교체횟수 = 7.5년 이상이면 1, 최대 1 — 원본 규칙), fan `max(0, 사용년수 − 7.5 × 팬교체횟수)`, 나머지는 사용년수
+   - 전기실최고온도 `round((25 − T) × 1.5)` — **25℃ 미만이면 가점**(원본대로, 2026-11-06 확인), 부하율 `int((95 − 부하율) × 0.75)`(95 초과일 때), 모듈간 순환전류·전압차 `int((5 − 값) × 0.5)`, 소음 `int((80 − 값) × 0.25)`
+   - 열화상 `이상` -0.5, 외함점검 `이상` **-0.3**(원본 -0.25 → 소수 첫째 자리)
+2. CoF = 100 + 사고영향성(`round1(−9 × 부하량 ÷ 500)`, 부하량 = 부하율 × 정격용량 ÷ 100) + 설치건물(A -6, B -3) + 화재확산(A -3) + 전력재공급시간·정상화기간·사고복구비용(A -2, B -1)
+3. DoF = 100 + 계통신뢰도(N -4, N+1 -2) + 비상계통(불가 -4, EMG -2) + 설비신뢰도 N -9 + 단종 -9 + 모델type 변압기 -2 + 스위칭 2레벨PWM -1 + IGBT 600V -1 + 온라인진단 미적용 -9
+4. `total_score = 0.5*pof + 0.3*cof + 0.2*dof` — 축 점수는 100 + (소수 첫째 자리로 반올림한 감점)
+
+### 원본 그대로 유지하는 판단 / 소수 처리 (2026-11-06 확정)
+
+| 항목 | 원본 동작 | 처리 |
+|---|---|---|
+| 소수 감점(사고영향성·열화상·외함) | 반올림 없음(-24.75, -0.25) | 소수 첫째 자리, 엑셀 ROUND식(-24.8, -0.3) — 사용자 결정 |
+| 원본 안의 정수 반올림 | 고장확률 `round()`, 부하율·소음 등 `int()`, 온도 `round()`(Python, .5는 짝수 쪽) | 원본대로((가) 방식) |
+| 전기실 온도 가점 | 25℃ 미만이면 + | 원본대로(사용자 확인) |
+| 음수 점수 | 노후·고온이면 부품 고장확률이 각각 최대 -300까지 | 계산값 그대로 저장, 차트만 0~100 클램프 |
+| 상태 판정 | — | 공통 `classify_status` 기준(소수 점수 그대로 비교) |
+
+**mock 범위 주의**: 원본 mock은 팬교체횟수가 항상 0이고 설치가 2005~2015년이라, 사용 16년 이상 설비(약 60%)는 fan 고장확률이 -300이 되어 PoF가 크게 음수다(5,000건 중 PoF -500~62, 음수 약 62%; 사용 14년 미만만 보면 PoF -46~62). 원본 공식 그대로의 결과이며, 실데이터에서는 팬교체 이력이 반영된다. mock에선 감점이 한 번도 발생하지 않는 항목이 11개 있다(차단기고장확률·부하율·모듈간순환전류·모듈간전압차이·소음·열화상·외함·사고복구비용·설비신뢰도·모델타입·IGBT개선) — 분기 정답은 테스트(`BRANCHES`)로 확인한다.
+
+### 화면 라벨
+
+감점 항목 라벨은 원본 계산 라벨에서 "감점"만 뗀다(예: "fan고장확률감점" → "fan고장확률"). 원본에 소계가 없어 그룹 없이 나열한다(EF3과 같음). 원본 데이터 보기는 POF 구성(설비정보 → 부품 고장확률 → 운전·점검 소그룹) · COF 구성 · DOF 구성.
 
 ## 값 없음(N/A) 처리 — Stage 11(2026-10-29, 마이그레이션 `b7f98e26abb7`)
 

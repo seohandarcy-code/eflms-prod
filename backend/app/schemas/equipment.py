@@ -7,6 +7,7 @@ from app.schemas.ef1 import Ef1Detail
 from app.schemas.ef2 import Ef2Detail
 from app.schemas.ef3 import Ef3Detail
 from app.schemas.ef4 import Ef4Detail
+from app.schemas.ef5 import Ef5Detail
 
 EquipmentStatus = Literal["normal", "review", "replace"]
 
@@ -58,7 +59,7 @@ class ProjectionPoint(BaseModel):
 
 
 # 설비유형별 상세는 ef_code로 구분되는 union — 새 유형은 여기에 스키마 하나를 추가한다.
-TypeDetail = Annotated[Union[Ef1Detail, Ef2Detail, Ef3Detail, Ef4Detail], Field(discriminator="ef_code")]
+TypeDetail = Annotated[Union[Ef1Detail, Ef2Detail, Ef3Detail, Ef4Detail, Ef5Detail], Field(discriminator="ef_code")]
 
 
 class EquipmentDetail(BaseModel):

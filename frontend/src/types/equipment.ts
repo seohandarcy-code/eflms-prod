@@ -409,7 +409,95 @@ export interface Ef4TypeDetail {
   score_detail: Ef4ScoreDetail;
 }
 
-export type TypeDetail = Ef1TypeDetail | Ef2TypeDetail | Ef3TypeDetail | Ef4TypeDetail;
+/** EF5(UPS) 전용 상세 — EquipmentDetail.type_detail (Stage 13-2). 필드는 backend app/schemas/ef5.py와 1:1 */
+export interface Ef5ScoreDetail {
+  computed_at: string;
+  today: string;
+  operation_year: number;
+  age_minus: number;
+  cb_replace_no: number;
+  cb_life_year: number;
+  cb_stat: number | null;
+  cb_stat_minus: number;
+  cap_life_year: number;
+  cap_stat: number | null;
+  cap_stat_minus: number;
+  fan_life_year: number | null;
+  fan_stat: number | null;
+  fan_stat_minus: number;
+  igbt_life_year: number;
+  igbt_stat: number | null;
+  igbt_stat_minus: number;
+  board_life_year: number;
+  board_stat: number | null;
+  board_stat_minus: number;
+  elec_room_max_temp_minus: number;
+  load_minus: number;
+  mod_cir_curr_minus: number;
+  mod_vol_diff_minus: number;
+  noise_minus: number;
+  thermal_img_chk_minus: number;
+  ex_box_chk_minus: number;
+  capa_times_load: number | null;
+  capa_times_load_minus: number;
+  ins_build_rank_minus: number;
+  fire_spread_rank_minus: number;
+  emerge_resp_minus: number;
+  rep_time_minus: number;
+  rep_cost_minus: number;
+  sys_rel_minus: number;
+  emerge_sys_minus: number;
+  fac_rel_minus: number;
+  part_shortage_minus: number;
+  model_type_minus: number;
+  switching_type_minus: number;
+  igbt_rev_minus: number;
+  online_diag_minus: number;
+}
+
+export interface Ef5TypeDetail {
+  ef_code: "EF5";
+  spec: {
+    updated_at: string;
+    line_no: string | null;
+    manufacturer: string | null;
+    model_name: string | null;
+    capa: number | null;
+  };
+  condition: {
+    measured_at: string;
+    fan_replace_no: number | null;
+    elec_room_max_temp: number | null;
+    load: number | null;
+    mod_cir_curr: number | null;
+    mod_vol_diff: number | null;
+    noise: number | null;
+    thermal_img_chk: string | null;
+    ex_box_chk: string | null;
+  };
+  consequence: {
+    updated_at: string;
+    ins_build_rank: string | null;
+    fire_spread_rank: string | null;
+    emerge_resp: string | null;
+    rep_time: string | null;
+    rep_cost: string | null;
+  };
+  design: {
+    updated_at: string;
+    sys_rel: string | null;
+    emerge_sys: string | null;
+    fac_rel: string | null;
+    part_shortage: string | null;
+    model_type: string | null;
+    switching_type: string | null;
+    igbt_rev: string | null;
+    online_diag: string | null;
+  };
+  score_detail: Ef5ScoreDetail;
+}
+
+export type TypeDetail = Ef1TypeDetail | Ef2TypeDetail | Ef3TypeDetail | Ef4TypeDetail | Ef5TypeDetail;
 
 export interface ProjectionPoint {
   years_ahead: number;
