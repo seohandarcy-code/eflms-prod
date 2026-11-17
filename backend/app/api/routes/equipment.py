@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import require_viewer
 from app.db.session import get_session
 from app.schemas.equipment import EquipmentDetail, EquipmentSummary, EquipmentTypeOut, SummaryKPI
 from app.services import equipment_service
 
-router = APIRouter(prefix="/api", tags=["equipment"])
+# AUTH_MODE=sso면 로그인한 사람만(역할 무관) 조회할 수 있다 — none/local은 지금처럼 공개(Stage 16-1).
+router = APIRouter(prefix="/api", tags=["equipment"], dependencies=[Depends(require_viewer)])
 
 
 @router.get("/equipment-types", response_model=list[EquipmentTypeOut])

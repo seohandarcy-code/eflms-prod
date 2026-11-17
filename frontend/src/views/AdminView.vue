@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import AccessUsersPanel from "../components/AccessUsersPanel.vue";
+import DataImportPanel from "../components/DataImportPanel.vue";
+import SqlQueryPanel from "../components/SqlQueryPanel.vue";
 import { fetchAdminTablePage, fetchAdminTables, fetchAuthConfig, ssoLoginUrl, type AuthConfig, type TablePage } from "../api/admin";
 import { useAuthStore } from "../stores/auth";
 
@@ -8,50 +10,15 @@ const auth = useAuthStore();
 
 const authConfig = ref<AuthConfig | null>(null);
 const password = ref("");
-const tab = ref<"tables" | "access">("tables");
-const ssoError = ref<string | null>(null);
-// 예외 타입/메시지 — 토큰/자격증명이 아니라 순수 진단 정보라 화면에 그대로 보여줘도
-// 안전하다. 서버 로그를 직접 열어보지 않아도 실제 SSO 브로커 연동 시 원인을 바로
-// 알 수 있게 한다(a-ims-prod가 ADFS 연동 중 겪은 문제를 보고 추가한 패턴).
-const ssoErrorDetail = ref<string | null>(null);
-
-const SSO_ERROR_MESSAGES: Record<string, string> = {
-  sso_not_configured: "SSO가 설정되지 않았습니다.",
-  auth_failed: "SSO 인증에 실패했습니다.",
-  broker_unreachable: "SSO 브로커 통신에 실패했습니다. 잠시 후 다시 시도해주세요.",
-  missing_claim: "필요한 사용자 식별 정보를 받지 못했습니다.",
-  not_registered: "등록되지 않은 계정입니다. 관리자에게 등록을 요청해주세요.",
-};
+const tab = ref<"tables" | "data" | "access">("tables");
+// SSO 실패 문구(#error=코드)는 앱 시작 때 auth 스토어가 읽어 둔다(main.ts) — auth.ssoError / ssoErrorDetail.
+// detail은 예외 타입/메시지라 토큰·자격증명이 아닌 순수 진단 정보 — 화면에 그대로 보여줘도 안전하다.
 
 const tables = ref<string[]>([]);
 const selectedTable = ref<string | null>(null);
 const tablePage = ref<TablePage | null>(null);
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
-
-// SSO 콜백은 /admin#token=...&role=...&name=... (성공) 또는 /admin#error=코드 (실패)로
-// 돌아온다(쿼리스트링이 아닌 URL 프래그먼트라 서버 로그/리퍼러에 안 남음). 페이지 로드
-// 시 1회만 읽고 지운다.
-function consumeSsoCallbackHash() {
-  const hash = window.location.hash;
-  if (hash.startsWith("#error=")) {
-    const params = new URLSearchParams(hash.slice(1));
-    const code = params.get("error") ?? "";
-    ssoError.value = SSO_ERROR_MESSAGES[code] ?? `SSO 로그인에 실패했습니다. (${code})`;
-    ssoErrorDetail.value = params.get("detail");
-    history.replaceState(null, "", window.location.pathname);
-    return;
-  }
-  if (!hash.startsWith("#token=")) return;
-  const params = new URLSearchParams(hash.slice(1));
-  const token = params.get("token");
-  const role = params.get("role") ?? "user";
-  const name = params.get("name");
-  if (token) {
-    auth.setSessionFromCallback(token, role, name);
-  }
-  history.replaceState(null, "", window.location.pathname);
-}
 
 async function onLoginSubmit() {
   const ok = await auth.login(password.value);
@@ -62,8 +29,9 @@ async function onLoginSubmit() {
 }
 
 async function loadTables() {
-  if (!auth.token) return;
-  tables.value = await fetchAdminTables(auth.token);
+  // 미등록 SSO 사용자(general)는 대시보드 조회만 — 테이블 조회 API는 403이라 부르지 않는다.
+  if (!auth.token || !auth.isRegistered) return;
+  tables.value = await fetchAdminTables(auth.token).catch(() => []);
 }
 
 async function selectTable(name: string, page = 1) {
@@ -94,7 +62,6 @@ async function onLogout() {
 }
 
 onMounted(async () => {
-  consumeSsoCallbackHash();
   authConfig.value = await fetchAuthConfig().catch(() => null);
   if (auth.isAuthenticated) {
     await loadTables();
@@ -112,12 +79,12 @@ onMounted(async () => {
           </svg>
         </div>
         <div>
-          <div class="title">관리자 · DB 테이블 조회</div>
-          <div class="subtitle">시스템이 사용하는 테이블을 조회 전용으로 확인합니다.</div>
+          <div class="title">관리자</div>
+          <div class="subtitle">DB 테이블 조회 · 데이터 입력 · 접근 권한 관리</div>
         </div>
       </div>
       <div class="header-actions">
-        <span v-if="auth.isAuthenticated && auth.name" class="user-badge">{{ auth.name }}<span v-if="auth.isAdmin" class="admin-tag">admin</span></span>
+        <span v-if="auth.isAuthenticated" class="user-badge">{{ auth.name ?? "관리자" }}<span v-if="auth.isAdmin" class="admin-tag">admin</span><span v-else-if="auth.role === 'general'" class="admin-tag muted-tag">조회 전용</span></span>
         <button v-if="auth.isAuthenticated" type="button" class="logout-btn" @click="onLogout">로그아웃</button>
         <RouterLink to="/" class="back-link">← 대시보드로</RouterLink>
       </div>
@@ -127,7 +94,7 @@ onMounted(async () => {
       <div v-if="!auth.isAuthenticated" class="login-card">
         <h2>관리자 로그인</h2>
 
-        <a v-if="authConfig?.auth_mode === 'sso'" :href="ssoLoginUrl()" class="sso-btn">회사 계정으로 로그인</a>
+        <a v-if="authConfig?.auth_mode === 'sso'" :href="ssoLoginUrl('/admin')" class="sso-btn">회사 계정으로 로그인</a>
 
         <template v-if="authConfig?.local_login_available">
           <div v-if="authConfig?.auth_mode === 'sso'" class="local-login-divider">또는 관리자 비밀번호로</div>
@@ -137,20 +104,33 @@ onMounted(async () => {
           </form>
         </template>
 
-        <div v-if="ssoError" class="login-error">
-          {{ ssoError }}
-          <div v-if="ssoErrorDetail" class="login-error-detail">{{ ssoErrorDetail }}</div>
+        <div v-if="auth.ssoError" class="login-error">
+          {{ auth.ssoError }}
+          <div v-if="auth.ssoErrorDetail" class="login-error-detail">{{ auth.ssoErrorDetail }}</div>
         </div>
         <div v-if="auth.error" class="login-error">{{ auth.error }}</div>
+      </div>
+
+      <div v-else-if="!auth.isRegistered" class="login-card">
+        <h2>조회 전용 계정</h2>
+        <p class="general-note">
+          회사 계정 인증은 되었지만 관리자 화면 사용자로 등록되어 있지 않습니다. 대시보드는 그대로 볼 수 있습니다.
+          관리자 화면이 필요하면 관리자에게 등록을 요청해주세요.
+        </p>
+        <RouterLink to="/" class="sso-btn">대시보드로 가기</RouterLink>
       </div>
 
       <div v-else class="admin-body-wrap">
         <div v-if="auth.isAdmin" class="tabs">
           <button type="button" :class="{ active: tab === 'tables' }" @click="tab = 'tables'">테이블 조회</button>
+          <button type="button" :class="{ active: tab === 'data' }" @click="tab = 'data'">데이터 입력</button>
           <button type="button" :class="{ active: tab === 'access' }" @click="tab = 'access'">접근 권한 관리</button>
         </div>
 
         <AccessUsersPanel v-if="tab === 'access' && auth.isAdmin" />
+        <DataImportPanel v-else-if="tab === 'data' && auth.isAdmin" />
+        <!-- 관리자: SQL 조회(Stage 16-5). 등록 사용자: 테이블을 눌러 보는 조회만(아래) -->
+        <SqlQueryPanel v-else-if="auth.isAdmin" :tables="tables" />
 
         <div v-else class="admin-body">
           <aside class="table-list">
@@ -313,6 +293,17 @@ onMounted(async () => {
   font-weight: 600;
   font-size: 13px;
   text-decoration: none;
+}
+.muted-tag {
+  color: #8891a0;
+  border-color: #c9ced6;
+}
+.general-note {
+  font-size: 13px;
+  color: #4a5361;
+  line-height: 1.6;
+  text-align: left;
+  margin: 0 0 16px;
 }
 .local-login-divider {
   font-size: 11px;

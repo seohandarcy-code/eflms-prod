@@ -17,7 +17,7 @@ cp .env.example .env                             # 최초 1회, 값은 로컬에
 
 ## 구조
 
-- `app/core/` — 설정(`config.py`, env 기반) · 인증 추상화(`security.py`)
+- `app/core/` — 설정(`config.py`, env 기반) · 인증 추상화(`security.py` — 지금은 안 쓰는 초기 자리, 실제 인증은 `app/auth/` + `app/api/deps.py`)
 - `app/db/` — SQLAlchemy `Base`, 세션 팩토리 (`DATABASE_URL` 기반, SQLite↔PostgreSQL 무변경 전환)
 - `app/api/routes/` — FastAPI 라우터
 - `app/schemas/` — pydantic 요청/응답 모델
@@ -88,6 +88,20 @@ cd backend
 - 빈 표는 원본 수식대로 0으로 계산되고 경고만 나온다(설비 임포트 결과에도 표시). 설비 리셋은 참고표를 지우지 않는다.
 - 테스트에서 DB 없이 계산할 때는 `reference_data.mock_reference(module)`.
 
+## 관리자 웹 데이터 입력·내보내기 (Stage 16-2/16-3, 16-6 붙여넣기)
+
+관리자 화면 "데이터 입력" 탭이 부르는 API(`app/api/routes/admin_data.py`, `require_admin`) — 명령줄과 **같은 서비스**(`import_service.import_file`, `reference_service.import_reference_file`)를 `app/services/data_admin_service.py`가 감싼다(붙여넣은 텍스트를 임시 파일로 넘기고 지움).
+- `GET /api/admin/data/targets` — 유형별 설비 수·참고표 행 수
+- `GET /api/admin/data/template?ef_code=&table=` — 붙여넣기 양식(헤더 순서·컬럼 설명·형식·허용값·N/A 가능 여부, 같은 행 판정 키)
+- `POST /api/admin/data/import` (JSON: `ef_code`, `table`(빈 값 = 설비), `replace`, `check`, `text`=탭 구분 텍스트) — `check=true`(기본)면 검증·계산만. 결과는 CLI JSON 로그와 같은 필드 + `kind`·`ok`, 검증 통과 시 `row_actions`(행별 추가/갱신 — 교체면 전부 추가). 최대 5MB(413)
+- `GET /api/admin/data/export?ef_code=&table=` — 지금 DB를 입력파일과 같은 dat로(UTF-8 BOM, null은 `N/A`, 날짜 `YYYY-MM-DD`, 임포트 때 보관한 미등록 컬럼 포함). 내보낸 파일을 교체로 다시 넣으면 점수가 같다(모든 유형 왕복 테스트 — `tests/test_admin_data.py`)
+- `GET /api/admin/data/export-sql` — 전체 DB를 psql용 PostgreSQL .sql로(Stage 16-8, `app/services/db_dump_service.py`). 모델(`Base.metadata`)을 PostgreSQL 문법으로 컴파일한 CREATE TABLE·인덱스(의존 순서) + 테이블별 `COPY … FROM stdin`(null `\N`, 탭·줄바꿈·역슬래시 이스케이프, 불리언 t/f) + `alembic_version` + SERIAL 시퀀스 `setval`, 전체 `BEGIN … COMMIT`, DROP 없음(빈 DB 전제). 원본이 PostgreSQL이면 REPEATABLE READ READ ONLY로 한 시점 기준. 새 모델 테이블은 자동 포함. 메모리에서 만든 뒤 보낸다(지금 데이터 규모 기준)
+- 리셋은 웹에 없다(명령줄로만). 새 설비유형도 `INPUT_COLUMNS`·`load_inputs()`만 있으면 자동으로 입력·내보내기 대상이 된다.
+
+## 관리자 SQL 조회 (Stage 16-5)
+
+`POST /api/admin/sql` {`sql`} — admin만, `app/services/sql_query_service.py`. 조회(SELECT/WITH) 한 문장, 허용 목록 테이블(`admin_service.ALLOWED_TABLES`)만, 최대 1,000행·5초. **안전장치는 DB 쪽**: SQLite는 같은 파일을 `mode=ro`로 새로 연 별도 연결 + `set_authorizer`(SELECT·허용 테이블 읽기·함수만) + 실행 전 EXPLAIN으로 여는 테이블의 루트 페이지 검사(컬럼을 안 읽는 `SELECT 1 FROM t`·`count(*)`는 authorizer에 안 잡힘) + `set_progress_handler` 시간 제한. PostgreSQL은 `SET TRANSACTION READ ONLY` + `statement_timeout` 후 rollback — 테이블 제한은 읽기 전용 DB 계정으로(`docs/DEPLOY_PDEP.md`).
+
 ## 설비유형별 데이터 운영 (Stage 8-2)
 
 - 레지스트리: `app/equipment_types/registry.py`(EF_code → 모듈), 인터페이스: `app/equipment_types/base.py`(`NAME_FIELD`, `INPUT_COLUMNS`, `DOMAIN_TABLES`, `generate_input_row`, `calculate`, `ingest_domain`).
@@ -145,6 +159,8 @@ SSO_ALLOW_LOCAL_LOGIN=true
 **실제로 겪은 버그**: `nginx/nginx.conf.template`이 `proxy_set_header Host $host;`를 쓰고 있었는데, nginx의 `$host`는 포트를 뺀 호스트명만 담는다(`$http_host`가 포트 포함). 이 때문에 백엔드가 `request.url_for()`로 만드는 SSO redirect_uri에서 포트가 통째로 빠져(`http://127.0.0.1/...`) Keycloak이 "Invalid parameter: redirect_uri"로 거부했다 — `$http_host`로 교체해 해결.
 
 ## 인증 모드 설정 (`AUTH_MODE` / `SSO_FLOW_MODE`)
+
+**역할과 게이트(Stage 16-1)** — 세션마다 역할 하나(`app/auth/state.py`): `admin`(local 로그인 또는 `is_admin`) / `user`(`allowed_users` 등록) / `general`(SSO 인증만 된 미등록 사용자, `SSO_DENY_UNREGISTERED_USERS=true`면 대신 거부). 의존성(`app/api/deps.py`): `require_viewer`(대시보드 API — `AUTH_MODE=sso`일 때만 세션 필요, 역할 무관), `require_session`(테이블 조회 — admin/user), `require_admin`(접근 권한·데이터 입력). SSO 로그인은 `/api/admin/sso/login?next=<경로>`로 시작한 화면으로 돌아간다(같은 사이트 경로만 — `_safe_next`). implicit_form_post는 세션 쿠키가 안 올 수 있어 `/`로 돌아간다.
 
 모드별 의미·설정 예시·반영 확인법은 [`app/auth/SSO_MODES.md`](app/auth/SSO_MODES.md)에 정리. 요점만:
 - `AUTH_MODE`(`none`/`local`/`sso`), `SSO_FLOW_MODE`(`auth_code` 기본 / `implicit_form_post`)는 허용값 외·빈 값이면 **기동 실패**.

@@ -15,7 +15,7 @@ env 전체 목록은 [`docs/SECURITY_ENV.md`](../../../docs/SECURITY_ENV.md) 참
 - **허용값 외의 값이나 빈 값이면 서버가 기동 시점에 `ValidationError`로 멈춘다** (`app/core/config.py`).
   예전엔 오타(`auth-code`)나 빈 값이 경고 없이 `auth_code` 분기로 떨어졌다 — 잘못된 모드로 조용히
   도는 것보다 아예 안 뜨는 편이 원인 찾기가 빠르다(Stage 6-8, 2026-10-16).
-- 대시보드 자체는 어느 모드든 항상 공개다. 게이트 대상은 `/admin`(DB 테이블 조회·접근권한 관리)뿐이다.
+- `none`/`local`이면 대시보드는 공개, 게이트 대상은 `/admin`뿐이다. **`sso`면 대시보드 API도 로그인 세션이 필요하다**(Stage 16-1, `require_viewer`) — 미등록 계정은 조회 전용(general)으로 들어오고, `SSO_DENY_UNREGISTERED_USERS=true`면 거부된다.
 
 ## 2. `SSO_FLOW_MODE` 선택 기준 — "IdP가 OIDC discovery를 지원하느냐"
 
@@ -36,7 +36,7 @@ env 전체 목록은 [`docs/SECURITY_ENV.md`](../../../docs/SECURITY_ENV.md) 참
 | 코드 위치 | `oidc.py`의 `oauth.register(...)` | `oidc.py`의 `build_broker_authorize_url()` / `verify_broker_id_token()` |
 
 클레임을 받은 **이후**(`SSO_USER_ID_CLAIM`으로 `allowed_users` 대조 → role 판정 → 세션 발급,
-실패 시 `/admin#error=...` 배너)는 두 모드가 완전히 같은 코드를 쓴다(`app/api/routes/admin.py`의 `sso_callback`).
+실패 시 로그인을 시작한 화면의 `#error=...` 배너)는 두 모드가 완전히 같은 코드를 쓴다(`app/api/routes/admin.py`의 `sso_callback`).
 
 ## 3. 설정 예시 (`backend/.env` 또는 ConfigMap/Secret)
 

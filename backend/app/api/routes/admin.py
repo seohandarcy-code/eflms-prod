@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_admin, require_session
 from app.auth import access_store
-from app.auth.access_store import LastAdminError
+from app.auth.access_store import DuplicateAllowedUserError, LastAdminError
 from app.auth.oidc import SSO_BROKER_CONFIGURED, build_broker_authorize_url, oauth, verify_broker_id_token
 from app.auth.state import AccountLockedError, AdminAuthStore, InvalidCredentialsError, get_auth_store
 from app.core.config import get_settings
@@ -21,10 +21,13 @@ from app.schemas.admin import (
     AuthConfigResponse,
     LoginRequest,
     LoginResponse,
+    SqlQueryRequest,
+    SqlQueryResponse,
     TableListResponse,
     TablePageResponse,
 )
-from app.services import admin_service
+from app.services import admin_service, sql_query_service
+from app.services.sql_query_service import SqlQueryError
 
 logger = logging.getLogger("eflms.admin")
 
@@ -38,7 +41,11 @@ def auth_config() -> AuthConfigResponse:
     local_login_available = settings.auth_mode == "local" or (
         settings.auth_mode == "sso" and settings.sso_allow_local_login
     )
-    return AuthConfigResponse(auth_mode=settings.auth_mode, local_login_available=local_login_available)
+    return AuthConfigResponse(
+        auth_mode=settings.auth_mode,
+        local_login_available=local_login_available,
+        dashboard_login_required=settings.auth_mode == "sso",
+    )
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -58,7 +65,7 @@ def login(body: LoginRequest, auth_store: AdminAuthStore = Depends(get_auth_stor
         raise HTTPException(status_code=429, detail=str(exc)) from exc
     except InvalidCredentialsError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
-    return LoginResponse(token=token, expires_in=expires_in, is_admin=auth_store.get_is_admin(token))
+    return LoginResponse(token=token, expires_in=expires_in, is_admin=True, role="admin")
 
 
 @router.post("/logout")
@@ -89,6 +96,20 @@ async def get_table(
     return TablePageResponse(**result)
 
 
+@router.post("/sql", response_model=SqlQueryResponse, dependencies=[Depends(require_admin)])
+async def run_sql(body: SqlQueryRequest, session: AsyncSession = Depends(get_session)) -> SqlQueryResponse:
+    """조회(SELECT/WITH) 한 문장만 — 허용 목록 테이블, 최대 1,000행, 5초(Stage 16-5, admin만).
+
+    안전장치는 글자 검사가 아니라 DB 쪽(SQLite 읽기 전용 연결 + authorizer, PostgreSQL 읽기 전용 트랜잭션)이다
+    — `app/services/sql_query_service.py`.
+    """
+    try:
+        result = await sql_query_service.run_select_sql(session, body.sql)
+    except SqlQueryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return SqlQueryResponse(**result.__dict__, max_rows=sql_query_service.MAX_ROWS)
+
+
 # --- SSO(OIDC) ---
 
 
@@ -102,11 +123,24 @@ def _exc_detail(exc: Exception) -> str:
     return urllib.parse.quote_plus(f"{type(exc).__name__}: {exc}"[:300])
 
 
+def _safe_next(value: object) -> str:
+    """로그인 뒤 돌아갈 화면 경로 — 같은 사이트 안의 경로만 받는다(외부 주소로 보내는 open redirect 방지).
+
+    `/`로 시작하는 경로만 허용하고 `//host`·역슬래시·URL 프래그먼트는 버린다. 아니면 대시보드(`/`).
+    """
+    if not isinstance(value, str) or not value.startswith("/") or value.startswith("//") or "\\" in value:
+        return "/"
+    return value.split("#", 1)[0][:200] or "/"
+
+
 @router.get("/sso/login")
-async def sso_login(request: Request):
+async def sso_login(request: Request, next: str = "/"):
+    """`next`: 로그인 뒤 돌아갈 화면(대시보드 `/`, 관리자 `/admin` 등). OAuth state와 같은 세션 쿠키에 잠시 담는다."""
     settings = get_settings()
+    next_path = _safe_next(next)
     if not SSO_BROKER_CONFIGURED:
-        return RedirectResponse(f"{settings.frontend_base_url}/admin#error=sso_not_configured")
+        return RedirectResponse(f"{settings.frontend_base_url}{next_path}#error=sso_not_configured")
+    request.session["sso_next"] = next_path
     redirect_uri = settings.sso_redirect_uri or str(request.url_for("sso_callback"))
     if settings.sso_flow_mode == "implicit_form_post":
         # discovery 미지원 자체 브로커 — URL 조립 자체는 네트워크 호출이 없어
@@ -123,7 +157,7 @@ async def sso_login(request: Request):
         # 보내 에러 배너로 보여준다.
         logger.warning("SSO 로그인 시작 실패: %s: %s", type(exc).__name__, exc)
         return RedirectResponse(
-            f"{settings.frontend_base_url}/admin#error=broker_unreachable&detail={_exc_detail(exc)}"
+            f"{settings.frontend_base_url}{next_path}#error=broker_unreachable&detail={_exc_detail(exc)}"
         )
 
 
@@ -134,11 +168,15 @@ async def sso_callback(
     auth_store: AdminAuthStore = Depends(get_auth_store),
 ):
     settings = get_settings()
+    # 로그인을 시작한 화면으로 돌려보낸다. implicit_form_post는 IdP가 다른 사이트에서 POST로 돌아와
+    # 브라우저가 세션 쿠키(SameSite=lax)를 안 보낼 수 있다 — 그때는 대시보드(`/`)로 간다.
+    next_path = _safe_next(request.session.pop("sso_next", None))
+    frontend_base = settings.frontend_base_url or ""
 
     # 콜백은 브라우저 리다이렉트 도중이라, 실패해도 raw JSON을 보여주지 않고 항상
-    # /admin으로 되돌려보낸다 — 프론트가 #error=코드를 보고 이해할 수 있는 메시지를 띄운다.
+    # 화면으로 되돌려보낸다 — 프론트가 #error=코드를 보고 이해할 수 있는 메시지를 띄운다.
     def error_redirect(code: str, detail: str | None = None) -> RedirectResponse:
-        url = f"{settings.frontend_base_url}/admin#error={code}"
+        url = f"{frontend_base}{next_path}#error={code}"
         if detail:
             url += f"&detail={detail}"
         return RedirectResponse(url)
@@ -177,7 +215,7 @@ async def sso_callback(
 
         claims = token.get("userinfo") or {}
 
-    sso_id = claims.get(settings.sso_user_id_claim)
+    sso_id = str(claims.get(settings.sso_user_id_claim) or "").strip()
     if not sso_id:
         logger.warning(
             "SSO_USER_ID_CLAIM(%s)에 해당하는 클레임을 찾지 못함. 받은 클레임 키: %s",
@@ -186,21 +224,29 @@ async def sso_callback(
         )
         return error_redirect("missing_claim")
 
+    claim_name = str(claims.get("name") or "").strip() or None
     if sso_id in settings.sso_admin_allowlist_list:
-        user = await access_store.upsert_bootstrap_admin(session, sso_id)
+        user = await access_store.upsert_bootstrap_admin(session, sso_id, default_name=claim_name)
     else:
         user = await access_store.get_by_sso_id(session, sso_id)
 
     if user is None:
-        logger.info("미등록 계정의 로그인 시도: sso_id=%s", sso_id)
-        return error_redirect("not_registered")
+        if settings.sso_deny_unregistered_users:
+            logger.info("미등록 계정의 로그인 시도(거부): sso_id=%s", sso_id)
+            return error_redirect("not_registered")
+        # 기본: SSO 인증은 성공했으므로 대시보드 조회 전용(general)으로 통과 — 관리자 화면은 막힌다.
+        role, display_name = "general", claim_name or sso_id
+        logger.info("SSO 인증 성공(미등록 계정) — 조회 전용으로 통과: sso_id=%s", sso_id)
+    else:
+        role, display_name = ("admin" if user.is_admin else "user"), user.name
+        logger.info("SSO 로그인 성공: sso_id=%s role=%s", sso_id, role)
 
-    session_token, _ = auth_store.issue_session(is_admin=user.is_admin)
-    logger.info("SSO 로그인 성공: sso_id=%s role=%s", sso_id, "admin" if user.is_admin else "user")
-
-    frontend_base = settings.frontend_base_url or ""
-    role = "admin" if user.is_admin else "user"
-    return RedirectResponse(f"{frontend_base}/admin#token={session_token}&role={role}&name={user.name}")
+    session_token, _ = auth_store.issue_session(role)
+    # 토큰은 쿼리스트링이 아니라 URL 프래그먼트(#)에 싣는다 — 브라우저가 서버로 보내지 않아 접근 로그·리퍼러에
+    # 남지 않는다. 이름은 한글·공백·&가 있어도 깨지지 않게 인코딩한다.
+    return RedirectResponse(
+        f"{frontend_base}{next_path}#token={session_token}&role={role}&name={urllib.parse.quote(display_name)}"
+    )
 
 
 # --- 접근 권한 관리 (allowed_users CRUD, is_admin 세션만) ---
@@ -216,7 +262,10 @@ async def list_access_users(session: AsyncSession = Depends(get_session)) -> lis
 async def create_access_user(
     body: AllowedUserCreate, session: AsyncSession = Depends(get_session)
 ) -> AllowedUserOut:
-    user = await access_store.create(session, body.sso_id, body.name, body.team, body.is_admin)
+    try:
+        user = await access_store.create(session, body.sso_id.strip(), body.name, body.team, body.is_admin)
+    except DuplicateAllowedUserError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return AllowedUserOut.model_validate(user)
 
 

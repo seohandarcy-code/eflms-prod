@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AllowedUser
@@ -13,6 +14,10 @@ from app.db.models import AllowedUser
 
 class LastAdminError(RuntimeError):
     """마지막 admin을 삭제/강등하려는 시도 — 전체 락아웃 방지를 위해 막는다."""
+
+
+class DuplicateAllowedUserError(RuntimeError):
+    """이미 등록된 sso_id를 다시 등록하려는 시도(라우터가 409로 바꾼다)."""
 
 
 async def get_by_sso_id(session: AsyncSession, sso_id: str) -> AllowedUser | None:
@@ -32,9 +37,15 @@ async def _admin_count(session: AsyncSession) -> int:
 
 
 async def create(session: AsyncSession, sso_id: str, name: str, team: str | None, is_admin: bool) -> AllowedUser:
+    if await get_by_sso_id(session, sso_id) is not None:
+        raise DuplicateAllowedUserError(f"이미 등록된 계정입니다: {sso_id}")
     user = AllowedUser(sso_id=sso_id, name=name, team=team, is_admin=is_admin)
     session.add(user)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError as exc:  # 동시에 같은 계정을 등록한 경우
+        await session.rollback()
+        raise DuplicateAllowedUserError(f"이미 등록된 계정입니다: {sso_id}") from exc
     await session.refresh(user)
     return user
 
@@ -78,15 +89,15 @@ async def delete(session: AsyncSession, sso_id: str) -> bool:
     return True
 
 
-async def upsert_bootstrap_admin(session: AsyncSession, sso_id: str) -> AllowedUser:
+async def upsert_bootstrap_admin(session: AsyncSession, sso_id: str, default_name: str | None = None) -> AllowedUser:
     """`SSO_ADMIN_ALLOWLIST`에 매칭되는 계정의 admin 권한을 로그인마다 보장한다.
 
     행이 없으면 새로 만들고, 있으면 is_admin=True만 보장하고 이름/팀은 건드리지 않는다
-    (관리자가 화면에서 고친 값을 덮어쓰지 않기 위함).
+    (관리자가 화면에서 고친 값을 덮어쓰지 않기 위함). 새로 만들 때 이름은 IdP의 `name` 클레임(없으면 sso_id).
     """
     user = await get_by_sso_id(session, sso_id)
     if user is None:
-        user = AllowedUser(sso_id=sso_id, name=sso_id, team=None, is_admin=True)
+        user = AllowedUser(sso_id=sso_id, name=(default_name or sso_id)[:100], team=None, is_admin=True)
         session.add(user)
     elif not user.is_admin:
         user.is_admin = True

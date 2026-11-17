@@ -38,6 +38,8 @@ eflms를 사내 DevOps 플랫폼(PDEP, Jenkins → 사내 레지스트리 → He
 | `AUTO_SEED_IF_EMPTY` | true면 빈 설비유형에 mock 30건 자동 투입 | 운영은 **반드시 false**(기본값 false — ConfigMap에서 명시) |
 | SQLite 기본값 | `DATABASE_URL` 없고 `DB_HOST`도 없으면 `./eflms.db`로 폴백 | 컨테이너 파일은 재시작 시 사라짐 → 운영은 PostgreSQL만. 기동 로그로 DB 대상 확인 |
 | nginx 설정이 개발용 | `nginx/nginx.conf.template`은 `/`를 vite dev server로 프록시 | 운영용 별도 설정: 정적 서빙 + `try_files $uri $uri/ /index.html`(라우터가 `createWebHistory` — 없으면 새로고침 시 404) + (단일 도메인이면) `/api` → backend Service 프록시 |
+| DB 이관(다른 PostgreSQL로 통째로) | 관리자 화면 데이터 입력 탭 → **전체 DB 내려받기(.sql)**(Stage 16-8) — 원본이 SQLite여도 PostgreSQL 문법 | 새 서버에서 빈 DB 생성 → `psql -v ON_ERROR_STOP=1 -d <DB> -f <파일>`(한 트랜잭션, alembic 버전 포함) → `alembic current`가 head인지 확인 → 앱의 `DATABASE_URL`/`DB_*`를 새 DB로. 파일에 접근 권한 명단이 있으니 Secret처럼 다룰 것 |
+| 관리자 SQL 조회의 테이블 제한(Stage 16-5) | SQLite는 코드가 허용 목록 테이블만 읽게 막지만, PostgreSQL은 읽기 전용 트랜잭션·5초 제한만 코드로 건다 | 운영 전 **읽기 전용 DB 계정**(허용 목록 테이블에만 SELECT 권한, `allowed_users`·`alembic_version` 제외)을 만들어 SQL 조회 전용 연결로 쓰도록 별도 작업(코드 변경, 별도 계획) — 그 전까지는 admin만 쓰는 기능이라는 점을 감안 |
 | `/healthz`가 DB를 안 봄 | `{"status":"ok"}`만 반환 | liveness로는 충분. readiness에 DB 확인이 필요하면 별도 엔드포인트 추가(코드 변경, 선택) |
 | 베이스 이미지 버전 | a-ims-prod 예시는 `node:20`/`python:3.12` | eflms 기준 **Node 22 / Python 3.11** (루트 `CLAUDE.md` 기술스택) |
 | 실데이터 투입 | CLI `python -m app.db.import_data --file ... --ef-code ... --replace`만 있음 | 1절 #5 답에 맞춰 실행 방법 확정 — 유형별 독립 교체(한 유형만 `--replace`해도 다른 유형 불변) |

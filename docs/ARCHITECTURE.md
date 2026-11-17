@@ -51,11 +51,14 @@
 
 - `AuthProvider` 인터페이스로 추상화. 지금은 무인증(또는 더미 로그인)으로 시작하되, FastAPI 의존성 자리(`get_current_user`류)만 미리 만들어 둔다.
 - 토큰 클레임은 OIDC 클레임(`sub`, `email`, `roles`)과 유사하게 맞춰서, 추후 사내 SSO(OIDC) 연동 시 프론트/백엔드 변경을 최소화한다.
-- `AUTH_MODE` env로 `none` → `local`(구현 완료, 2026-09-29) → `sso`(계획) 전환. `sso`를 선택하면 아직 `NotImplementedError`가 나는 자리 확보 상태(`backend/app/core/security.py` — 참고로 이 `get_current_user`/`AUTH_MODE` 일반 인증 자리와, 아래 `local` 모드로 실제 구현한 관리자 로그인은 서로 다른 코드 경로다. 일반 대시보드는 여전히 무인증 공개이며, `local`은 오직 `/admin`(DB 테이블 조회 전용 화면)만 게이트한다).
+- `AUTH_MODE` env로 `none` → `local`(구현 완료, 2026-09-29) → `sso`(계획) 전환. `sso`를 선택하면 아직 `NotImplementedError`가 나는 자리 확보 상태(`backend/app/core/security.py` — 참고로 이 `get_current_user`/`AUTH_MODE` 일반 인증 자리와, 아래 `local` 모드로 실제 구현한 관리자 로그인은 서로 다른 코드 경로다. `none`/`local`에서 일반 대시보드는 무인증 공개이며 `/admin`만 게이트한다 — `sso`의 대시보드 게이트는 아래 Stage 16-1).
 - **`local`(구현 완료)**: 관리자 단일 계정, 메모리 세션(TTL 8시간) + 로그인 시도 5회 실패 시 5분 잠금(`backend/app/auth/state.py`의 `AdminAuthStore`, a-ims-prod 패턴 그대로 채택). JWT 서명 없이 opaque 토큰(`secrets.token_urlsafe`)만 사용. 게이트 대상은 `GET/POST /api/admin/*`(로그인/로그아웃/테이블 목록·조회, `require_admin` 의존성) — 편집 기능 없음, 화이트리스트 19개 테이블 조회 전용(Stage 8-1에 `transformer_spec`, 8-3에 `gis_*` 6개 추가).
-- **(계획, Phase 5 다음 단계)** `sso`: OIDC(`authlib`). IdP 인증 성공이 곧 접근 허용은 아님 — `allowed_users` DB 테이블에 등록된 계정만 세션이 발급됨(관리자가 화면에서 직접 등록/삭제). `SSO_ADMIN_ALLOWLIST`(env)에 매칭되는 계정은 로그인마다 admin 권한이 자동 복구되는 브레이크글래스 — 전체 락아웃 방지용 안전망.
+- **`sso`(구현 완료, Stage 6 — 로컬 Keycloak 검증)**: OIDC(`authlib`). IdP 인증 성공이 곧 접근 허용은 아님 — `allowed_users` DB 테이블에 등록된 계정만 세션이 발급됨(관리자가 화면에서 직접 등록/삭제). `SSO_ADMIN_ALLOWLIST`(env)에 매칭되는 계정은 로그인마다 admin 권한이 자동 복구되는 브레이크글래스 — 전체 락아웃 방지용 안전망.
   - `SSO_ALLOW_LOCAL_LOGIN`: 개발 중 듀얼모드 — 브로커가 client_id를 아직 발급하지 않은 단계에서도 `sso` 모드에서 로컬 비밀번호 로그인을 같이 열어, 관리자가 먼저 들어가 SSO 계정을 등록해둘 수 있게 함(기본값 false).
   - `SSO_BROKER_CONFIGURED = bool(SSO_ISSUER_URL)`: `SSO_CLIENT_ID`/`SSO_CLIENT_SECRET` 없이 issuer URL만 발급하는 사내 브로커 방식에도 대응(authlib이 빈 client_secret/client_id를 이미 지원함을 소스로 확인됨).
+- **역할 3단계와 대시보드 게이트(Stage 16-1, 2026-11-17, a-ims-prod 정책 참고 — 사용자 결정 권장안)**: 세션 역할 `admin`/`user`/`general`(SSO 인증만 된 미등록 사용자 — 대시보드 조회 전용, `SSO_DENY_UNREGISTERED_USERS=true`면 대신 거부). `AUTH_MODE=sso`면 조회 API(`/api/equipment*`, `/api/summary`, `/api/equipment-types`)에 `require_viewer`가 걸려 로그인이 필요하다(none/local은 공개 그대로). 프론트는 `auth-config.dashboard_login_required`로 로그인 화면(`LoginGate.vue`)을 띄우고, SSO 로그인은 `next`로 시작한 화면에 돌아온다(같은 사이트 경로만 허용). 토큰은 탭 단위 `sessionStorage`, 401이면 지움. 세션 저장소는 여전히 서버 메모리라 replicas 1 전제는 그대로(`docs/DEPLOY_PDEP.md`).
+- **관리자 웹 데이터 입력·내보내기(Stage 16-2/16-3)**: `/api/admin/data/*`(admin만). CLI와 같은 임포트·참고표 서비스를 그대로 써서 검증·계산·전체 rollback·참고표 재계산 규칙이 같다. 내보내기는 입력파일과 같은 dat(다시 넣으면 점수 동일). 행 단위 웹 편집은 하지 않는다 — 점수는 원본 입력파일에서 계산되므로 웹에서 칸을 고치면 원본 파일과 DB가 어긋난다(a-ims-prod와 다른 선택). 리셋은 명령줄로만. 입력은 엑셀 범위 붙여넣기(탭 구분 텍스트) → 검증 → 입력값 미리보기(행별 추가/갱신·오류 칸) → 확정(Stage 16-6, 사용자 결정 — 계산 점수 미리보기는 하지 않음).
+- **관리자 SQL 조회(Stage 16-5)**: `POST /api/admin/sql`(admin만). 조회 한 문장·허용 목록 테이블·1,000행·5초를 DB 쪽에서 강제(SQLite 읽기 전용 별도 연결 + authorizer + EXPLAIN 테이블 검사, PostgreSQL 읽기 전용 트랜잭션). 운영 PostgreSQL에서 테이블 제한은 읽기 전용 DB 계정 분리로.
 
 ## 데이터 적재 파이프라인 (시드 · 임포트 공용)
 

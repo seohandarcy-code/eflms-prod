@@ -35,6 +35,15 @@ npm run dev
 - 점수 지표(POF·COF·DOF, 감점 항목, 종합점수)는 모든 유형에서 소수 첫째 자리로 보여준다(Stage 13-0) — `utils/formatValue.ts`의 `formatScore()`, 원본 데이터 보기의 감점 칸은 `na(…, { digits: 1 })`.
 - 유형별 입력값·파생값은 null(입력파일 N/A)일 수 있다(Stage 11) — 상세 본문·근거 툴팁·부제는 값을 `utils/formatValue.ts`의 `na()`로 감싸 "N/A"로 보여준다. null에 `toFixed`/`toLocaleString`을 직접 걸지 않는다(타입이 `number | null`이라 vue-tsc가 잡는다).
 
+## 로그인·역할 (Stage 16-1)
+
+- `stores/auth.ts`가 세션(토큰·역할 `admin`/`user`/`general`·이름)을 들고 **탭 단위 `sessionStorage`**에 보관한다(새로고침 유지, 탭 닫으면 사라짐). getter `isAdmin`(모든 관리자 탭)·`isRegistered`(테이블 조회).
+- SSO 콜백 프래그먼트(`#token=…&role=…&name=…` / `#error=코드&detail=…`)는 `main.ts`가 앱 시작 때 `consumeCallbackHash()`로 한 번 읽고, 라우터 첫 이동이 끝난 뒤 `router.replace`로 주소창에서 지운다(`history.replaceState`로 먼저 지우면 vue-router가 해시를 되살린다) — 화면마다 따로 읽지 않는다. 오류 문구는 `auth.ssoError`.
+- `api/client.ts`의 `installAuthInterceptors()`가 모든 요청에 토큰을 싣고, 보낸 토큰이 401이면 세션을 지운다(→ 로그인 화면).
+- `App.vue`: `auth-config`의 `dashboard_login_required`(AUTH_MODE=sso)이고 미로그인이면 `/admin` 외 화면 대신 `LoginGate.vue`를 보여준다. SSO 버튼은 `ssoLoginUrl(현재 경로)`로 돌아올 화면을 넘긴다.
+- 관리자 화면 탭: 테이블 조회 / 데이터 입력(`DataImportPanel.vue` — 붙여넣기 → 검증 → 입력값 미리보기 → 확정, 내려받기) / 접근 권한 관리 — 뒤의 둘은 admin만. 테이블 조회는 admin이면 `SqlQueryPanel.vue`(SQL 입력창 + 결과 그리드, Stage 16-5), 등록 사용자는 테이블을 눌러 보는 페이지 조회. general 역할은 "조회 전용 계정" 안내만 본다.
+- 붙여넣기 파싱은 `utils/pasteData.ts`(백엔드와 같은 규칙 — 빈 줄은 건너뛰되 줄 번호 유지, 서버 오류 `row_number`와 미리보기 행이 맞아야 함). SQL 화면 순수 함수는 `utils/sqlResult.ts`. 데이터 입력 탭 내려받기 카드 맨 위에 전체 DB .sql 버튼(`downloadFullSqlDump`, Stage 16-8).
+
 ## 컨벤션
 
 - `design/Main.dc.html`은 최초 승인 방향(Direction A)을 담은 2026-09-14 시점 목업이며, 그 이후 화면은 목업 갱신 없이 코드에서 직접 반복 개선해왔다(이력은 `docs/ROADMAP.md` 참고). 현재 화면의 정본은 실제 구현 코드(`src/views/`, `src/components/`)다.

@@ -174,7 +174,8 @@ async def test_sso_callback_post_form_rejects_expired_token(client, monkeypatch,
         get_settings.cache_clear()
 
 
-async def test_sso_callback_post_form_rejects_unregistered_account(client, monkeypatch, broker_keypair):
+async def test_sso_callback_post_form_rejects_unregistered_account_when_denied(client, monkeypatch, broker_keypair):
+    """SSO_DENY_UNREGISTERED_USERS=true면 예전처럼 미등록 계정을 거부한다(기본값은 조회 전용 통과)."""
     private_key, public_key = broker_keypair
     jwk = _jwk_from_public_key(public_key, kid="key-1")
     token = _sign_id_token(
@@ -184,6 +185,7 @@ async def test_sso_callback_post_form_rejects_unregistered_account(client, monke
     monkeypatch.setenv("AUTH_MODE", "sso")
     monkeypatch.setenv("SSO_FLOW_MODE", "implicit_form_post")
     monkeypatch.setenv("SSO_ADMIN_ALLOWLIST", "")
+    monkeypatch.setenv("SSO_DENY_UNREGISTERED_USERS", "true")
     monkeypatch.setattr(admin_routes, "SSO_BROKER_CONFIGURED", True)
     monkeypatch.setattr(oidc._settings, "sso_issuer_url", "https://broker.company.local")
     monkeypatch.setattr(httpx, "get", lambda *a, **k: _fake_jwks_response({"keys": [jwk]}))

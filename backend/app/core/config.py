@@ -68,6 +68,9 @@ class Settings(BaseSettings):
     sso_admin_allowlist: str = ""
     sso_user_id_claim: str = "email"
     sso_allow_local_login: bool = False
+    # 기본값 false — SSO 인증에 성공했지만 allowed_users에 없는 사람도 대시보드 조회 전용(general)으로
+    # 들어온다(a-ims-prod 2026-11-11과 같은 정책). true면 예전처럼 로그인 자체를 거부한다(Stage 16-1).
+    sso_deny_unregistered_users: bool = False
     # 사내 CA가 발급한 인증서를 쓰는 SSO 브로커(ADFS 등)에 연결할 때, Python(httpx)이
     # Windows와 달리 그 CA를 기본적으로 신뢰하지 않아 SSL 검증에 실패하는 문제 대응
     # (a-ims-prod가 실제 ADFS 연동 중 겪음). 상대경로면 backend/ 기준으로 해석.
@@ -100,7 +103,8 @@ class Settings(BaseSettings):
             f"issuer={self.sso_issuer_url or '(미설정 — SSO 비활성)'} "
             f"client_id={'설정됨' if self.sso_client_id else '없음'} "
             f"user_id_claim={self.sso_user_id_claim} "
-            f"allow_local_login={self.sso_allow_local_login}"
+            f"allow_local_login={self.sso_allow_local_login} "
+            f"deny_unregistered={self.sso_deny_unregistered_users}"
         )
 
     @model_validator(mode="after")

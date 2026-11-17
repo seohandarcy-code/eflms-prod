@@ -90,7 +90,7 @@ async def test_non_admin_session_can_browse_but_not_manage_access(client, monkey
     app.dependency_overrides[get_auth_store] = lambda: test_store
 
     try:
-        viewer_token, _ = test_store.issue_session(is_admin=False)
+        viewer_token, _ = test_store.issue_session("user")
         headers = {"Authorization": f"Bearer {viewer_token}"}
 
         # require_session만 필요한 테이블 조회는 통과
@@ -101,7 +101,7 @@ async def test_non_admin_session_can_browse_but_not_manage_access(client, monkey
         resp = await client.get("/api/admin/access-users", headers=headers)
         assert resp.status_code == 403
 
-        admin_token, _ = test_store.issue_session(is_admin=True)
+        admin_token, _ = test_store.issue_session("admin")
         admin_headers = {"Authorization": f"Bearer {admin_token}"}
         resp = await client.get("/api/admin/access-users", headers=admin_headers)
         assert resp.status_code == 200
@@ -118,7 +118,7 @@ async def test_access_users_crud(client, monkeypatch):
     app.dependency_overrides[get_auth_store] = lambda: test_store
 
     try:
-        admin_token, _ = test_store.issue_session(is_admin=True)
+        admin_token, _ = test_store.issue_session("admin")
         headers = {"Authorization": f"Bearer {admin_token}"}
 
         resp = await client.post(
