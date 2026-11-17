@@ -15,6 +15,7 @@ from app.db.session import async_session_factory
 from app.equipment_types.registry import UnknownEquipmentTypeError, get_module, resolve_codes
 from app.services.dataset_service import reset_type
 from app.services.ingest import ingest_row
+from app.services.reference_data import calc_options, ensure_mock_reference
 
 
 async def seed_type(session: AsyncSession, ef_code: str, rows: int, reset: bool) -> None:
@@ -22,8 +23,11 @@ async def seed_type(session: AsyncSession, ef_code: str, rows: int, reset: bool)
     module = get_module(ef_code)
     if reset:
         await reset_type(session, ef_code)
+    # 참고표가 있는 유형(EF7~)은 비어 있는 참고표에만 목업을 넣고 그 표로 계산한다(Stage 15-0).
+    await ensure_mock_reference(session, module)
+    options = await calc_options(session, module)
     for _ in range(rows):
-        await ingest_row(module.calculate(module.generate_input_row()), session)
+        await ingest_row(module.calculate(module.generate_input_row(), **options), session)
 
 
 async def main(ef_code: str, rows: int, do_reset: bool) -> None:

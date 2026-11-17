@@ -1,5 +1,5 @@
 import { na } from "./formatValue";
-import type { Axis, BreakdownItem, Ef1TypeDetail, Ef2TypeDetail, Ef3TypeDetail, Ef4TypeDetail, Ef5TypeDetail, Ef6TypeDetail, EquipmentDetail } from "../types/equipment";
+import type { Axis, BreakdownItem, Ef1TypeDetail, Ef2TypeDetail, Ef3TypeDetail, Ef4TypeDetail, Ef5TypeDetail, Ef6TypeDetail, Ef7TypeDetail, EquipmentDetail } from "../types/equipment";
 
 // 감점 항목 라벨은 백엔드 설비유형 모듈의 BREAKDOWN(/api/equipment-types)이 단일 원본이다(Stage 8-5).
 // 예전처럼 여기에 유형별 라벨을 하드코딩하지 않는다.
@@ -230,6 +230,34 @@ const EF6_EVIDENCE: Record<string, (d: Ef6TypeDetail) => string> = {
   online_diag_minus: (d) => `온라인진단 ${na(d.design.online_diag)}`,
 };
 
+const EF7_EVIDENCE: Record<string, (d: Ef7TypeDetail) => string> = {
+  age_minus: (d) => `경과년수 ${na(d.score_detail.operation_year, { unit: "년차" })}`,
+  // 방전인덱스합·온도감소계수는 참고표(방전이력·온도감소계수)로 계산한 값
+  soh_minus: (d) => `방전인덱스합 ${na(d.score_detail.disch_index, { digits: 3 })}(같은 사업장·설치일 이후) · 온도감소계수 ${na(d.score_detail.temp_dec_coef, { digits: 1 })}(배터리실 ${na(d.condition.bat_room_temp, { unit: "℃" })})`,
+  bms_minus: (d) => `BMS상태점수 ${na(d.score_detail.bms_stat, { digits: 4 })} (사용 ${na(d.score_detail.bms_life, { digits: 1, unit: "년" })} · 배터리실 ${na(d.condition.bat_room_temp, { unit: "℃" })})`,
+  vol_diff_minus: (d) => `셀간전압편차 ${na(d.condition.vol_diff)}`,
+  temp_diff_minus: (d) => `셀간온도편차 ${na(d.condition.temp_diff)}`,
+  temp_range_over_minus: (d) => `셀온도범위초과이력 ${na(d.condition.temp_range_over)}`,
+  bat_room_temp_minus: (d) => `배터리실온도 ${na(d.condition.bat_room_temp, { unit: "℃" })}`,
+  bat_room_humid_minus: (d) => `배터리실습도 ${na(d.condition.bat_room_humid, { unit: "%" })}`,
+
+  capa_times_load_minus: (d) => `부하량 ${na(d.score_detail.capa_times_load, { digits: 1 })} (정격용량 ${na(d.spec.capa, { locale: true })} × 부하율 ${na(d.condition.load, { unit: "%" })})`,
+  con_rank_minus: (d) => `연결설비 ${na(d.consequence.con_rank)}`,
+  ins_build_rank_minus: (d) => `설치건물등급 ${na(d.consequence.ins_build_rank)}`,
+  fire_spread_rank_minus: (d) => `화재확산등급 ${na(d.consequence.fire_spread_rank)}`,
+  emerge_resp_minus: (d) => `전력재공급시간등급 ${na(d.consequence.emerge_resp)}`,
+  rep_time_minus: (d) => `정상화기간등급 ${na(d.consequence.rep_time)}`,
+  rep_cost_minus: (d) => `사고복구비용등급 ${na(d.consequence.rep_cost)}`,
+
+  model_gen_minus: (d) => `모델세대 ${na(d.design.model_gen)}`,
+  fire_resist_minus: (d) => `화재방지 ${na(d.design.fire_resist)}`,
+  ul_auth_minus: (d) => `UL인증 ${na(d.design.ul_auth)}`,
+  fac_rel_minus: (d) => `설비신뢰도등급 ${na(d.design.fac_rel)}`,
+  part_stat_diag_minus: (d) => `부품상태진단(온라인) ${na(d.design.part_stat_diag)}`,
+  bat_server_minus: (d) => `배터리서버 ${na(d.design.bat_server)}`,
+  bat_room_fire_resist_minus: (d) => `배터리실소화설비 ${na(d.design.bat_room_fire_resist)}`,
+};
+
 /** 감점 항목 하나의 근거(원본 측정값/판정)를 한 줄 텍스트로 반환한다. 매핑이 없으면 빈 문자열. */
 export function getEvidence(field: string, detail: EquipmentDetail): string {
   const typeDetail = detail.type_detail;
@@ -239,5 +267,6 @@ export function getEvidence(field: string, detail: EquipmentDetail): string {
   if (typeDetail.ef_code === "EF4") return EF4_EVIDENCE[field]?.(typeDetail) ?? "";
   if (typeDetail.ef_code === "EF5") return EF5_EVIDENCE[field]?.(typeDetail) ?? "";
   if (typeDetail.ef_code === "EF6") return EF6_EVIDENCE[field]?.(typeDetail) ?? "";
+  if (typeDetail.ef_code === "EF7") return EF7_EVIDENCE[field]?.(typeDetail) ?? "";
   return "";
 }

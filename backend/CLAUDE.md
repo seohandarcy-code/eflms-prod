@@ -63,13 +63,30 @@ cd backend
 | EF4 수배전반 | `app/equipment_types/ef4_switchgear.py` | `switchgear_spec`, `switchgear_condition`, `switchgear_consequence_attribute`, `switchgear_design_attribute`, `switchgear_score_detail` | `sample_data/ef4/` |
 | EF5 UPS | `app/equipment_types/ef5_ups.py` | `ups_spec`, `ups_condition`, `ups_consequence_attribute`, `ups_design_attribute`, `ups_score_detail` | `sample_data/ef5/` |
 | EF6 VDP | `app/equipment_types/ef6_vdp.py` | `vdp_spec`, `vdp_condition`, `vdp_consequence_attribute`, `vdp_design_attribute`, `vdp_score_detail` | `sample_data/ef6/` |
+| EF7 배터리 | `app/equipment_types/ef7_battery.py` | `battery_spec`, `battery_condition`, `battery_consequence_attribute`, `battery_design_attribute`, `battery_score_detail` + 참고표 `battery_discharge_history`, `battery_temp_decay_coef` | `sample_data/ef7/`(설비 3종 + `reference_*.dat`) |
 
-- EF2~EF6은 임포트 허용값(`choices`/`min`/`max`/`required`)을 선언해 둬서 오류값(예: EF2 소문자 `c`·154k/345k 외 전압·순도 100 초과, EF3 원본 판정에 없는 포설방법·회선별용량 0, EF4 `양호`/`불량` 외 점검결과·목록에 없는 설치건물)을 행 오류로 거부한다. EF4·EF5·EF6은 원본에 전압이 없어 `calculate()`가 `voltage=0`을 채운다(공통 `equipment.voltage` 필수). 목록은 `docs/DATA_DICTIONARY.md` 각 유형 절.
+- EF2~EF7은 임포트 허용값(`choices`/`min`/`max`/`required`)을 선언해 둬서 오류값(예: EF2 소문자 `c`·154k/345k 외 전압·순도 100 초과, EF3 원본 판정에 없는 포설방법·회선별용량 0, EF4 `양호`/`불량` 외 점검결과·목록에 없는 설치건물)을 행 오류로 거부한다. EF4~EF7은 원본에 전압이 없어 `calculate()`가 `voltage=0`을 채운다(공통 `equipment.voltage` 필수). 목록은 `docs/DATA_DICTIONARY.md` 각 유형 절.
 - 값 없음: 입력파일의 `N/A`·`n/a`·`#N/A`는 null로 저장되고 계산에서 그 감점은 0이다(`app/equipment_types/na.py`의 `evaluate()` — 네 유형의 `calculate()`가 공통 사용, Stage 11). 사업장·`EF_code`·설비명·가동년월·전압은 N/A 불가(`import_service.NOT_NULLABLE_COLUMNS` + `NAME_FIELD`). 새 유형도 `calculate()`에서 `evaluate()`를 쓰고 입력 컬럼을 null 허용으로 둔다.
 - 점수 지표(POF·COF·DOF 감점/점수, 종합점수)는 `na.evaluate()`가 소수 첫째 자리로 반올림한다(엑셀 ROUND식 5에서 올림, `app/equipment_types/rounding.py`, Stage 13-0). 원본 수식 안의 정수 반올림은 그대로 두고, 원본 대조 테스트는 원본 값에 같은 반올림을 적용해 비교한다. `score_snapshot` 점수 컬럼은 FLOAT.
 - 원본엔 있지만 쓰지 않는 컬럼은 모듈의 `IGNORED_COLUMNS`(선택 속성)에 넣는다 — 임포트가 저장하지 않고 건너뛰고 결과에 "사용 안 하는 컬럼"으로 표시(미등록 컬럼처럼 `equipment_extra_attribute`에 쌓이지 않음). 현재 EF2 `cb_op_char_over`(2026-10-19 미사용 결정).
-- 조회 API는 설비유형별로 동작한다(Stage 8-4, `docs/ARCHITECTURE.md` "조회 API"). 상세는 `type_detail`(EF1~EF6 union), 유형별 스키마는 `app/schemas/ef1.py`~`ef6.py`. EF6(VDP)은 지금 EF5(UPS)와 거의 같지만 앞으로 달라질 수 있어 코드를 공유하지 않는다. 화면은 8-5 전까지 `ef_code=EF1`만 요청한다.
+- 조회 API는 설비유형별로 동작한다(Stage 8-4, `docs/ARCHITECTURE.md` "조회 API"). 상세는 `type_detail`(EF1~EF7 union), 유형별 스키마는 `app/schemas/ef1.py`~`ef7.py`. EF6(VDP)은 지금 EF5(UPS)와 거의 같지만 앞으로 달라질 수 있어 코드를 공유하지 않는다. 화면은 8-5 전까지 `ef_code=EF1`만 요청한다.
 - 설비유형 모듈의 조회용 인터페이스: `BREAKDOWN`(감점 라벨 메타), `calculate(row, as_of=)`(계산 기준일), `load_inputs`(저장값 → 계산 입력 복원 — 재계산하면 저장 점수와 같아야 함, `tests/test_type_queries.py`), `last_diag_dates`, `load_detail`.
+
+## 참고표 (Stage 15-0 — EF7 배터리)
+
+계산에 설비 밖의 표가 필요한 유형은 모듈에 `REFERENCE_TABLES`를 선언하고 `calculate(row, reference=...)`로 받는다. 계산기를 부르는 쪽은 `app/services/reference_data.calc_options()`를 펼쳐 넘긴다(참고표 없는 유형은 빈 dict). 형식·규칙은 `docs/ARCHITECTURE.md` "참고표", `docs/DATA_DICTIONARY.md` "EF7(배터리)".
+
+```bash
+cd backend
+.venv/Scripts/python -m app.db.import_reference --ef-code EF7 --table discharge_history --file sample_data/ef7/reference_discharge_history.dat            # 넣기(같은 행 갱신·새 행 추가)
+.venv/Scripts/python -m app.db.import_reference --ef-code EF7 --table temp_decay_coef --file sample_data/ef7/reference_temp_decay_coef.dat --replace    # 교체
+.venv/Scripts/python -m app.db.import_reference --ef-code EF7 --table discharge_history --file <파일> --check                                            # 검증만
+.venv/Scripts/python -m app.db.reset_reference --ef-code EF7 --table discharge_history|temp_decay_coef|all                                            # 비우기
+.venv/Scripts/python -m app.db.seed --ef-code EF7 --rows 0                                                                                             # 빈 참고표에만 목업 다시 넣기
+```
+- 참고표가 바뀌면 같은 트랜잭션에서 그 유형 설비 점수를 전부 재계산한다(계산 기준일 유지). 오류가 한 행이라도 있으면 파일 전체 미반영, 종료 코드 1.
+- 빈 표는 원본 수식대로 0으로 계산되고 경고만 나온다(설비 임포트 결과에도 표시). 설비 리셋은 참고표를 지우지 않는다.
+- 테스트에서 DB 없이 계산할 때는 `reference_data.mock_reference(module)`.
 
 ## 설비유형별 데이터 운영 (Stage 8-2)
 

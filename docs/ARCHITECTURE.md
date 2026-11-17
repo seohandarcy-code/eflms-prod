@@ -30,6 +30,8 @@
 
 **EF6(VDP) 전용 도메인 테이블**(Stage 14) — 입력: `vdp_spec`, `vdp_condition`, `vdp_consequence_attribute`, `vdp_design_attribute` / 계산: `vdp_score_detail`. 계산기 `backend/app/equipment_types/ef6_vdp.py`. 지금은 EF5(UPS)와 구조·공식이 거의 같지만(모델type만 다름) 앞으로 달라질 수 있어 모듈·테이블·화면을 공유하지 않고 독립으로 붙였다.
 
+**EF7(배터리) 전용 도메인 테이블 + 참고표**(Stage 15) — 입력: `battery_spec`, `battery_condition`, `battery_consequence_attribute`, `battery_design_attribute` / 계산: `battery_score_detail` / 참고표: `battery_discharge_history`(방전이력), `battery_temp_decay_coef`(온도감소계수). 계산기 `backend/app/equipment_types/ef7_battery.py`. 배터리는 계산에 설비 밖의 표가 필요해 **참고표 구조**(Stage 15-0)를 추가했다 — 아래 "참고표" 절.
+
 **설비유형 확장 원칙**: 공통 레이어는 EF2 도입 때 한 번 일반화했다(Stage 8-1 `equipment` 정리, 8-2 레지스트리·플러그인화 — 승인된 1회성 예외). 이후 새 설비유형(EF3~)은 **새 계산기 모듈 + 새 도메인 테이블 + 레지스트리 등록만** 추가하고, `equipment_type`/`equipment`/`score_snapshot` 공통 레이어와 기존 유형 코드는 변경하지 않는다(개방-폐쇄 원칙). 절차는 아래 "새 설비유형 추가 절차".
 
 ## 계산 로직 — "설비 타입 계산기 레지스트리"
@@ -37,6 +39,13 @@
 - `ref_data/`의 `INPUT_COLUMNS`/`CALCULATED_COLUMNS` 패턴을 설비 타입별 모듈로 일반화한다: `backend/app/equipment_types/ef1_transformer.py`, `ef2_gis.py` (추후 `ef3_xxx.py` ...).
 - 공통 인터페이스: `backend/app/equipment_types/base.py`의 `EquipmentTypeModule` — `calculate(input_row, as_of=None)`(입력 + 전체 계산 컬럼 flat dict), `generate_input_row`, `ingest_domain`, `load_inputs`/`last_diag_dates`/`load_detail`, 메타데이터 `EF_CODE`/`EF_NAME`/`NAME_FIELD`/`INPUT_COLUMNS`/`DOMAIN_TABLES`/`BREAKDOWN`. 레지스트리는 `registry.py`.
 - `EF_code → 계산기` 매핑으로 라우팅. 계산은 데이터 적재(시드/임포트) 시점에 수행하고 결과를 `score_snapshot`/`*_score_detail`에 저장한다(매 조회마다 재계산하지 않음 — 성능·감사 추적 목적).
+
+### 참고표 — 계산에 쓰는 설비 밖의 표 (Stage 15-0, 2026-11-16 사용자 결정)
+
+- 대부분의 유형은 입력 한 행만으로 계산하지만, EF7(배터리)은 사업장별 방전이력과 년차별 온도감소계수 표를 함께 읽는다. 이런 유형은 모듈에 선택 항목 `REFERENCE_TABLES`(표 이름 → 모델·컬럼·검증·같은 행 판정 열쇠·목업 행)를 선언하고, `calculate(row, as_of=None, reference=None)`로 표 내용을 받는다. 참고표 테이블은 `equipment_id`가 없는 독립 테이블이다.
+- 계산기를 부르는 곳(임포트 `import_service`, 시드 `seed.seed_type`, 예측 그래프 `equipment_service._projection`, 참고표 재계산)은 `app/services/reference_data.calc_options(session, module)`를 펼쳐 넘긴다 — 참고표가 없는 유형은 빈 dict라 EF1~EF6 동작은 그대로다(공통 코드 예외 — 사용자 승인). 참고표가 필요한 유형은 `reference`를 빠뜨리면 조용히 0으로 계산하지 않고 오류를 낸다.
+- 운영(`app/services/reference_service.py`, CLI `app.db.import_reference` / `app.db.reset_reference`): 설비 파일과 같은 규칙으로 넣기(같은 행 갱신·새 행 추가) / `--replace` / `--check` / 리셋. 참고표가 바뀌면 같은 트랜잭션에서 그 유형 설비를 `load_inputs` → `calculate(as_of=저장 기준일)` → `ingest_row`로 다시 계산한다. 빈 표는 원본 수식대로 0이고 경고만 낸다.
+- 시드는 비어 있는 참고표에만 목업을 넣는다(`ensure_mock_reference`). 유형 리셋(`dataset_service.reset_type`)은 `DOMAIN_TABLES`만 지우므로 참고표는 남는다.
 
 ## 인증
 
@@ -78,8 +87,8 @@ mock 생성기(ref_data 로직 이식)     ─┐
 | 엔드포인트 | 내용 |
 |---|---|
 | `GET /api/equipment-types` | 등록된 유형, 유형별 설비 수, 감점 항목 메타데이터(`breakdown` — 축별 `field`/`label`/`group`/`summed`) |
-| `GET /api/equipment?ef_code=&factory_code=` | 공통 요약 목록. `ef_code`를 빼면 전체 유형. 최근 진단일은 유형별 기준(EF1 DGA, EF2 SF6, EF3 상태값 측정일, EF4·EF5·EF6 점검결과 반영일). 항목마다 `operation_start_time`(가동년월, Stage 10-0) 포함 |
-| `GET /api/equipment/{id}` | 공통 헤더 + `score` + `type_detail`(`ef_code`로 구분되는 union: EF1~EF6 전용 상세) + `projection` |
+| `GET /api/equipment?ef_code=&factory_code=` | 공통 요약 목록. `ef_code`를 빼면 전체 유형. 최근 진단일은 유형별 기준(EF1 DGA, EF2 SF6, EF3 상태값 측정일, EF4~EF7 점검결과 반영일). 항목마다 `operation_start_time`(가동년월, Stage 10-0) 포함 |
+| `GET /api/equipment/{id}` | 공통 헤더 + `score` + `type_detail`(`ef_code`로 구분되는 union: EF1~EF7 전용 상세) + `projection` |
 | `GET /api/summary?ef_code=` | KPI + `by_type`(유형별 합계·교체검토·즉시교체) |
 
 - 서비스(`equipment_service`)는 공통 테이블만 직접 읽고, 유형별 정보는 설비유형 모듈의 `last_diag_dates`/`load_detail`/`load_inputs`에 맡긴다 — 새 유형은 모듈과 `app/schemas/<유형>.py` 상세 스키마, `TypeDetail` union 한 줄만 추가한다.

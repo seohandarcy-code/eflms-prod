@@ -21,9 +21,15 @@ from app.equipment_types.na import is_na_token
 from app.equipment_types.registry import all_modules
 from app.services.dataset_service import count_type
 from app.services.import_service import NOT_NULLABLE_COLUMNS, import_file
+from app.services.reference_data import has_reference, mock_reference
 
 # EF1은 계산 결과 키와 메타데이터(DB 컬럼) 이름이 다른 항목이 있다(test_type_queries와 같은 매핑).
 DB_TO_CALC = {"oltc_96t_minus": "oltc_96T_minus", "first_voltage": "1st_voltage", "first_voltage_minus": "1st_voltage_minus"}
+
+
+def _calc_kwargs(module):
+    # 참고표가 있는 유형(EF7~)은 목업 참고표로 계산한다(Stage 15-0)
+    return {"reference": mock_reference(module)} if has_reference(module) else {}
 
 
 def _nullable_inputs(module):
@@ -48,9 +54,9 @@ def test_null_input_only_zeroes_the_deductions_that_use_it(module):
     leaves = [DB_TO_CALC.get(i["field"], i["field"]) for axis in module.BREAKDOWN.values() for i in axis]
     for _ in range(15):
         row = module.generate_input_row()
-        base = module.calculate(row)
+        base = module.calculate(row, **_calc_kwargs(module))
         for name in _nullable_inputs(module):
-            out = module.calculate({**row, name: None})
+            out = module.calculate({**row, name: None}, **_calc_kwargs(module))
             for field in leaves:
                 assert out[field] in (base[field], 0), (name, field, base[field], out[field])
             assert all(out[k] is not None for k in out if k.endswith("_minus")), name

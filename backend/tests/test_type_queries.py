@@ -11,6 +11,7 @@ import pytest
 from sqlalchemy import select
 
 from app.db.models import (
+    BatteryScoreDetail,
     CableScoreDetail,
     Equipment,
     GisScoreDetail,
@@ -20,8 +21,9 @@ from app.db.models import (
     UpsScoreDetail,
     VdpScoreDetail,
 )
-from app.equipment_types import ef1_transformer, ef2_gis, ef3_cable, ef4_switchgear, ef5_ups, ef6_vdp
+from app.equipment_types import ef1_transformer, ef2_gis, ef3_cable, ef4_switchgear, ef5_ups, ef6_vdp, ef7_battery
 from app.services.ingest import ingest_row
+from app.services.reference_data import calc_options, ensure_mock_reference, has_reference, mock_reference
 
 MODULES = {
     "EF1": (ef1_transformer, TransformerScoreDetail),
@@ -30,8 +32,9 @@ MODULES = {
     "EF4": (ef4_switchgear, SwitchgearScoreDetail),
     "EF5": (ef5_ups, UpsScoreDetail),
     "EF6": (ef6_vdp, VdpScoreDetail),
+    "EF7": (ef7_battery, BatteryScoreDetail),
 }
-# EF1은 계산 결과 키와 DB 컬럼 이름이 다른 항목이 있다(ef1_transformer.ingest_domain의 매핑). EF2~EF6은 전부 같다.
+# EF1은 계산 결과 키와 DB 컬럼 이름이 다른 항목이 있다(ef1_transformer.ingest_domain의 매핑). EF2~EF7은 전부 같다.
 DB_TO_CALC = {"oltc_96t_minus": "oltc_96T_minus", "first_voltage": "1st_voltage", "first_voltage_minus": "1st_voltage_minus"}
 
 
@@ -65,7 +68,20 @@ async def _seed_ef6(session, n=3):
     return ids
 
 
-@pytest.mark.parametrize("ef_code", ["EF1", "EF2", "EF3", "EF4", "EF5", "EF6"])
+async def _seed_ef7(session, n=3):
+    """EF7은 참고표가 있어야 계산된다 — 시드처럼 목업 참고표를 먼저 넣고 DB의 표로 계산한다."""
+    await ensure_mock_reference(session, ef7_battery)
+    options = await calc_options(session, ef7_battery)
+    ids = [await ingest_row(ef7_battery.calculate(ef7_battery.generate_input_row(), **options), session) for _ in range(n)]
+    await session.commit()
+    return ids
+
+
+def _calc_kwargs(module):
+    return {"reference": mock_reference(module)} if has_reference(module) else {}
+
+
+@pytest.mark.parametrize("ef_code", ["EF1", "EF2", "EF3", "EF4", "EF5", "EF6", "EF7"])
 async def test_load_inputs_round_trip_reproduces_stored_scores(client, session_factory, ef_code):
     module, detail_model = MODULES[ef_code]
     async with session_factory() as session:
@@ -79,12 +95,15 @@ async def test_load_inputs_round_trip_reproduces_stored_scores(client, session_f
             await _seed_ef5(session)
         if ef_code == "EF6":
             await _seed_ef6(session)
+        if ef_code == "EF7":
+            await _seed_ef7(session)
         ids = (await session.execute(select(Equipment.equipment_id).where(Equipment.ef_code == ef_code))).scalars().all()
         assert ids
         detail_columns = [c.name for c in detail_model.__table__.columns if c.name not in ("equipment_id", "computed_at")]
+        options = await calc_options(session, module)  # EF7~ 참고표는 입력이 아니라 DB에서 읽는다
         for eq_id in ids:
             input_row, as_of = await module.load_inputs(session, eq_id)
-            recalculated = module.calculate(input_row, as_of=as_of)
+            recalculated = module.calculate(input_row, as_of=as_of, **options)
             score = await session.get(ScoreSnapshot, eq_id)
             stored_detail = await session.get(detail_model, eq_id)
             for name in ("pof_minus", "pof", "cof_minus", "cof", "dof_minus", "dof", "total_score"):
@@ -94,12 +113,13 @@ async def test_load_inputs_round_trip_reproduces_stored_scores(client, session_f
                 assert calc_value == pytest.approx(getattr(stored_detail, name)), (eq_id, name)
 
 
-@pytest.mark.parametrize("module", [ef1_transformer, ef2_gis, ef3_cable, ef4_switchgear, ef5_ups, ef6_vdp])
+@pytest.mark.parametrize("module", [ef1_transformer, ef2_gis, ef3_cable, ef4_switchgear, ef5_ups, ef6_vdp, ef7_battery])
 def test_as_of_default_is_today_and_shifts_operation_year(module):
     row = module.generate_input_row()
-    assert module.calculate(row) == module.calculate(row, as_of=date.today())
-    now = module.calculate(row)
-    later = module.calculate(row, as_of=date.today() + timedelta(days=365))
+    kw = _calc_kwargs(module)
+    assert module.calculate(row, **kw) == module.calculate(row, as_of=date.today(), **kw)
+    now = module.calculate(row, **kw)
+    later = module.calculate(row, as_of=date.today() + timedelta(days=365), **kw)
     assert later["operation_year"] == pytest.approx(now["operation_year"] + 1)
     assert "_as_of" not in now
 
@@ -175,7 +195,7 @@ async def test_equipment_types_metadata(client, session_factory):
     assert {i["group"] for i in ef2_pof} == {"기계적", "전기적", "화학적"}
     # 메타데이터의 모든 필드는 실제 계산 결과에 존재해야 한다
     for code, (module, _) in MODULES.items():
-        calc = module.calculate(module.generate_input_row())
+        calc = module.calculate(module.generate_input_row(), **_calc_kwargs(module))
         for axis in ("pof", "cof", "dof"):
             for item in types[code]["breakdown"][axis]:
                 assert DB_TO_CALC.get(item["field"], item["field"]) in calc, (code, item["field"])

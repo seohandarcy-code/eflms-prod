@@ -25,11 +25,16 @@ class EquipmentTypeModule(Protocol):
     BREAKDOWN: dict[str, list[dict[str, Any]]]
     # (선택) 원본 파일에 있지만 쓰지 않는 컬럼 이름 튜플 — 임포트가 저장하지 않고 건너뛴다.
     # 선언하지 않으면 빈 튜플로 취급한다(import_service가 getattr로 읽음). 예: EF2 cb_op_char_over.
+    # (선택) REFERENCE_TABLES — 계산에 쓰는 설비 밖의 표(EF7 방전이력·온도감소계수, Stage 15-0). 선언한 유형은
+    # calculate(row, reference={표 이름: [행 dict]})로 표를 받는다. 형식·운영은 app/services/reference_data.py.
 
     def generate_input_row(self) -> dict: ...
 
     def calculate(self, input_row: dict, as_of: date | None = None) -> dict:
-        """as_of = 계산 기준일(기본 오늘). N년 뒤 점수 예측은 기준일만 바꿔 같은 공식으로 재계산한다."""
+        """as_of = 계산 기준일(기본 오늘). N년 뒤 점수 예측은 기준일만 바꿔 같은 공식으로 재계산한다.
+
+        REFERENCE_TABLES를 선언한 유형은 reference= 키워드 인자도 받는다 — 호출하는 쪽은
+        reference_data.calc_options()를 펼쳐 넘긴다(참고표가 없는 유형은 빈 dict)."""
         ...
 
     async def ingest_domain(self, row: dict, equipment_id: int, session: AsyncSession) -> None:

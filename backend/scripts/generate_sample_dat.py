@@ -4,6 +4,9 @@
 
 실제 사내 파일이 아니라 각 설비유형 모듈의 mock 스키마(INPUT_COLUMNS) 기준으로 만든
 연습용 파일이다. 실제 파일로 바꾸는 방법은 backend/CLAUDE.md 참고.
+
+참고표가 있는 유형(EF7~, Stage 15-0)은 참고표별 `reference_<표 이름>.dat`(목업 참고표 그대로)와
+`reference_<첫 표>_with_errors.dat`(3번째 행 숫자 값을 깨뜨림)도 만든다 — `python -m app.db.import_reference`용.
 """
 import argparse
 import sys
@@ -66,6 +69,24 @@ def write_with_extra_columns(module: EquipmentTypeModule, path: Path, rows: int 
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def _write_table(path: Path, rows: list[list[str]]) -> None:
+    path.write_text("\n".join("\t".join(r) for r in rows) + "\n", encoding="utf-8")
+
+
+def write_reference(module: EquipmentTypeModule, sample_dir: Path) -> None:
+    specs = getattr(module, "REFERENCE_TABLES", None) or {}
+    for i, (name, spec) in enumerate(specs.items()):
+        header = [c["name"] for c in spec["columns"]]
+        rows = [[_format_value(r[h]) for h in header] for r in spec["mock_rows"]]
+        _write_table(sample_dir / f"reference_{name}.dat", [header, *rows])
+        if i == 0:
+            # 3번째 데이터 행의 첫 숫자 컬럼을 숫자가 아닌 값으로 — 파일 전체 미반영 확인용
+            broken = next(j for j, c in enumerate(spec["columns"]) if c["dtype"] in ("int", "float"))
+            bad = [list(r) for r in rows]
+            bad[2][broken] = "확인필요"
+            _write_table(sample_dir / f"reference_{name}_with_errors.dat", [header, *bad])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="설비유형별 샘플 .dat 3종 생성")
     parser.add_argument("--ef-code", default="all", help="설비유형 코드(예: EF1) 또는 all(기본값)")
@@ -77,7 +98,8 @@ def main() -> None:
         write_valid(module, sample_dir / "sample_valid.dat")
         write_with_errors(module, sample_dir / "sample_with_errors.dat")
         write_with_extra_columns(module, sample_dir / "sample_with_extra_columns.dat")
-        print(f"[완료] {sample_dir}에 샘플 3종 생성")
+        write_reference(module, sample_dir)
+        print(f"[완료] {sample_dir}에 샘플 생성")
 
 
 if __name__ == "__main__":

@@ -585,7 +585,83 @@ export interface Ef6TypeDetail {
   score_detail: Ef6ScoreDetail;
 }
 
-export type TypeDetail = Ef1TypeDetail | Ef2TypeDetail | Ef3TypeDetail | Ef4TypeDetail | Ef5TypeDetail | Ef6TypeDetail;
+/** EF7(배터리) 전용 상세 — EquipmentDetail.type_detail (Stage 15-2). 필드는 backend app/schemas/ef7.py와 1:1.
+ *  방전인덱스합·온도감소계수는 계산 당시 참고표(방전이력·온도감소계수)로 낸 값이다. */
+export interface Ef7ScoreDetail {
+  computed_at: string;
+  today: string;
+  operation_year: number;
+  age_minus: number;
+  disch_index: number;
+  disch_dec_coef: number;
+  temp_dec_coef: number | null;
+  soh_minus: number;
+  bms_life: number;
+  bms_stat: number | null;
+  bms_minus: number;
+  vol_diff_minus: number;
+  temp_diff_minus: number;
+  temp_range_over_minus: number;
+  bat_room_temp_minus: number;
+  bat_room_humid_minus: number;
+  capa_times_load: number | null;
+  capa_times_load_minus: number;
+  con_rank_minus: number;
+  ins_build_rank_minus: number;
+  fire_spread_rank_minus: number;
+  emerge_resp_minus: number;
+  rep_time_minus: number;
+  rep_cost_minus: number;
+  model_gen_minus: number;
+  fire_resist_minus: number;
+  ul_auth_minus: number;
+  fac_rel_minus: number;
+  part_stat_diag_minus: number;
+  bat_server_minus: number;
+  bat_room_fire_resist_minus: number;
+}
+
+export interface Ef7TypeDetail {
+  ef_code: "EF7";
+  spec: {
+    updated_at: string;
+    line_no: string | null;
+    manufacturer: string | null;
+    model_name: string | null;
+    capa: number | null;
+  };
+  condition: {
+    measured_at: string;
+    vol_diff: number | null;
+    temp_diff: number | null;
+    temp_range_over: number | null;
+    bat_room_temp: number | null;
+    bat_room_humid: number | null;
+    load: number | null;
+  };
+  consequence: {
+    updated_at: string;
+    con_rank: string | null;
+    ins_build_rank: string | null;
+    fire_spread_rank: string | null;
+    emerge_resp: string | null;
+    rep_time: string | null;
+    rep_cost: string | null;
+  };
+  design: {
+    updated_at: string;
+    model_gen: number | null;
+    fire_resist: string | null;
+    ul_auth: string | null;
+    fac_rel: number | null;
+    part_stat_diag: string | null;
+    bat_server: string | null;
+    bat_room_fire_resist: string | null;
+  };
+  score_detail: Ef7ScoreDetail;
+}
+
+export type TypeDetail = Ef1TypeDetail | Ef2TypeDetail | Ef3TypeDetail | Ef4TypeDetail | Ef5TypeDetail | Ef6TypeDetail | Ef7TypeDetail;
 
 export interface ProjectionPoint {
   years_ahead: number;

@@ -14,7 +14,7 @@
 | 테이블 | 컬럼 |
 |---|---|
 | `equipment_type` | `ef_code`(PK), `name`, `description` |
-| `equipment` | `equipment_id`(PK), `factory_code`, `ef_code`(FK), `equipment_name`, `voltage`, `operation_start_time`, `created_at` — `UNIQUE(factory_code, ef_code, equipment_name)`. `equipment_name`에는 설비유형 원본의 이름 컬럼이 들어간다(EF1 `transformer_name`, EF2 `gis_name`, EF3 `tl_name`, EF4·EF5·EF6 `eqp_id`). `voltage`는 원본에 전압이 없는 유형(EF4·EF5·EF6)에선 0 |
+| `equipment` | `equipment_id`(PK), `factory_code`, `ef_code`(FK), `equipment_name`, `voltage`, `operation_start_time`, `created_at` — `UNIQUE(factory_code, ef_code, equipment_name)`. `equipment_name`에는 설비유형 원본의 이름 컬럼이 들어간다(EF1 `transformer_name`, EF2 `gis_name`, EF3 `tl_name`, EF4~EF7 `eqp_id`). `voltage`는 원본에 전압이 없는 유형(EF4~EF7)에선 0 |
 | `score_snapshot` | `equipment_id`(FK), `pof_minus`, `pof`, `cof_minus`, `cof`, `dof_minus`, `dof`, `total_score`, `computed_at` — 점수 컬럼은 모두 FLOAT, 소수 첫째 자리(Stage 13-0) |
 
 > **Stage 8-1(2026-10-16, 마이그레이션 `8a1c4e2f9b70`)**: `equipment`에서 변압기 전용 요소를 걷어냈다 — `transformer_name` → `equipment_name`, `onan_val`/`onaf_val`은 EF1 전용 `transformer_spec`으로 값 이관. 사내 EF1 입력파일 헤더는 그대로 `transformer_name`/`ONAN_val`/`ONAF_val`이다(적재 시 매핑). 이 1회성 예외 이후로는 공통 레이어를 바꾸지 않는다.
@@ -380,6 +380,73 @@ UPS 절과 같다(온도 보정 와이블 5종, 차단기 7.5년 1회 교체, fa
 ### 화면 라벨
 
 UPS와 같다 — 원본 라벨에서 "감점"만 떼고 그룹 없이 나열, 원본 데이터 보기는 POF 구성(설비정보 → 부품 고장확률 → 운전·점검) · COF 구성 · DOF 구성.
+
+## EF7(배터리) — Stage 15 구현(2026-11-16, 마이그레이션 `9df1f3504cfe`)
+
+출처: `ref_data/schema_eflms_battery.py`(2026-11-16 작성본 — 검토에서 입력/계산 이름 불일치 3곳(`con_rank`·`ul_auth`·`bat_room_fire_resist_minus`), 온도감소계수식(1~n년 합·온도 배율 `e^d`)을 작성자가 수정). 시스템 계산기는 원본 공식을 그대로 옮기고, 소수 감점만 소수 첫째 자리로 반올림한다 — `backend/tests/test_ef7_battery.py`가 원본과 대조한다.
+
+**다른 유형과 다른 점 — 참고표**: 배터리는 설비 입력 말고도 계산에 쓰는 표가 두 개 있다(방전이력·온도감소계수). 원본 파일에는 하드코딩돼 있지만, 시스템에서는 **설비에 딸리지 않는 별도 테이블**로 두고 설비 파일처럼 dat로 넣기·교체·검증·리셋한다(2026-11-16 사용자 결정, 아래 "참고표" 절). 계산에는 DB에 지금 들어 있는 참고표를 쓴다.
+
+### 공통 테이블 매핑
+
+EF4~EF6과 같다: `factory_code`·`EF_code`·`operation_start_time` → `equipment`, `eqp_id` → `equipment.equipment_name`, `equipment.voltage` = 0, 점수 → `score_snapshot`(소수 첫째 자리).
+
+### EF7 입력 도메인 테이블
+
+| 테이블 | INPUT_COLUMNS 매핑 | 시점 컬럼 | 축 |
+|---|---|---|---|
+| `battery_spec` | `line_no`, `manufacturer`, `model_name`, `capa` | `updated_at` | 설비정보(계산 미사용), CoF(정격용량) |
+| `battery_condition` | `vol_diff`, `temp_diff`, `temp_range_over`, `bat_room_temp`, `bat_room_humid`, `load` | `measured_at` (신규 — 원본엔 날짜 없음) | PoF(부하율은 CoF 부하량에만 쓰임) |
+| `battery_consequence_attribute` | `con_rank`, `ins_build_rank`, `fire_spread_rank`, `emerge_resp`, `rep_time`, `rep_cost` | `updated_at` | CoF |
+| `battery_design_attribute` | `model_gen`, `fire_resist`, `ul_auth`, `fac_rel`, `part_stat_diag`, `bat_server`, `bat_room_fire_resist` | `updated_at` | DoF |
+
+계산 테이블 `battery_score_detail`은 `score_snapshot` 7개를 뺀 계산 컬럼 31개(감점 FLOAT). 방전인덱스합(`disch_index`)·방전감소계수·온도감소계수는 **계산 당시 참고표로 낸 값**이라 그 점수의 근거가 남는다. null 가능: 배터리실온도 N/A → `temp_dec_coef`·`bms_stat`, 부하율·정격용량 N/A → `capa_times_load`. 화면의 "최근 진단일"은 `battery_condition.measured_at`.
+
+### 참고표 (Stage 15-0)
+
+| 테이블 | 컬럼 | 같은 행 판정(넣기 = 갱신/추가) | 검증 |
+|---|---|---|---|
+| `battery_discharge_history` 방전이력 | `id`(PK), `disch_date`, `factory_code`, `volt_change`(전압변동 %, 11.6% → 11.6), `disch_index` | `factory_code` + `disch_date`(UNIQUE) | 일자 형식, 사업장 필수, 전압변동 0~100, 방전인덱스 0 이상 |
+| `battery_temp_decay_coef` 온도감소계수 | `year`(PK, 사용 년차), `gamma_y` | `year` | year 정수 1 이상, gamma_y 0 초과 |
+
+- dat 형식: 탭 구분, 헤더 = 위 컬럼명(`id` 제외). 설비 임포트와 같은 표기(BOM·CP949·따옴표·날짜 4가지)를 받는다. 참고표 값은 모두 필수라 N/A·빈 칸은 오류, 파일 안 같은 행 중복도 오류. 오류가 한 행이라도 있으면 파일 전체 미반영. 모르는 컬럼은 저장하지 않고 표시만 한다.
+- 넣기(기본)는 같은 행 갱신·새 행 추가, `--replace`는 표를 비우고 교체, `--check`는 검증만. 리셋은 표를 비운다(`app.db.reset_reference`).
+- **참고표가 바뀌면**(넣기·교체·리셋) 같은 트랜잭션에서 배터리 설비 점수를 전부 다시 계산한다 — 계산 기준일은 저장된 그대로, 참고표 변화만 반영.
+- **빈 표**: 원본 수식이 합계 방식이라 오류가 아니라 0으로 계산된다(방전인덱스합 0, 온도감소계수 0). 설비 임포트·참고표 작업 결과에 "참고표 비어 있음" 경고를 낸다.
+- 목업: 원본 파일의 두 표(방전이력 40행, 온도감소계수 20행)가 `ef7_battery.MOCK_*`에 그대로 있고, 시드는 **비어 있는 참고표에만** 넣는다(실데이터가 있는 표는 그대로). 설비 리셋(`app.db.reset --ef-code EF7`)은 참고표를 지우지 않는다.
+
+### 입력 허용값 (2026-11-16 — 권장안)
+
+| 컬럼 | 허용값 |
+|---|---|
+| `con_rank` | `단독`, `공용` |
+| `ins_build_rank`, `emerge_resp`, `rep_time`, `rep_cost` | `A`, `B`, `C` |
+| `fire_spread_rank` | `A`, `B` (원본 판정이 A·B뿐) |
+| `model_gen` | 정수 `2`, `3`, `4` |
+| `fire_resist` | `O`, `X` |
+| `ul_auth` | `취득`, `미취득` |
+| `part_stat_diag`, `bat_server` | `적용`, `미적용` |
+| `bat_room_fire_resist` | `가스계`, `수계` |
+| `fac_rel` | 정수 0 이상 |
+| `vol_diff`, `temp_diff`, `temp_range_over`, `capa`, `load` | 소수, 0 이상 |
+| `bat_room_humid` | 소수, 0~100 |
+| `bat_room_temp` | 소수(범위 제한 없음) |
+| `line_no`, `manufacturer`, `model_name` | 빈 값만 거부 |
+
+### 산출 파이프라인 / 원본 그대로 유지하는 판단
+
+- 방전인덱스합 = 같은 사업장 방전이력 중 **방전일 ≥ 설치일**의 방전인덱스 합(`round(…, 3)`, 원본 코드대로 날짜 비교 — 원본 주석의 "설치된 해" 기준이 아님). 방전감소계수 = 방전인덱스합 × 0.000579.
+- 온도감소계수 = (γ₁ + … + γₙ + 소수부분 × γₙ₊₁) × e^(1823 × (1/298.15 − 1/(배터리실온도 + 273.15)))를 `round(…, 1)`. n = 사용년수 정수부분. 표에 없는 년차는 0(20년 초과면 표 끝까지 합). 25℃에서 배율 1, 낮으면 1 미만.
+- SOH 감점 = −2 × (방전감소계수 + 온도감소계수). BMS = 온도 보정 와이블(η 7,637,042,774,839, β 0.1525) × 300.
+- 셀간전압편차 0.25 초과분 × 120, 셀간온도편차 5 초과분 × 2.4, 셀온도범위초과이력 × −1.5, 배터리실온도 18℃ 이하·28℃ 이상 −3(경계 포함), 배터리실습도 80 이상 −3.
+- 사고영향성 = −6 × 부하량 / 500. DoF: 모델세대 2 −12 / 3 −6, 화재방지 X −12, UL 미취득 −12, 설비신뢰도등급 3 미만 −8, 부품상태진단 미적용 −4, 배터리서버 미적용 −2, 소화설비 가스계 −8.
+- 소수 첫째 자리(사용자 결정): SOH·BMS·셀간전압편차·셀간온도편차·셀온도범위초과이력·사고영향성 감점을 반올림. 중간값은 원본 그대로. 축 점수 = 100 + 반올림된 감점 합.
+
+**mock 범위**: 설치 2015~2025년(사용 1~12년), 배터리실 20~25℃. SOH 감점이 커서(사용년수에 따라 온도감소계수가 누적) mock POF는 대략 30~80이다. mock에선 감점이 한 번도 나지 않는 항목: 셀간전압편차(0.021~0.025)·셀간온도편차(1.0~2.5)·셀온도범위초과이력(0)·배터리실온도·습도·설비신뢰도(4~12)·배터리서버(적용) — 분기 정답은 테스트(`BRANCHES`)로 확인한다.
+
+### 화면 라벨
+
+원본 계산 라벨에서 "감점"만 떼고 그룹 없이 나열(예: "SOH감점" → "SOH"). 원본 데이터 보기는 POF 구성(설비정보 → SOH·BMS → 셀·배터리실 소그룹) · COF 구성(부하율 포함) · DOF 구성. SOH 근거 툴팁은 방전인덱스합·온도감소계수(배터리실 온도)를 보여준다.
 
 ## 값 없음(N/A) 처리 — Stage 11(2026-10-29, 마이그레이션 `b7f98e26abb7`)
 

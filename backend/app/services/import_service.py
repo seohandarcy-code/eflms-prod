@@ -30,6 +30,7 @@ from app.equipment_types.na import is_na_token
 from app.equipment_types.registry import UnknownEquipmentTypeError, get_module
 from app.services.dataset_service import count_type, reset_type
 from app.services.ingest import ingest_row
+from app.services.reference_data import calc_options, empty_reference_warnings
 
 
 # N/A(null)를 받지 않는 컬럼 — 설비 식별(+ 유형별 NAME_FIELD)과 공통 equipment의 필수 값.
@@ -137,6 +138,7 @@ class ImportResult:
     dry_run: bool = False
     existing_rows: int = 0  # dry_run일 때 현재 그 유형의 설비 수(--replace면 지워질 수)
     na_values: dict[str, int] = field(default_factory=dict)  # 컬럼 → N/A(null로 저장)인 칸 수
+    reference_warnings: list[str] = field(default_factory=list)  # 참고표가 있는 유형(EF7~)의 빈 참고표 경고
 
     @property
     def ok(self) -> bool:
@@ -290,10 +292,13 @@ async def import_file(
         return result
 
     # 2) 계산 — DB에 쓰기 전에 전부 계산해 둔다. 실패하면 몇 번째 행인지 행 오류로 알려준다.
+    # 참고표가 있는 유형(EF7~)은 DB의 참고표를 같이 넘긴다 — 없는 유형은 빈 인자(Stage 15-0).
+    options = await calc_options(session, module)
+    result.reference_warnings = empty_reference_warnings(module, options)
     full_rows: list[dict] = []
     for i, row in parsed_rows:
         try:
-            full_rows.append(module.calculate(row))
+            full_rows.append(module.calculate(row, **options))
         except Exception as exc:
             result.row_errors.append(
                 RowError(row_number=i, column="(계산)", raw_value="", reason=f"{type(exc).__name__}: {exc}")

@@ -1,4 +1,13 @@
 from app.db.models.auth import AllowedUser
+from app.db.models.battery import (
+    BatteryCondition,
+    BatteryConsequenceAttribute,
+    BatteryDesignAttribute,
+    BatteryDischargeHistory,
+    BatteryScoreDetail,
+    BatterySpec,
+    BatteryTempDecayCoef,
+)
 from app.db.models.cable import (
     CableCondition,
     CableConsequenceAttribute,
@@ -90,4 +99,11 @@ __all__ = [
     "VdpConsequenceAttribute",
     "VdpDesignAttribute",
     "VdpScoreDetail",
+    "BatterySpec",
+    "BatteryCondition",
+    "BatteryConsequenceAttribute",
+    "BatteryDesignAttribute",
+    "BatteryScoreDetail",
+    "BatteryDischargeHistory",
+    "BatteryTempDecayCoef",
 ]

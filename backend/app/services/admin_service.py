@@ -50,6 +50,13 @@ ALLOWED_TABLES: list[str] = [
     "vdp_condition",
     "vdp_consequence_attribute",
     "vdp_design_attribute",
+    "battery_score_detail",
+    "battery_spec",
+    "battery_condition",
+    "battery_consequence_attribute",
+    "battery_design_attribute",
+    "battery_discharge_history",
+    "battery_temp_decay_coef",
     "equipment_extra_attribute",
 ]
 

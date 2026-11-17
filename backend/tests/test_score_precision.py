@@ -15,6 +15,7 @@ from app.core.config import BACKEND_DIR, get_settings
 from app.equipment_types.registry import all_modules
 from app.equipment_types.rounding import SCORE_FIELDS, round1
 from app.services.equipment_service import classify_status
+from app.services.reference_data import has_reference, mock_reference
 
 
 @pytest.mark.parametrize(
@@ -29,7 +30,8 @@ def test_round1_rounds_half_away_from_zero(value, expected):
 def test_calculate_returns_one_decimal_scores(module):
     random.seed(12)
     for _ in range(20):
-        out = module.calculate(module.generate_input_row())
+        kwargs = {"reference": mock_reference(module)} if has_reference(module) else {}  # EF7~ 참고표
+        out = module.calculate(module.generate_input_row(), **kwargs)
         for name in SCORE_FIELDS:
             assert out[name] == round1(out[name]), (name, out[name])
         assert out["pof"] == round1(100 + out["pof_minus"])

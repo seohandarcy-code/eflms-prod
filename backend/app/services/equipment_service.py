@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Equipment, ScoreSnapshot
 from app.equipment_types.base import EquipmentTypeModule
 from app.equipment_types.registry import UnknownEquipmentTypeError, all_modules, get_module
+from app.services.reference_data import calc_options
 from app.schemas.equipment import (
     BreakdownItem,
     EquipmentDetail,
@@ -94,11 +95,12 @@ async def _projection(session: AsyncSession, module: EquipmentTypeModule, equipm
     if loaded is None:
         return []
     input_row, base_date = loaded
+    options = await calc_options(session, module)  # 참고표가 있는 유형(EF7~)만 — Stage 15-0
     points = []
     for years in range(PROJECTION_YEARS + 1):
         # 공식이 경과일수/365로 연수를 계산하므로 365일 단위로 늘려야 정확히 +N년이 된다.
         as_of = base_date + timedelta(days=365 * years)
-        calc = module.calculate(input_row, as_of=as_of)
+        calc = module.calculate(input_row, as_of=as_of, **options)
         points.append(
             ProjectionPoint(
                 years_ahead=years,
