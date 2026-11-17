@@ -188,7 +188,26 @@ export async function fetchDataTargets(token: string): Promise<DataTarget[]> {
   return data;
 }
 
-/** 붙여넣은 탭 구분 텍스트를 검증(check=true) 또는 반영(check=false). */
+/** 행 편집(Stage 18)용 지금 데이터 — 칸 값은 내려받기와 같은 문자열(null=N/A, 날짜 YYYY-MM-DD). */
+export interface DataRows {
+  ef_code: string;
+  table: string;
+  key: string[];
+  columns: TemplateColumn[];
+  header: string[];
+  extra_columns: string[];
+  rows: string[][];
+}
+
+export async function fetchDataRows(token: string, efCode: string, table: string): Promise<DataRows> {
+  const { data } = await apiClient.get<DataRows>("/api/admin/data/rows", {
+    headers: { Authorization: `Bearer ${token}` },
+    params: { ef_code: efCode, table: table || undefined },
+  });
+  return data;
+}
+
+/** 붙여넣은 탭 구분 텍스트를 검증(check=true) 또는 반영(check=false). 행 편집도 고친 행만 같은 형식으로 보낸다. */
 export async function importPastedData(
   token: string,
   params: { text: string; efCode: string; table: string; replace: boolean; check: boolean }

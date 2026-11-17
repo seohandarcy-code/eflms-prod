@@ -1,9 +1,10 @@
-"""관리자 화면의 데이터 입력·내보내기 (Stage 16-2/16-3, 16-6 붙여넣기).
+"""관리자 화면의 데이터 입력·내보내기 (Stage 16-2/16-3, 16-6 붙여넣기, 18 행 편집).
 
 명령줄(`import_data`·`import_reference`)과 **같은 서비스**를 그대로 부른다 — 검증·계산·참고표 재계산·
 전체 rollback 규칙이 CLI와 웹에서 똑같다. 여기서는 붙여넣은 내용(탭 구분 텍스트)을 임시 파일로 넘기고, 결과를
 화면용 dict로 바꾸고(검증 통과 시 행별 추가/갱신 구분 포함), 입력 양식을 알려주고, 지금 DB 내용을 입력파일과
-같은 dat 형식으로 꺼내는 일만 한다.
+같은 dat 형식으로 꺼내는 일만 한다. 행 편집(Stage 18)은 같은 내용을 표(JSON)로 돌려주고, 저장은 화면이 고친 행만
+탭 구분 텍스트로 만들어 붙여넣기와 같은 `import_text`(추가·갱신)로 보낸다 — 저장 경로가 따로 없다.
 
 리셋(유형·참고표 비우기)은 실수 시 피해가 커서 웹에 두지 않는다 — 명령줄로만.
 """
@@ -206,10 +207,10 @@ def _to_dat(header: list[str], rows: list[list[str]]) -> str:
     return "\n".join("\t".join(r) for r in [header, *rows]) + "\n"
 
 
-async def export_equipment(session: AsyncSession, ef_code: str) -> tuple[str, int]:
-    """유형의 지금 설비 데이터를 입력파일과 같은 dat로 — 그대로 다시 넣을 수 있다(교체·백업용).
+async def _equipment_table(session: AsyncSession, ef_code: str) -> tuple[list[str], list[list[str]]]:
+    """유형의 지금 설비 데이터를 입력파일 칸 규칙대로 — (헤더, 행 목록). 내려받기와 행 편집이 같이 쓴다.
 
-    헤더 = 유형의 입력 컬럼 + 임포트 때 보관한 미등록 컬럼(있으면). 반환: (dat 텍스트, 설비 수).
+    헤더 = 유형의 입력 컬럼 + 임포트 때 보관한 미등록 컬럼(있으면).
     """
     module = _module_or_error(ef_code)
     input_names = [col["name"] for col in module.INPUT_COLUMNS]
@@ -245,14 +246,47 @@ async def export_equipment(session: AsyncSession, ef_code: str) -> tuple[str, in
             "" if (value := own_extras.get(name)) is None else _format_cell(value) for name in extra_names
         ]
         rows.append(cells)
-    return _to_dat(input_names + extra_names, rows), len(rows)
+    return input_names + extra_names, rows
 
 
-async def export_reference(session: AsyncSession, ef_code: str, table: str) -> tuple[str, int]:
-    """참고표를 `import_reference`에 그대로 넣을 수 있는 dat로. 반환: (dat 텍스트, 행 수)."""
+async def _reference_table(session: AsyncSession, ef_code: str, table: str) -> tuple[list[str], list[list[str]]]:
     module = _module_or_error(ef_code)
     spec = _reference_spec_or_error(module, table)
     names = [col["name"] for col in spec["columns"]]
     table_rows = (await load_reference(session, module))[table]
-    rows = [[_format_cell(row[n]) for n in names] for row in table_rows]
-    return _to_dat(names, rows), len(rows)
+    return names, [[_format_cell(row[n]) for n in names] for row in table_rows]
+
+
+async def export_equipment(session: AsyncSession, ef_code: str) -> tuple[str, int]:
+    """유형의 지금 설비 데이터를 입력파일과 같은 dat로 — 그대로 다시 넣을 수 있다(교체·백업용). 반환: (dat 텍스트, 설비 수)."""
+    header, rows = await _equipment_table(session, ef_code)
+    return _to_dat(header, rows), len(rows)
+
+
+async def export_reference(session: AsyncSession, ef_code: str, table: str) -> tuple[str, int]:
+    """참고표를 `import_reference`에 그대로 넣을 수 있는 dat로. 반환: (dat 텍스트, 행 수)."""
+    header, rows = await _reference_table(session, ef_code, table)
+    return _to_dat(header, rows), len(rows)
+
+
+async def list_rows(session: AsyncSession, ef_code: str, table: str | None) -> dict[str, Any]:
+    """행 편집(Stage 18)용 지금 데이터 — 내려받기와 같은 칸 값(null=N/A, 날짜 YYYY-MM-DD)을 표로.
+
+    `key`(같은 행 판정 칸)는 화면이 기존 행에서 잠근다 — 바꾸면 이름 변경이 아니라 새 행 추가가 되기 때문.
+    `columns`는 붙여넣기 양식과 같은 컬럼 설명, `extra_columns`는 양식에 없는(값만 보관하는) 칸.
+    """
+    spec = template(ef_code, table)
+    if table:
+        header, rows = await _reference_table(session, ef_code, table)
+    else:
+        header, rows = await _equipment_table(session, ef_code)
+    known = {c["name"] for c in spec["columns"]}
+    return {
+        "ef_code": ef_code,
+        "table": table or "",
+        "key": spec["key"],
+        "columns": spec["columns"],
+        "header": header,
+        "extra_columns": [name for name in header if name not in known],
+        "rows": rows,
+    }

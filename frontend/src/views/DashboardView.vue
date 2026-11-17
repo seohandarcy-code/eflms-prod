@@ -7,6 +7,7 @@ import EquipmentCard from "../components/EquipmentCard.vue";
 import EquipmentListTable from "../components/EquipmentListTable.vue";
 import EquipmentDetailPanel from "../components/EquipmentDetailPanel.vue";
 import MultiSelectFilter from "../components/MultiSelectFilter.vue";
+import SelectedFacilityCard from "../components/SelectedFacilityCard.vue";
 import { getEvidence, getReasonsByAxis } from "../utils/scoreBreakdown";
 import type { ReasonsByAxis } from "../utils/scoreBreakdown";
 import { formatMonth } from "../utils/formatDate";
@@ -245,13 +246,23 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
 
     <div class="body">
       <aside class="rail">
-        <MultiSelectFilter
-          label="설비유형"
-          :options="equipmentTypeOptions"
-          :model-value="store.equipmentTypeFilters"
-          all-label="전체 설비유형"
-          @update:model-value="store.setEquipmentTypeFilters"
-        />
+        <div class="rail-group">
+          <MultiSelectFilter
+            label="설비유형"
+            :options="equipmentTypeOptions"
+            :model-value="store.equipmentTypeFilters"
+            all-label="전체 설비유형"
+            help-to="/guide/facilities"
+            help-title="설비 안내 보기"
+            help-caption="전력이 흐르는 순서와 설비별 역할을 그림과 표로 볼 수 있어요"
+            @update:model-value="store.setEquipmentTypeFilters"
+          />
+          <SelectedFacilityCard
+            :selected="store.equipmentTypeFilters"
+            :items="store.equipmentList"
+            :type-names="store.typeNames"
+          />
+        </div>
 
         <MultiSelectFilter
           label="사업장"
@@ -286,12 +297,12 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
               <div class="kpi-sub">{{ statusLabel("normal") }} 기준 충족</div>
             </div>
             <div class="card kpi">
-              <div class="kpi-label">교체검토 설비</div>
+              <div class="kpi-label">교체검토 필요설비</div>
               <div class="kpi-value" :style="{ color: statusColor('review') }">{{ reviewCount }}<span class="unit">대</span></div>
               <div class="kpi-sub">POF 기준 경계 구간</div>
             </div>
             <div class="card kpi">
-              <div class="kpi-label">즉시교체 설비</div>
+              <div class="kpi-label">즉시교체 필요설비</div>
               <div class="kpi-value" :style="{ color: statusColor('replace') }">{{ replaceCount }}<span class="unit">대</span></div>
               <div class="kpi-sub">POF 기준 미달</div>
             </div>
@@ -321,7 +332,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
           <div class="risk-panel">
             <div class="risk-header">
               <div class="risk-count">{{ store.needsInspectionList.length }}<span class="risk-label">건 점검필요</span></div>
-              <div class="risk-desc">교체검토(노랑)·즉시교체(빨강) 설비를 표시</div>
+              <div class="risk-desc">교체검토 필요설비(노랑)·즉시교체 필요설비(빨강)를 표시</div>
             </div>
             <div class="risk-body">
               <div class="chart-col">
@@ -526,7 +537,8 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   flex: 1;
 }
 .rail {
-  width: 224px;
+  /* 넓은 화면에서 확실히 넓어지고(1920px → 346px), 노트북 화면에선 차트를 덜 좁히도록 화면 폭에 비례(Stage 17-4). */
+  width: clamp(280px, 18vw, 360px);
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
@@ -534,6 +546,11 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   background: #fff;
   border-right: 1px solid #e2e5ea;
   padding: 24px 20px;
+}
+.rail-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .admin-link {
   /* .rail이 .main과 같은 높이로 늘어나므로(사이드바 배경을 끝까지 채우기 위함),
@@ -638,7 +655,8 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
 .risk-body {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(380px, 1.3fr);
-  height: 540px;
+  /* 차트(480px) + 아래 설명 최대 4줄(1366px 화면 · 전체 선택)까지 잘리지 않게(Stage 17). */
+  height: 580px;
 }
 .chart-col {
   padding: 18px 10px 8px 18px;

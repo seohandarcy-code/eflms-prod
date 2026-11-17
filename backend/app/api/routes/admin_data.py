@@ -3,6 +3,7 @@
 - `GET  /api/admin/data/targets`  — 설비유형·참고표 목록과 현재 건수
 - `GET  /api/admin/data/template` — 붙여넣기 양식(헤더·컬럼 설명·허용값)
 - `POST /api/admin/data/import`   — 붙여넣은 탭 구분 텍스트(JSON). `check=true`면 검증만(+행별 추가/갱신), 아니면 반영
+- `GET  /api/admin/data/rows`     — 지금 데이터를 표(JSON)로 — 행 편집(Stage 18). 저장은 고친 행만 `/import`로
 - `GET  /api/admin/data/export`   — 지금 DB 내용을 입력파일과 같은 dat로 내려받기
 - `GET  /api/admin/data/export-sql` — 전체 DB를 psql로 복원할 수 있는 PostgreSQL용 .sql로 내려받기(Stage 16-8)
 
@@ -40,6 +41,14 @@ class DataImportRequest(BaseModel):
 async def get_template(ef_code: str, table: str = "") -> dict:
     try:
         return data_admin_service.template(ef_code, table or None)
+    except DataAdminError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/rows")
+async def list_rows(ef_code: str, table: str = "", session: AsyncSession = Depends(get_session)) -> dict:
+    try:
+        return await data_admin_service.list_rows(session, ef_code.strip(), table.strip() or None)
     except DataAdminError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

@@ -259,3 +259,101 @@ async def test_template_lists_header_and_rules(client, admin_headers):
     assert (await client.get("/api/admin/data/template", params={"ef_code": "EF99"}, headers=headers)).status_code == 404
     resp = await client.get("/api/admin/data/template", params={"ef_code": "EF1", "table": "x"}, headers=headers)
     assert resp.status_code == 404
+
+
+# --- 행 편집 (Stage 18) ---
+
+
+def _tsv(header, rows):
+    return "\n".join("\t".join(r) for r in [header, *rows]) + "\n"
+
+
+async def test_rows_match_export_for_every_type_and_reference(client, admin_headers, session_factory):
+    """행 편집 표는 내려받기 dat와 같은 내용이다(같은 함수) — 칸 설명·판정 칸도 양식과 같다."""
+    headers, _ = admin_headers
+    await _seed(session_factory, [c for c in registered_codes() if c != "EF1"], rows=4)
+
+    targets = [(code, "") for code in registered_codes()] + [("EF7", "discharge_history"), ("EF7", "temp_decay_coef")]
+    for code, table in targets:
+        params = {"ef_code": code, "table": table}
+        body = (await client.get("/api/admin/data/rows", params=params, headers=headers)).json()
+        dat = (await client.get("/api/admin/data/export", params=params, headers=headers)).content.decode("utf-8-sig")
+        lines = [line.split("\t") for line in dat.splitlines()]
+        assert body["header"] == lines[0], (code, table)
+        assert body["rows"] == lines[1:], (code, table)
+        tpl = (await client.get("/api/admin/data/template", params=params, headers=headers)).json()
+        assert body["key"] == tpl["key"] and body["columns"] == tpl["columns"]
+        assert body["extra_columns"] == []
+
+
+async def test_rows_api_errors_and_permission(client, admin_headers):
+    headers, store = admin_headers
+    assert (await client.get("/api/admin/data/rows", params={"ef_code": "EF99"}, headers=headers)).status_code == 404
+    resp = await client.get("/api/admin/data/rows", params={"ef_code": "EF7", "table": "nope"}, headers=headers)
+    assert resp.status_code == 404
+    user_token, _ = store.issue_session("user")
+    resp = await client.get("/api/admin/data/rows", params={"ef_code": "EF1"}, headers={"Authorization": f"Bearer {user_token}"})
+    assert resp.status_code == 403
+
+
+async def test_editing_one_row_updates_only_that_equipment(client, admin_headers, session_factory):
+    """고친 행만 보내면(추가·갱신) 그 설비만 바뀌고 나머지 설비 점수와 건수는 그대로다."""
+    headers, _ = admin_headers
+    await _seed(session_factory, ["EF2"], rows=6)
+    body = (await client.get("/api/admin/data/rows", params={"ef_code": "EF2"}, headers=headers)).json()
+    header, rows = body["header"], body["rows"]
+    key_idx = [header.index(k) for k in body["key"]]
+    # 행마다 값이 다른 칸을 골라, 0번 행 값을 다른 행의 (유효한) 값으로 바꾼다
+    ci = next(i for i in range(len(header)) if i not in key_idx and rows[0][i] != rows[1][i])
+    edited = list(rows[0])
+    edited[ci] = rows[1][ci]
+    before = await _scores(client, "EF2")
+    target = (rows[0][key_idx[0]], rows[0][key_idx[1]])
+
+    check = (await _upload(client, headers, _tsv(header, [edited]), "EF2")).json()
+    assert check["ok"], check["row_errors"][:3]
+    assert check["row_actions"] == [{"row_number": 2, "action": "갱신"}]
+    applied = (await _upload(client, headers, _tsv(header, [edited]), "EF2", check=False)).json()
+    assert applied["ok"] and applied["imported_rows"] == 1
+
+    after_rows = (await client.get("/api/admin/data/rows", params={"ef_code": "EF2"}, headers=headers)).json()["rows"]
+    assert len(after_rows) == len(rows)
+    changed = next(r for r in after_rows if (r[key_idx[0]], r[key_idx[1]]) == target)
+    assert changed[ci] == edited[ci]
+    after = await _scores(client, "EF2")
+    assert [s for s in after if s[:2] != target] == [s for s in before if s[:2] != target]
+
+
+async def test_duplicated_row_with_new_name_is_added(client, admin_headers):
+    headers, _ = admin_headers
+    body = (await client.get("/api/admin/data/rows", params={"ef_code": "EF1"}, headers=headers)).json()
+    header = body["header"]
+    new_row = list(body["rows"][0])
+    new_row[header.index(body["key"][1])] = "TR_NEW_ROW"
+
+    check = (await _upload(client, headers, _tsv(header, [new_row]), "EF1")).json()
+    assert check["ok"] and check["row_actions"] == [{"row_number": 2, "action": "추가"}]
+    applied = (await _upload(client, headers, _tsv(header, [new_row]), "EF1", check=False)).json()
+    assert applied["ok"]
+    rows = (await client.get("/api/admin/data/rows", params={"ef_code": "EF1"}, headers=headers)).json()["rows"]
+    assert len(rows) == len(body["rows"]) + 1
+
+
+async def test_editing_reference_row_updates_by_key(client, admin_headers, session_factory):
+    headers, _ = admin_headers
+    await _seed(session_factory, ["EF7"], rows=3)
+    params = {"ef_code": "EF7", "table": "temp_decay_coef"}
+    body = (await client.get("/api/admin/data/rows", params=params, headers=headers)).json()
+    header, rows = body["header"], body["rows"]
+    key_idx = [header.index(k) for k in body["key"]]
+    ci = next(i for i in range(len(header)) if i not in key_idx and rows[0][i] != rows[1][i])
+    edited = list(rows[0])
+    edited[ci] = rows[1][ci]
+
+    check = (await _upload(client, headers, _tsv(header, [edited]), "EF7", table="temp_decay_coef")).json()
+    assert check["ok"], check["row_errors"][:3]
+    assert check["row_actions"][0]["action"] == "갱신"
+    applied = (await _upload(client, headers, _tsv(header, [edited]), "EF7", table="temp_decay_coef", check=False)).json()
+    assert applied["ok"] and applied["updated_rows"] == 1 and applied["table_rows_after"] == len(rows)
+    after = (await client.get("/api/admin/data/rows", params=params, headers=headers)).json()["rows"]
+    assert edited in after and rows[0] not in after

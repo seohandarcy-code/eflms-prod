@@ -1,9 +1,10 @@
 <script setup lang="ts">
-// 관리자 "데이터 입력" 탭 (Stage 16-2/16-3, 16-6 붙여넣기) —
-// 대상·방식 선택 → ① 붙여넣기 → ② 검증 → ③ 입력값 미리보기 → ④ 확정 반영, 그리고 현재 데이터 내려받기.
+// 관리자 "데이터 입력" 탭 (Stage 16-2/16-3, 16-6 붙여넣기, 18 행 편집) —
+// 대상·방식 선택 → 입력 방법: 붙여넣기(① 붙여넣기 → ② 검증 → ③ 입력값 미리보기 → ④ 확정 반영) 또는
+// 행 편집(DataRowEditor — 지금 데이터를 표로 고치고 고친 행만 같은 검증·반영으로), 그리고 현재 데이터 내려받기.
 // 검증·계산 규칙은 명령줄(import_data / import_reference)과 같다 — 백엔드가 같은 서비스를 부른다.
 // 리셋(전체 비우기)은 일부러 없다 — 명령줄로만.
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch, type Ref } from "vue";
 import {
   downloadDataExport,
   downloadFullSqlDump,
@@ -13,9 +14,10 @@ import {
   type DataTarget,
   type DataTemplate,
   type ImportResultBody,
-  type TemplateColumn,
 } from "../api/admin";
+import DataRowEditor from "./DataRowEditor.vue";
 import { useAuthStore } from "../stores/auth";
+import { actionCountsOf, applyLines, DTYPE_LABEL, naSummary, ruleText, warningsOf } from "../utils/dataAdmin";
 import { decodeFileBytes, errorKey, parsePasted, type PastedRow, type PastedTable } from "../utils/pasteData";
 
 const auth = useAuthStore();
@@ -29,6 +31,10 @@ const replace = ref(false);
 const text = ref("");
 const fileInput = ref<HTMLInputElement | null>(null);
 const confirmReplace = ref(false);
+// 입력 방법(Stage 18): 붙여넣기 / 행 편집. 행 편집은 추가·갱신만(교체는 붙여넣기에서만).
+const inputMode = ref<"paste" | "grid">("paste");
+// 행 편집에서 저장 안 한 행 수 — 대상·방법을 바꿀 때 확인을 받는다
+const editorDirty = ref(0);
 
 const template = ref<DataTemplate | null>(null);
 const showTemplate = ref(false);
@@ -89,12 +95,7 @@ const previewRows = computed<PastedRow[]>(() => {
   if (!errorRows.value.size) return rows;
   return [...rows.filter((r) => errorRows.value.has(r.rowNumber)), ...rows.filter((r) => !errorRows.value.has(r.rowNumber))];
 });
-const actionCounts = computed(() => {
-  let add = 0;
-  let update = 0;
-  for (const a of checkResult.value?.row_actions ?? []) a.action === "갱신" ? update++ : add++;
-  return { add, update };
-});
+const actionCounts = computed(() => actionCountsOf(checkResult.value));
 const canApply = computed(
   () => !!checkResult.value?.ok && !busy.value && (!replace.value || confirmReplace.value)
 );
@@ -126,6 +127,38 @@ function resetCheck() {
   confirmReplace.value = false;
   requestError.value = null;
 }
+
+// 행 편집에 저장 안 한 변경이 있으면 설비유형·대상·입력 방법을 바꾸기 전에 확인한다 — 취소하면 원래 값으로 되돌린다.
+// flush: "sync"로 다른 watcher(대상 초기화·양식 로드)보다 먼저 돈다. 확인하면 행 편집이 새 대상으로 다시 불러오므로
+// 수를 바로 0으로 둬서(대상 초기화로 인한) 두 번째 확인이 뜨지 않게 한다.
+function guardChange<T>(source: Ref<T>) {
+  let reverting = false;
+  watch(
+    source,
+    (_next, prev) => {
+      if (reverting) {
+        reverting = false;
+        return;
+      }
+      if (editorDirty.value === 0) return;
+      if (window.confirm(`행 편집에 저장하지 않은 변경 ${editorDirty.value}행이 있습니다. 버리고 바꿀까요?`)) {
+        editorDirty.value = 0;
+      } else {
+        reverting = true;
+        source.value = prev;
+      }
+    },
+    { flush: "sync" },
+  );
+}
+guardChange(efCode);
+guardChange(table);
+guardChange(inputMode);
+
+// 행 편집은 추가·갱신만 — 교체를 고른 채 행 편집으로 오면 추가·갱신으로 돌린다
+watch(inputMode, (mode) => {
+  if (mode === "grid") replace.value = false;
+});
 
 // 대상·방식·내용이 바뀌면 이전 검증은 무효 — 같은 조건으로 다시 검증해야 확정할 수 있다.
 watch([efCode, table, replace, text], resetCheck);
@@ -242,42 +275,6 @@ async function onFullDump() {
   }
 }
 
-function ruleText(col: TemplateColumn): string {
-  const parts: string[] = [];
-  if (col.choices) parts.push(col.choices.join(" / "));
-  if (col.min !== undefined && col.max !== undefined) parts.push(`${col.min} ~ ${col.max}`);
-  else if (col.min !== undefined) parts.push(`${col.min} 이상`);
-  else if (col.max !== undefined) parts.push(`${col.max} 이하`);
-  if (col.gt !== undefined) parts.push(`${col.gt} 초과`);
-  return parts.join(", ");
-}
-
-const DTYPE_LABEL: Record<string, string> = { str: "문자", int: "정수", float: "숫자", date: "날짜" };
-
-function applyLines(result: ImportResultBody): string[] {
-  if (result.kind === "equipment") {
-    const lines = [`${result.imported_rows ?? 0}건 반영 완료`];
-    if (result.replace) lines.push(`기존 설비 ${result.replaced_rows ?? 0}건을 지우고 교체했습니다.`);
-    return lines;
-  }
-  return [
-    `추가 ${result.inserted_rows ?? 0}행 · 갱신 ${result.updated_rows ?? 0}행` +
-      (result.replace ? ` · 삭제 ${result.deleted_rows ?? 0}행` : "") +
-      ` → 현재 ${result.table_rows_after ?? 0}행`,
-    `설비 ${result.recalculated ?? 0}건의 점수를 다시 계산했습니다.`,
-  ];
-}
-
-function warningsOf(result: ImportResultBody): string[] {
-  return [...(result.reference_warnings ?? []), ...(result.warnings ?? [])];
-}
-
-function naSummary(result: ImportResultBody): string {
-  return Object.entries(result.na_values ?? {})
-    .map(([col, n]) => `${col} ${n}칸`)
-    .join(", ");
-}
-
 function rowErrorsWithoutCell(rowNumber: number): string[] {
   // 칸에 표시할 수 없는 오류(행 전체·중복·미리보기에 없는 컬럼)
   const header = checkedPreview.value?.header ?? [];
@@ -299,7 +296,12 @@ onMounted(async () => {
     <section class="card">
       <h3>데이터 입력</h3>
       <p class="card-hint">
-        엑셀에서 <b>헤더(첫 행) 포함</b> 범위를 복사해 붙여넣고 <b>검증</b> → 미리보기 확인 → <b>확정 반영</b> 순서로 넣습니다.
+        <template v-if="inputMode === 'paste'">
+          엑셀에서 <b>헤더(첫 행) 포함</b> 범위를 복사해 붙여넣고 <b>검증</b> → 미리보기 확인 → <b>확정 반영</b> 순서로 넣습니다.
+        </template>
+        <template v-else>
+          지금 들어 있는 데이터를 표에서 <b>칸 단위로 고치거나 행을 추가</b>하고 <b>변경 검증</b> → <b>확정 반영</b> 순서로 넣습니다.
+        </template>
         오류가 한 행이라도 있으면 아무것도 반영하지 않습니다.
       </p>
 
@@ -334,13 +336,37 @@ onMounted(async () => {
               <input v-model="replace" type="radio" :value="false" :disabled="busy" />
               추가·갱신 <span class="choice-note">같은 {{ table ? "행" : "설비" }}는 갱신, 새 것은 추가</span>
             </label>
-            <label class="choice">
-              <input v-model="replace" type="radio" :value="true" :disabled="busy" />
-              교체 <span class="choice-note">기존 {{ existingCount }}{{ unit }}을 지우고 붙여넣은 내용으로</span>
+            <label class="choice" :class="{ 'choice-off': inputMode === 'grid' }">
+              <input v-model="replace" type="radio" :value="true" :disabled="busy || inputMode === 'grid'" />
+              교체
+              <span class="choice-note">
+                {{ inputMode === "grid" ? "행 편집에서는 쓰지 않음(붙여넣기에서만)" : `기존 ${existingCount}${unit}을 지우고 붙여넣은 내용으로` }}
+              </span>
             </label>
           </div>
         </div>
+        <div class="field">
+          <span class="field-label">입력 방법</span>
+          <div class="mode-tabs" role="tablist" aria-label="입력 방법">
+            <button type="button" role="tab" :aria-selected="inputMode === 'paste'" :class="{ active: inputMode === 'paste' }" :disabled="busy" @click="inputMode = 'paste'">
+              붙여넣기
+            </button>
+            <button type="button" role="tab" :aria-selected="inputMode === 'grid'" :class="{ active: inputMode === 'grid' }" :disabled="busy" @click="inputMode = 'grid'">
+              행 편집
+            </button>
+          </div>
+        </div>
       </div>
+
+      <DataRowEditor
+        v-if="inputMode === 'grid' && efCode"
+        :ef-code="efCode"
+        :table="table"
+        @dirty="(n) => (editorDirty = n)"
+        @applied="loadTargets"
+      />
+
+      <template v-if="inputMode === 'paste'">
 
       <!-- ① 붙여넣기 -->
       <div class="step">
@@ -507,6 +533,7 @@ onMounted(async () => {
           <li v-for="(w, i) in warningsOf(applyResult)" :key="i">{{ w }}</li>
         </ul>
       </div>
+      </template>
     </section>
 
     <section class="card">
@@ -634,6 +661,37 @@ select {
 .choice-note {
   color: #8891a0;
   font-size: 12px;
+}
+.choice-off {
+  color: #b4bac4;
+  cursor: default;
+}
+.mode-tabs {
+  display: inline-flex;
+  border: 1px solid #e2e5ea;
+  border-radius: 6px;
+  overflow: hidden;
+  width: fit-content;
+}
+.mode-tabs button {
+  border: none;
+  background: #fff;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: #4a5361;
+  cursor: pointer;
+}
+.mode-tabs button + button {
+  border-left: 1px solid #e2e5ea;
+}
+.mode-tabs button.active {
+  background: #0f8a8a;
+  color: #fff;
+  font-weight: 600;
+}
+.mode-tabs button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 .step {
   margin-top: 18px;

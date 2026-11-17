@@ -21,7 +21,7 @@ npm run dev
 
 - `src/router/` — vue-router
 - `src/stores/` — Pinia 스토어
-- `src/views/` — 화면 단위 컴포넌트 (`DashboardView.vue` 메인 대시보드, `GuideView.vue` — POF/COF/DOF 지표·판정기준 안내 `/guide`)
+- `src/views/` — 화면 단위 컴포넌트 (`DashboardView.vue` 메인 대시보드, `GuideView.vue` — POF/COF/DOF 지표·판정기준 안내 `/guide`, `FacilityGuideView.vue` — 설비 안내 `/guide/facilities`. 두 안내 페이지는 `components/GuideTabs.vue` 머리글을 같이 쓴다)
 - `src/api/client.ts` — axios 인스턴스, `VITE_API_BASE_URL` 사용
 - `src/components/detail/` — 설비유형별 상세 본문(`Ef1DetailBody.vue` ~ `Ef7DetailBody.vue`). `EquipmentDetailPanel.vue`는 공통 헤더·점수·차트만 갖고, `type_detail.ef_code`로 본문을 고른다. 본문은 "원본 데이터 전체 보기" 펼침 영역만 맡고(요약 4줄은 2026-10-29 제거 — 패널 왼쪽 칸은 POF·COF·DOF 막대만), `raw-*` 클래스 스타일은 패널이 `:deep()`으로 입힌다.
 
@@ -35,13 +35,20 @@ npm run dev
 - 점수 지표(POF·COF·DOF, 감점 항목, 종합점수)는 모든 유형에서 소수 첫째 자리로 보여준다(Stage 13-0) — `utils/formatValue.ts`의 `formatScore()`, 원본 데이터 보기의 감점 칸은 `na(…, { digits: 1 })`.
 - 유형별 입력값·파생값은 null(입력파일 N/A)일 수 있다(Stage 11) — 상세 본문·근거 툴팁·부제는 값을 `utils/formatValue.ts`의 `na()`로 감싸 "N/A"로 보여준다. null에 `toFixed`/`toLocaleString`을 직접 걸지 않는다(타입이 `number | null`이라 vue-tsc가 잡는다).
 
+## 설비 안내·사진 (Stage 17)
+
+- 설비 설명 문구와 사진 연결은 `utils/facilityInfo.ts`(`FACILITY_INFO`, EF 코드 키) 한 곳 — 이름은 `ef_name`(API)을 쓰고 여기 두지 않는다. 사진은 `assets/facilities/ef<N>.png`(정지 — 표·계통도) / `.webp`(움직이는 사진 기본 — 대시보드 "선택한 설비" 카드(1개·여러 개 모두)·안내 페이지 상세 카드, GIF의 약 1/9 크기) / `.gif`(WebP를 못 쓰는 브라우저용 대체). 고르는 규칙은 `components/FacilityImage.vue` 한 곳(움직임 줄이기 설정 → PNG, 받는 동안 PNG 배경) — 화면에서 `<img>`로 직접 넣지 않는다. 원본은 `design/elec_fac_img`(git 제외), 아래 이름표를 잘라낸 496×366 가공본만 둔다.
+- 대시보드 "선택한 설비" 카드(`SelectedFacilityCard.vue`)의 숫자는 `store.equipmentList`(사업장 필터 적용) 기준 — KPI와 같아야 한다. 안내 페이지 현황은 `store.allEquipment`(전체 사업장).
+- 정보가 없는 유형도 깨지지 않는다(카드 아이콘, 안내 페이지 이름·항목만). 계통도(`FacilityFlowDiagram.vue`)는 7개 유형 고정 배치라 새 유형은 배치를 직접 추가해야 나온다.
+- "이 시스템이 보는 항목"은 `breakdownFor(code).pof` 라벨 — 문구로 하드코딩하지 않는다.
+
 ## 로그인·역할 (Stage 16-1)
 
 - `stores/auth.ts`가 세션(토큰·역할 `admin`/`user`/`general`·이름)을 들고 **탭 단위 `sessionStorage`**에 보관한다(새로고침 유지, 탭 닫으면 사라짐). getter `isAdmin`(모든 관리자 탭)·`isRegistered`(테이블 조회).
 - SSO 콜백 프래그먼트(`#token=…&role=…&name=…` / `#error=코드&detail=…`)는 `main.ts`가 앱 시작 때 `consumeCallbackHash()`로 한 번 읽고, 라우터 첫 이동이 끝난 뒤 `router.replace`로 주소창에서 지운다(`history.replaceState`로 먼저 지우면 vue-router가 해시를 되살린다) — 화면마다 따로 읽지 않는다. 오류 문구는 `auth.ssoError`.
 - `api/client.ts`의 `installAuthInterceptors()`가 모든 요청에 토큰을 싣고, 보낸 토큰이 401이면 세션을 지운다(→ 로그인 화면).
 - `App.vue`: `auth-config`의 `dashboard_login_required`(AUTH_MODE=sso)이고 미로그인이면 `/admin` 외 화면 대신 `LoginGate.vue`를 보여준다. SSO 버튼은 `ssoLoginUrl(현재 경로)`로 돌아올 화면을 넘긴다.
-- 관리자 화면 탭: 테이블 조회 / 데이터 입력(`DataImportPanel.vue` — 붙여넣기 → 검증 → 입력값 미리보기 → 확정, 내려받기) / 접근 권한 관리 — 뒤의 둘은 admin만. 테이블 조회는 admin이면 `SqlQueryPanel.vue`(SQL 입력창 + 결과 그리드, Stage 16-5), 등록 사용자는 테이블을 눌러 보는 페이지 조회. general 역할은 "조회 전용 계정" 안내만 본다.
+- 관리자 화면 탭: 테이블 조회 / 데이터 입력(`DataImportPanel.vue` — 입력 방법 붙여넣기(붙여넣기 → 검증 → 입력값 미리보기 → 확정) 또는 행 편집(`DataRowEditor.vue`, Stage 18 — 지금 데이터를 표로 고치고 고친·추가 행만 같은 `/import` 추가·갱신으로, 순수 함수 `utils/rowEditor.ts`), 내려받기. 데이터 입력 탭은 `KeepAlive`라 다른 탭에 다녀와도 내용 유지) / 접근 권한 관리 — 뒤의 둘은 admin만. 테이블 조회는 admin이면 `SqlQueryPanel.vue`(SQL 입력창 + 결과 그리드, Stage 16-5), 등록 사용자는 테이블을 눌러 보는 페이지 조회. general 역할은 "조회 전용 계정" 안내만 본다.
 - 붙여넣기 파싱은 `utils/pasteData.ts`(백엔드와 같은 규칙 — 빈 줄은 건너뛰되 줄 번호 유지, 서버 오류 `row_number`와 미리보기 행이 맞아야 함). SQL 화면 순수 함수는 `utils/sqlResult.ts`. 데이터 입력 탭 내려받기 카드 맨 위에 전체 DB .sql 버튼(`downloadFullSqlDump`, Stage 16-8).
 
 ## 컨벤션

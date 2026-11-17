@@ -127,12 +127,15 @@ onMounted(async () => {
           <button type="button" :class="{ active: tab === 'access' }" @click="tab = 'access'">접근 권한 관리</button>
         </div>
 
+        <!-- 데이터 입력은 다른 탭에 다녀와도 행 편집·붙여넣기 내용이 남게 KeepAlive(Stage 18) -->
+        <KeepAlive>
+          <DataImportPanel v-if="tab === 'data' && auth.isAdmin" />
+        </KeepAlive>
         <AccessUsersPanel v-if="tab === 'access' && auth.isAdmin" />
-        <DataImportPanel v-else-if="tab === 'data' && auth.isAdmin" />
         <!-- 관리자: SQL 조회(Stage 16-5). 등록 사용자: 테이블을 눌러 보는 조회만(아래) -->
-        <SqlQueryPanel v-else-if="auth.isAdmin" :tables="tables" />
+        <SqlQueryPanel v-else-if="tab === 'tables' && auth.isAdmin" :tables="tables" />
 
-        <div v-else class="admin-body">
+        <div v-else-if="!auth.isAdmin" class="admin-body">
           <aside class="table-list">
             <div class="table-list-label">테이블</div>
             <button

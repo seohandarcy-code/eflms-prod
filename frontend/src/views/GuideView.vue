@@ -4,6 +4,7 @@ import { useEquipmentStore } from "../stores/equipment";
 import type { Axis, BreakdownItem } from "../types/equipment";
 import { statusColor, statusLabel } from "../utils/statusStyle";
 import { TYPE_GUIDES } from "../utils/typeGuide";
+import GuideTabs from "../components/GuideTabs.vue";
 
 // 구성 항목은 설비유형별 감점 메타데이터(/api/equipment-types)를 그대로 보여준다(Stage 8-5).
 // 유형별 계산 방법 설명은 utils/typeGuide.ts — 없는 유형은 항목 목록만 나온다.
@@ -27,20 +28,7 @@ function groupItems(items: BreakdownItem[]): { group: string | null; items: Brea
 
 <template>
   <div class="guide">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-          </svg>
-        </div>
-        <div>
-          <div class="title">POF · COF · DOF 지표 설명</div>
-          <div class="subtitle">설비 건전성 점수가 어떻게 매겨지는지 정리한 안내 페이지입니다.</div>
-        </div>
-      </div>
-      <RouterLink to="/" class="back-link">← 대시보드로</RouterLink>
-    </header>
+    <GuideTabs />
 
     <main class="body">
       <section class="card">
@@ -146,51 +134,6 @@ function groupItems(items: BreakdownItem[]): { group: string | null; items: Brea
   background: #f4f5f7;
   font-family: "IBM Plex Sans", system-ui, sans-serif;
   color: #1a2230;
-}
-.topbar {
-  background: #fff;
-  border-bottom: 1px solid #e2e5ea;
-  padding: 24px 32px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.brand-icon {
-  flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
-  background: #0f8a8a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.title {
-  font-size: 24px;
-  font-weight: 700;
-}
-.subtitle {
-  font-size: 14px;
-  color: #8891a0;
-  margin-top: 4px;
-}
-.back-link {
-  font-size: 13px;
-  font-weight: 600;
-  color: #4a5361;
-  text-decoration: none;
-  border: 1px solid #e2e5ea;
-  border-radius: 6px;
-  padding: 7px 14px;
-  white-space: nowrap;
-}
-.back-link:hover {
-  background: #f4f5f7;
 }
 .body {
   max-width: 880px;

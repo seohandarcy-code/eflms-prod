@@ -192,8 +192,8 @@ function buildTrace(list: EquipmentSummary[], selectedId: number | null): Data[]
     buildNotchedBoxEdges(NORMAL_BIG, NORMAL_NOTCH, statusColor("normal"), drawnEdgeKeys),
     buildNotchedBoxEdges(REVIEW_BIG, REVIEW_NOTCH, statusColor("review"), drawnEdgeKeys),
     buildMarkerTrace(normalList, `정상 설비 : ${normalList.length} 건`, statusColor("normal"), 7, selectedId, selectionExists, codes),
-    buildMarkerTrace(reviewList, `교체검토 설비 : ${reviewList.length} 건`, statusColor("review"), 8, selectedId, selectionExists, codes),
-    buildMarkerTrace(replaceList, `즉시교체 설비 : ${replaceList.length} 건`, statusColor("replace"), 9, selectedId, selectionExists, codes),
+    buildMarkerTrace(reviewList, `교체검토 필요설비 : ${reviewList.length} 건`, statusColor("review"), 8, selectedId, selectionExists, codes),
+    buildMarkerTrace(replaceList, `즉시교체 필요설비 : ${replaceList.length} 건`, statusColor("replace"), 9, selectedId, selectionExists, codes),
   ];
 }
 
@@ -297,7 +297,7 @@ const typeLegend = computed(() => {
     </div>
 
     <div style="font-size: 11px; color: #8891a0; padding: 0 8px 6px">
-      ● 정상 {{ normalCount }}대&nbsp;&nbsp;● 교체검토 {{ reviewCount }}대&nbsp;&nbsp;● 즉시교체 {{ replaceCount }}대<template v-if="typeLegend"> · 모양: {{ typeLegend }}</template> · 드래그로 회전 · 오른쪽 드래그로 이동 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택 · 초록 테두리 = 정상 경계 · 노랑 테두리 = 교체검토 경계(그 안쪽은 즉시교체)
+      ● 정상 {{ normalCount }}대&nbsp;&nbsp;● 교체검토 필요설비 {{ reviewCount }}대&nbsp;&nbsp;● 즉시교체 필요설비 {{ replaceCount }}대<template v-if="typeLegend"> · 모양: {{ typeLegend }}</template> · 드래그로 회전 · 오른쪽 드래그로 이동 · 스크롤로 확대/축소 · 점 클릭 시 설비 선택 · 초록 테두리 = 정상 경계 · 노랑 테두리 = 교체검토 경계(그 안쪽은 즉시교체 필요설비)
     </div>
   </div>
 </template>

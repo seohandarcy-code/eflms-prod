@@ -6,6 +6,10 @@ const props = defineProps<{
   options: { value: string; label: string }[];
   modelValue: string[];
   allLabel?: string;
+  // 제목 옆 "?" 안내 링크(Stage 17 — 설비유형 필터 → 설비 안내 페이지). 없으면 표시하지 않는다.
+  helpTo?: string;
+  helpTitle?: string;
+  helpCaption?: string;
 }>();
 const emit = defineEmits<{ "update:modelValue": [values: string[]] }>();
 
@@ -44,7 +48,16 @@ onUnmounted(() => document.removeEventListener("mousedown", onDocMouseDown));
 
 <template>
   <div ref="rootEl" class="msf">
-    <div class="msf-title">{{ label }}</div>
+    <div class="msf-title">
+      {{ label }}
+      <span v-if="helpTo" class="msf-help-wrap">
+        <RouterLink :to="helpTo" class="msf-help" :aria-label="helpTitle ?? `${label} 안내 보기`">?</RouterLink>
+        <span class="msf-tooltip" role="tooltip">
+          <span class="msf-tooltip-title">{{ helpTitle ?? `${label} 안내 보기` }}</span>
+          <span v-if="helpCaption" class="msf-tooltip-caption">{{ helpCaption }}</span>
+        </span>
+      </span>
+    </div>
     <button type="button" class="msf-trigger" :class="{ open }" @click="open = !open">
       <span class="msf-summary">{{ summary }}</span>
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :style="{ transform: open ? 'rotate(180deg)' : 'none' }">
@@ -71,6 +84,69 @@ onUnmounted(() => document.removeEventListener("mousedown", onDocMouseDown));
   text-transform: uppercase;
   color: #8891a0;
   margin-bottom: 8px;
+}
+.msf-help-wrap {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
+.msf-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  border-radius: 50%;
+  border: 1px solid #1b8a5a;
+  color: #1b8a5a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-decoration: none;
+  background: #fff;
+}
+.msf-help:hover,
+.msf-help:focus-visible {
+  background: #1b8a5a;
+  color: #fff;
+}
+.msf-tooltip {
+  position: absolute;
+  z-index: 7;
+  top: calc(100% + 8px);
+  left: -60px;
+  width: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid #1b8a5a;
+  border-radius: 9px;
+  padding: 10px 12px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.14);
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+.msf-help-wrap:hover .msf-tooltip,
+.msf-help-wrap:focus-within .msf-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+.msf-tooltip-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a2230;
+}
+.msf-tooltip-caption {
+  font-size: 11px;
+  font-weight: 500;
+  color: #8891a0;
+  line-height: 1.5;
 }
 .msf-trigger {
   width: 100%;
