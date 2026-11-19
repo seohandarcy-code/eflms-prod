@@ -10,7 +10,7 @@ defineProps<{ typeDetail: Ef3TypeDetail }>();
 
 <template>
   <div class="raw-group">
-    <div class="raw-title">POF 구성</div>
+    <div class="raw-title">POF(설비상태) 구성</div>
     <div class="raw-fields">
       <div class="raw-field"><span>측정일</span><b>{{ na(typeDetail.condition.measured_at) }}</b></div>
       <div class="raw-field"><span>사용연수</span><b>{{ na(typeDetail.score_detail.operation_year, { unit: "년" }) }}</b></div>
@@ -39,7 +39,7 @@ defineProps<{ typeDetail: Ef3TypeDetail }>();
   </div>
 
   <div class="raw-group">
-    <div class="raw-title">COF 구성</div>
+    <div class="raw-title">COF(고장영향성) 구성</div>
     <div class="raw-fields">
       <div class="raw-field"><span>사고영향성용량</span><b>{{ na(typeDetail.score_detail.risk_mva) }}</b></div>
       <div class="raw-field"><span>사고영향성 감점</span><b class="neg">{{ na(typeDetail.score_detail.risk_mva_minus, { digits: 1 }) }}</b></div>
@@ -60,7 +60,7 @@ defineProps<{ typeDetail: Ef3TypeDetail }>();
   </div>
 
   <div class="raw-group">
-    <div class="raw-title">DOF 구성</div>
+    <div class="raw-title">DOF(고장예방력) 구성</div>
     <div class="raw-fields">
       <div class="raw-field"><span>공급신뢰도회선수</span><b>{{ na(typeDetail.design.reliability, { unit: "회선" }) }}</b></div>
       <div class="raw-field"><span>공급신뢰도 감점</span><b class="neg">{{ na(typeDetail.score_detail.reliability_minus, { digits: 1 }) }}</b></div>

@@ -10,7 +10,7 @@ defineProps<{ typeDetail: Ef2TypeDetail }>();
 
 <template>
   <div class="raw-group">
-    <div class="raw-title">POF 구성</div>
+    <div class="raw-title">POF(설비상태) 구성</div>
     <div class="raw-subgrid">
       <div class="raw-subgroup">
         <div class="raw-subtitle">기계적 (합계 {{ na(typeDetail.score_detail.gis_mech_minus, { digits: 1 }) }})</div>
@@ -61,7 +61,7 @@ defineProps<{ typeDetail: Ef2TypeDetail }>();
   </div>
 
   <div class="raw-group">
-    <div class="raw-title">COF 구성</div>
+    <div class="raw-title">COF(고장영향성) 구성</div>
     <div class="raw-fields">
       <div class="raw-field"><span>인입전압 등급</span><b>{{ na(typeDetail.consequence.in_vol) }}</b></div>
       <div class="raw-field"><span>인입전압 감점</span><b class="neg">{{ na(typeDetail.score_detail.in_vol_minus, { digits: 1 }) }}</b></div>
@@ -81,7 +81,7 @@ defineProps<{ typeDetail: Ef2TypeDetail }>();
   </div>
 
   <div class="raw-group">
-    <div class="raw-title">DOF 구성</div>
+    <div class="raw-title">DOF(고장예방력) 구성</div>
     <div class="raw-fields">
       <div class="raw-field"><span>인입선로 등급</span><b>{{ na(typeDetail.design.in_line_num) }}</b></div>
       <div class="raw-field"><span>인입선로 감점</span><b class="neg">{{ na(typeDetail.score_detail.in_line_minus, { digits: 1 }) }}</b></div>

@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import Plotly from "plotly.js-gl3d-dist-min";
 import type { Data, Layout, PlotlyHTMLElement } from "plotly.js";
 import type { EquipmentStatus, EquipmentSummary } from "../types/equipment";
-import { formatScore } from "../utils/formatValue";
+import { AXIS_NAME, formatScore } from "../utils/formatValue";
 import { statusColor, statusLabel } from "../utils/statusStyle";
 
 const props = withDefaults(
@@ -202,16 +202,19 @@ const layout: Partial<Layout> = {
   margin: { l: 0, r: 0, t: 10, b: 0 },
   paper_bgcolor: "rgba(0,0,0,0)",
   scene: {
-    aspectmode: "cube",
-    xaxis: { title: { text: "POF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
-    yaxis: { title: { text: "COF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
-    zaxis: { title: { text: "DOF" }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
+    // 축 이름에 한글을 붙이면서(2026-11-19) 왼쪽 DOF 제목이 잘리지 않도록 상자를 0.8배로 줄이고
+    // 카메라 중심을 살짝 옮겨 그림을 오른쪽으로 민다(1366px 폭까지 세 축 제목이 다 보임).
+    aspectmode: "manual",
+    aspectratio: { x: 0.8, y: 0.8, z: 0.8 },
+    xaxis: { title: { text: `POF(${AXIS_NAME.pof})` }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
+    yaxis: { title: { text: `COF(${AXIS_NAME.cof})` }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
+    zaxis: { title: { text: `DOF(${AXIS_NAME.dof})` }, range: [0, 100], backgroundcolor: "#F4F5F7", gridcolor: "#E2E5EA", zerolinecolor: "#C7CCD3" },
     // 원근 투영(perspective)은 스크롤 확대가 카메라를 시선 방향으로 실제로 이동시키는 방식이라
     // 여러 번 스크롤하면 회전이 섞인 것처럼 느껴지는 부작용이 있다. 직교 투영(orthographic)은
     // 확대가 순수한 배율 변경이라 이 문제가 없다.
     // (plotly.js 타입 정의에 projection이 아직 없어 캐스팅— 런타임에는 정식 지원되는 옵션)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    camera: { eye: { x: 1.4, y: -1.4, z: 1.0 }, projection: { type: "orthographic" } } as any,
+    camera: { eye: { x: 1.36, y: -1.44, z: 1.0 }, center: { x: -0.04, y: -0.04, z: 0 }, projection: { type: "orthographic" } } as any,
   },
 };
 

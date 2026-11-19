@@ -17,7 +17,7 @@ describe("Ef7DetailBody", () => {
       },
     } as unknown as Ef7TypeDetail;
     const wrapper = mount(Ef7DetailBody, { props: { typeDetail } });
-    expect(wrapper.findAll(".raw-title").map((t) => t.text())).toEqual(["POF 구성", "COF 구성", "DOF 구성"]);
+    expect(wrapper.findAll(".raw-title").map((t) => t.text())).toEqual(["POF(설비상태) 구성", "COF(고장영향성) 구성", "DOF(고장예방력) 구성"]);
     expect(wrapper.findAll(".raw-subtitle").map((t) => t.text())).toEqual(["설비정보", "SOH·BMS", "셀·배터리실"]);
     const text = wrapper.text();
     expect(text).toContain("방전인덱스합계103.085");

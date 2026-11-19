@@ -12,7 +12,7 @@ defineProps<{ typeDetail: Ef4TypeDetail }>();
 
 <template>
   <div class="raw-group">
-    <div class="raw-title">POF 구성</div>
+    <div class="raw-title">POF(설비상태) 구성</div>
     <div class="raw-subgrid">
       <div class="raw-subgroup">
         <div class="raw-subtitle">설치위치</div>
@@ -66,7 +66,7 @@ defineProps<{ typeDetail: Ef4TypeDetail }>();
   </div>
 
   <div class="raw-group">
-    <div class="raw-title">COF 구성</div>
+    <div class="raw-title">COF(고장영향성) 구성</div>
     <div class="raw-subgrid">
       <div class="raw-subgroup">
         <div class="raw-subtitle">계통 (합계 {{ na(typeDetail.score_detail.cof_sys_minus, { digits: 1 }) }})</div>
@@ -105,7 +105,7 @@ defineProps<{ typeDetail: Ef4TypeDetail }>();
   </div>
 
   <div class="raw-group">
-    <div class="raw-title">DOF 구성</div>
+    <div class="raw-title">DOF(고장예방력) 구성</div>
     <div class="raw-subgrid">
       <div class="raw-subgroup">
         <div class="raw-subtitle">계통 (합계 {{ na(typeDetail.score_detail.dof_sys_minus, { digits: 1 }) }})</div>

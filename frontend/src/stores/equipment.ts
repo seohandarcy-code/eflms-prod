@@ -2,6 +2,11 @@ import { defineStore } from "pinia";
 import { fetchEquipmentDetail, fetchEquipmentList, fetchEquipmentTypes, fetchSummary } from "../api/equipment";
 import type { Axis, BreakdownItem, EquipmentDetail, EquipmentSummary, EquipmentTypeInfo, SummaryKPI } from "../types/equipment";
 
+// 시작 화면 필터(2026-11-19) — 페이지를 처음 열거나 새로고침하면 이 선택으로 시작한다.
+// 사업장이 데이터에 없으면 선택에서 빠지고, 남는 게 없으면 "전체"가 아니라 데이터가 있는 사업장을 모두 체크한다.
+export const START_FACTORY_FILTERS = ["H1"];
+export const START_EQUIPMENT_TYPE_FILTERS = ["EF4"]; // 수배전반
+
 interface State {
   allEquipment: EquipmentSummary[];
   // 등록된 설비유형과 감점 항목 메타데이터(/api/equipment-types) — 화면 라벨의 단일 원본.
@@ -13,6 +18,8 @@ interface State {
   // 다중 선택. 빈 배열 = 전체(필터 없음).
   factoryFilters: string[];
   equipmentTypeFilters: string[];
+  // 첫 데이터 로드에서 시작 화면 규칙을 적용했는지 — 그 뒤 다시 불러올 때는 사용자의 선택을 덮어쓰지 않는다.
+  startApplied: boolean;
 }
 
 export const useEquipmentStore = defineStore("equipment", {
@@ -23,8 +30,9 @@ export const useEquipmentStore = defineStore("equipment", {
     detailCache: {},
     loading: false,
     error: null,
-    factoryFilters: [],
-    equipmentTypeFilters: [],
+    factoryFilters: [...START_FACTORY_FILTERS],
+    equipmentTypeFilters: [...START_EQUIPMENT_TYPE_FILTERS],
+    startApplied: false,
   }),
   getters: {
     // 사업장·설비유형 다중 선택 필터가 적용된 현재 목록. 서버는 항상 전체를 반환하고,
@@ -69,9 +77,13 @@ export const useEquipmentStore = defineStore("equipment", {
         this.equipmentTypes = types;
         // 다시 불러온 데이터에 없는 사업장은 선택에서 뺀다 — "전체"처럼 보이는데 걸러지는 상황 방지
         const present = new Set(list.map((item) => item.factory_code));
-        if (this.factoryFilters.some((code) => !present.has(code))) {
-          this.factoryFilters = this.factoryFilters.filter((code) => present.has(code));
+        let kept = this.factoryFilters.filter((code) => present.has(code));
+        // 시작 화면에서만: 시작 사업장이 데이터에 하나도 없으면 데이터가 있는 사업장을 모두 체크(A안, 2026-11-19)
+        if (!this.startApplied && kept.length === 0 && this.factoryFilters.length > 0) kept = [...present].sort();
+        if (kept.length !== this.factoryFilters.length || kept.some((code, i) => code !== this.factoryFilters[i])) {
+          this.factoryFilters = kept;
         }
+        this.startApplied = true;
       } catch (err) {
         this.error = err instanceof Error ? err.message : "데이터를 불러오지 못했습니다";
       } finally {

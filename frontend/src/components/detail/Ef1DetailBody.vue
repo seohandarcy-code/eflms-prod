@@ -10,7 +10,7 @@ defineProps<{ typeDetail: Ef1TypeDetail }>();
 
 <template>
         <div class="raw-group">
-          <div class="raw-title">POF 구성</div>
+          <div class="raw-title">POF(설비상태) 구성</div>
           <div class="raw-subgrid">
             <div class="raw-subgroup">
               <div class="raw-subtitle">경과연수</div>
@@ -117,7 +117,7 @@ defineProps<{ typeDetail: Ef1TypeDetail }>();
         </div>
 
         <div class="raw-group">
-          <div class="raw-title">COF 구성</div>
+          <div class="raw-title">COF(고장영향성) 구성</div>
           <div class="raw-fields">
             <div class="raw-field"><span>1차전압</span><b>{{ na(typeDetail.score_detail.first_voltage, { locale: true }) }}</b></div>
             <div class="raw-field"><span>1차전압 감점</span><b class="neg">{{ na(typeDetail.score_detail.first_voltage_minus, { digits: 1 }) }}</b></div>
@@ -137,7 +137,7 @@ defineProps<{ typeDetail: Ef1TypeDetail }>();
         </div>
 
         <div class="raw-group">
-          <div class="raw-title">DOF 구성</div>
+          <div class="raw-title">DOF(고장예방력) 구성</div>
           <div class="raw-fields">
             <div class="raw-field"><span>예비화</span><b>{{ na(typeDetail.design.redundancy) }}</b></div>
             <div class="raw-field"><span>예비화 감점</span><b class="neg">{{ na(typeDetail.score_detail.redundancy_minus, { digits: 1 }) }}</b></div>

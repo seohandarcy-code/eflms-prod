@@ -8,7 +8,7 @@ import {
   type SimulatorForm,
   type SimulatorResult,
 } from "../api/simulator";
-import { formatScore, typeLabel } from "../utils/formatValue";
+import { AXIS_NAME, formatScore, typeLabel } from "../utils/formatValue";
 import { statusBg, statusColor, statusLabel } from "../utils/statusStyle";
 import {
   NA,
@@ -80,9 +80,9 @@ const statusText = computed(() => {
 });
 
 const AXES = [
-  { key: "pof", label: "POF", full: "설비상태" },
-  { key: "cof", label: "COF", full: "고장영향성" },
-  { key: "dof", label: "DOF", full: "고장예방력" },
+  { key: "pof", label: "POF", full: AXIS_NAME.pof },
+  { key: "cof", label: "COF", full: AXIS_NAME.cof },
+  { key: "dof", label: "DOF", full: AXIS_NAME.dof },
 ] as const;
 
 function axisValue(r: SimulatorResult | null, key: "pof" | "cof" | "dof"): number | null {
@@ -389,7 +389,7 @@ function fieldClass(name: string) {
                 <div class="sim-bars">
                   <div v-for="a in AXES" :key="a.key">
                     <div class="sim-bar-head">
-                      <span><b>{{ a.label }}</b> {{ a.full }}</span>
+                      <span><b>{{ a.label }}</b>({{ a.full }})</span>
                       <span>
                         {{ formatScore(axisValue(shown, a.key) ?? 0) }}
                         <span v-if="compare" class="sim-muted">{{ deltaLabel(axisValue(shown, a.key), axisValue(compare, a.key)) }}</span>

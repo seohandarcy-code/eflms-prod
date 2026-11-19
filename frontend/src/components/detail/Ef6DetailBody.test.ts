@@ -13,7 +13,7 @@ describe("Ef6DetailBody", () => {
       score_detail: { cap_stat: null, cap_stat_minus: 0, ex_box_chk_minus: -0.3, capa_times_load_minus: -24.8, age_minus: -16 },
     } as unknown as Ef6TypeDetail;
     const wrapper = mount(Ef6DetailBody, { props: { typeDetail } });
-    expect(wrapper.findAll(".raw-title").map((t) => t.text())).toEqual(["POF 구성", "COF 구성", "DOF 구성"]);
+    expect(wrapper.findAll(".raw-title").map((t) => t.text())).toEqual(["POF(설비상태) 구성", "COF(고장영향성) 구성", "DOF(고장예방력) 구성"]);
     expect(wrapper.find(".raw-subtitle").text()).toBe("설비정보");
     const text = wrapper.text();
     expect(text).toContain("외함점검 감점-0.3");

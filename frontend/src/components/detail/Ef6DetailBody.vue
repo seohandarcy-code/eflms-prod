@@ -13,7 +13,7 @@ defineProps<{ typeDetail: Ef6TypeDetail }>();
 
 <template>
   <div class="raw-group">
-    <div class="raw-title">POF 구성</div>
+    <div class="raw-title">POF(설비상태) 구성</div>
     <div class="raw-subgrid">
       <div class="raw-subgroup">
         <div class="raw-subtitle">설비정보</div>
@@ -70,7 +70,7 @@ defineProps<{ typeDetail: Ef6TypeDetail }>();
   </div>
 
   <div class="raw-group">
-    <div class="raw-title">COF 구성</div>
+    <div class="raw-title">COF(고장영향성) 구성</div>
     <div class="raw-fields">
       <div class="raw-field"><span>정격용량</span><b>{{ na(typeDetail.spec.capa, { locale: true }) }}</b></div>
       <div class="raw-field"><span>부하량</span><b>{{ na(typeDetail.score_detail.capa_times_load, { digits: 1 }) }}</b></div>
@@ -89,7 +89,7 @@ defineProps<{ typeDetail: Ef6TypeDetail }>();
   </div>
 
   <div class="raw-group">
-    <div class="raw-title">DOF 구성</div>
+    <div class="raw-title">DOF(고장예방력) 구성</div>
     <div class="raw-fields">
       <div class="raw-field"><span>계통신뢰도등급</span><b>{{ na(typeDetail.design.sys_rel) }}</b></div>
       <div class="raw-field"><span>계통신뢰도 감점</span><b class="neg">{{ na(typeDetail.score_detail.sys_rel_minus, { digits: 1 }) }}</b></div>

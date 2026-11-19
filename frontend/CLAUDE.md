@@ -31,6 +31,8 @@ npm run dev
 - 공통 표시(점검필요 순위, 상세 패널 헤더, 설비목록 카드·리스트)는 모든 유형에 있는 값만 쓴다 — 전압 대신 가동년월(`utils/formatDate.ts`의 `formatMonth`, 2026-10-29 Stage 10-0). 유형별 값(예: EF1 1차전압)은 각 `EfNDetailBody.vue`에 둔다.
 - 새 설비유형을 붙일 때: `types/equipment.ts`에 `EfNTypeDetail` 추가(→ `TypeDetail` union), `components/detail/EfNDetailBody.vue`, `scoreBreakdown.ts`의 근거 맵, 패널 헤더 부제(`typeSubtitle`), 가이드의 계산 방법 설명(`utils/typeGuide.ts`의 `TYPE_GUIDES` — 없으면 가이드에 항목 목록만 나옴). 필터·KPI·분포도·가이드 항목 목록은 메타데이터로 자동 반영된다.
 - 설비유형 표시는 "설비명 EF코드" 순서로 통일한다(2026-11-19, 지표 설명 "변압기 EF1" 기준) — 코드를 작게(12px·#8891a0) 따로 그릴 수 있는 곳은 이름 뒤에 작은 글자로(`MultiSelectFilter` 선택지의 `sub`), 기본 선택 상자처럼 글자 하나만 되는 곳은 `utils/formatValue.ts`의 `typeLabel(이름, 코드)`. "EF1 · 변압기"처럼 코드를 앞에 두지 않는다.
+- 세 축 한글 이름(설비상태·고장영향성·고장예방력)은 `utils/formatValue.ts`의 `AXIS_NAME` 하나만 쓴다(2026-11-19). 표기는 화면 전체 "POF(설비상태)" 형식(영어 약자 + 괄호 한글, 띄어쓰기 없음)으로 통일 — 3D 분포도 축 이름, 점검필요 순위 칸 머리 "POF(설비상태) 85.0"(괄호 부분은 작은 회색), 선택 설비 패널 막대 이름(한 줄)·차트 제목·시뮬레이터 결과 막대·"원본 데이터" 묶음 제목 "POF(설비상태) 구성". 설비목록 카드·리스트 표와 분포도 마우스 정보창은 자리가 없어 약자만. 3D 분포도는 왼쪽 DOF 축 제목이 잘리지 않도록 상자 0.8배 + 카메라 중심 이동(`RiskScatterChart.vue`).
+- 시작 화면 필터는 사업장 H1 · 설비유형 수배전반(EF4) — `stores/equipment.ts`의 `START_FACTORY_FILTERS`/`START_EQUIPMENT_TYPE_FILTERS`(2026-11-19). 첫 로드에서만: 데이터에 없는 사업장은 빼고, 남는 게 없으면 "전체"가 아니라 데이터가 있는 사업장을 모두 체크(A안). 그 뒤 다시 불러올 때는 사용자 선택을 덮어쓰지 않는다(`startApplied`). 페이지 이동 후 돌아오면 선택 유지, 새로고침하면 시작 필터로.
 - 화면 라벨은 원본(`ref_data`) 라벨 표현을 따른다 — 원본에 없는 용어(예: 계산식 이름)를 라벨에 덧붙이지 않는다. 계산식 설명은 가이드(`typeGuide.ts`)에 둔다(2026-10-19, GIS 라벨의 "(와이블)" 제거).
 - 점수는 원본 공식대로 음수가 될 수 있다 — 막대·분포도는 표시만 0~100으로 자른다.
 - 점수 지표(POF·COF·DOF, 감점 항목, 종합점수)는 모든 유형에서 소수 첫째 자리로 보여준다(Stage 13-0) — `utils/formatValue.ts`의 `formatScore()`, 원본 데이터 보기의 감점 칸은 `na(…, { digits: 1 })`.

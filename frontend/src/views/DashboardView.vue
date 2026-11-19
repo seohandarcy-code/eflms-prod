@@ -14,7 +14,7 @@ import FilterSummaryBox from "../components/FilterSummaryBox.vue";
 import { getEvidence, getReasonsByAxis } from "../utils/scoreBreakdown";
 import type { ReasonsByAxis } from "../utils/scoreBreakdown";
 import { formatMonth } from "../utils/formatDate";
-import { formatScore } from "../utils/formatValue";
+import { AXIS_NAME, formatScore } from "../utils/formatValue";
 import { statusColor, statusLabel } from "../utils/statusStyle";
 import type { EquipmentDetail, EquipmentSummary } from "../types/equipment";
 
@@ -384,7 +384,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
 
                     <div class="axis-grid">
                       <div class="axis-col">
-                        <div class="axis-head">POF <b>{{ formatScore(entry.item.pof) }}</b></div>
+                        <div class="axis-head">POF<span class="axis-ko">({{ AXIS_NAME.pof }})</span> <b>{{ formatScore(entry.item.pof) }}</b></div>
                         <div
                           v-for="reason in entry.reasons.pof"
                           :key="reason.label"
@@ -397,7 +397,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
                         <div v-if="entry.reasons.pof.length === 0" class="axis-empty">감점 없음</div>
                       </div>
                       <div class="axis-col">
-                        <div class="axis-head">COF <b>{{ formatScore(entry.item.cof) }}</b></div>
+                        <div class="axis-head">COF<span class="axis-ko">({{ AXIS_NAME.cof }})</span> <b>{{ formatScore(entry.item.cof) }}</b></div>
                         <div
                           v-for="reason in entry.reasons.cof"
                           :key="reason.label"
@@ -410,7 +410,7 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
                         <div v-if="entry.reasons.cof.length === 0" class="axis-empty">감점 없음</div>
                       </div>
                       <div class="axis-col">
-                        <div class="axis-head">DOF <b>{{ formatScore(entry.item.dof) }}</b></div>
+                        <div class="axis-head">DOF<span class="axis-ko">({{ AXIS_NAME.dof }})</span> <b>{{ formatScore(entry.item.dof) }}</b></div>
                         <div
                           v-for="reason in entry.reasons.dof"
                           :key="reason.label"
@@ -794,6 +794,13 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   font-weight: 600;
   color: #4a5361;
   margin-bottom: 4px;
+}
+/* 영어 약자 옆 "(한글 이름)" — 표기는 화면 전체 POF(설비상태) 형식(2026-11-19), 칸이 좁으면 점수가 다음 줄로 */
+.axis-ko {
+  font-family: system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #8891a0;
 }
 .axis-reason {
   font-size: 11px;

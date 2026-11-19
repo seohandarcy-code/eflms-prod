@@ -3,7 +3,7 @@ import { computed, ref, watch } from "vue";
 import { useEquipmentStore } from "../stores/equipment";
 import type { EquipmentDetail } from "../types/equipment";
 import { formatMonth } from "../utils/formatDate";
-import { formatScore, na } from "../utils/formatValue";
+import { AXIS_NAME, formatScore, na } from "../utils/formatValue";
 import { statusBg, statusColor, statusLabel } from "../utils/statusStyle";
 import PofDistributionChart from "./PofDistributionChart.vue";
 import ScoreProjectionChart from "./ScoreProjectionChart.vue";
@@ -84,18 +84,18 @@ const sameTypeList = computed(() => store.equipmentList.filter((item) => item.ef
           </span>
           <span class="total-score-badge">종합점수: {{ detail.score.total_score.toFixed(1) }}</span>
         </div>
-        <div class="chart-title chart-title-1">POF 분포 <span class="muted">· 같은 설비유형({{ detail.ef_name }}) 중 이 설비 구간 강조</span></div>
-        <div class="chart-title chart-title-2">5개년 POF 예측 <span class="muted">· 연 -1점 단순 가정(실제 예측 아님)</span></div>
+        <div class="chart-title chart-title-1">POF({{ AXIS_NAME.pof }}) 분포 <span class="muted">· 같은 설비유형({{ detail.ef_name }}) 중 이 설비 구간 강조</span></div>
+        <div class="chart-title chart-title-2">5개년 POF({{ AXIS_NAME.pof }}) 예측 <span class="muted">· 연 -1점 단순 가정(실제 예측 아님)</span></div>
 
         <div class="left-col">
           <div class="score-bars">
-            <span>POF</span>
+            <span class="bar-name">POF<small>({{ AXIS_NAME.pof }})</small></span>
             <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.pof) + '%', background: color }" /></div>
             <span class="bar-value mono">{{ formatScore(detail.score.pof) }}</span>
-            <span>COF</span>
+            <span class="bar-name">COF<small>({{ AXIS_NAME.cof }})</small></span>
             <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.cof) + '%', background: color }" /></div>
             <span class="bar-value mono">{{ formatScore(detail.score.cof) }}</span>
-            <span>DOF</span>
+            <span class="bar-name">DOF<small>({{ AXIS_NAME.dof }})</small></span>
             <div class="bar-track"><div class="bar-fill" :style="{ width: clampWidth(detail.score.dof) + '%', background: color }" /></div>
             <span class="bar-value mono">{{ formatScore(detail.score.dof) }}</span>
           </div>
@@ -232,13 +232,22 @@ const sameTypeList = computed(() => store.equipmentList.filter((item) => item.ef
 .score-bars {
   flex: 1;
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: 112px 1fr 40px;
   grid-template-rows: repeat(3, 1fr);
   column-gap: 12px;
   align-items: center;
   font-size: 13px;
   font-weight: 600;
   color: #8891a0;
+}
+/* 막대 이름: 한 줄 "POF(설비상태)" — 괄호 부분만 작은 회색(2026-11-19) */
+.bar-name {
+  white-space: nowrap;
+}
+.bar-name small {
+  font-size: 11px;
+  font-weight: 600;
+  color: #a0a7b2;
 }
 .bar-track {
   height: 10px;
