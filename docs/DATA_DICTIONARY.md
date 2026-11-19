@@ -504,6 +504,8 @@ POF·COF·DOF가 소수 첫째 자리로 정해졌으므로, 감점도 **소수�
 
 그대로 둔 것: EF5·EF6 차단기 교체 횟수 `int(운전년수/7.5)`(횟수), EF7 온도감소계수의 연차 번호 `int(운전년수)`(표 찾기, 소수 부분은 따로 보간), EF7 중간값 반올림(방전 인덱스 소수 셋째, 온도감소계수 소수 첫째 — 원본 공식). 원본 대조 테스트는 `backend/tests/reference_rules.py`가 원본 공식을 돌리되 위 공식만 바꾸고 같은 반올림을 적용해 비교한다.
 
+이 규칙(과 EF2 결정)을 원본 양식에 반영한 참고용 수정본은 `ref_data_revised/`(원본 `ref_data/`는 그대로) — 시스템 계산기와 결과가 같다(`backend/tests/test_reference_revised.py`).
+
 ## 미확정/자동 캡처 컬럼
 
 사내 입력파일에 위 목록에 없는 헤더가 오면 `equipment_extra_attribute`(equipment_id, column_name, value, inferred_type, source_file, imported_at)에 자동 보관된다 — 정식 컬럼으로 승격하려면 이 문서와 위 테이블 정의를 함께 갱신하는 마이그레이션이 필요하다.
