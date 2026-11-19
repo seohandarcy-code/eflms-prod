@@ -96,6 +96,10 @@ class SummaryKPI(BaseModel):
     score_as_of_latest: date | None = None
     # 진단 데이터 반영일 — 설비별 '최근 진단일' 중 가장 최근(점수 갱신으로는 바뀌지 않는다)
     data_updated_on: date | None = None
+    # 마지막 점수 갱신(성공·일부 실패) 종료 시각(한국 시간)과 구분 — startup/daily/schedule = 자동, admin/cli = 수동(Stage 21-1c)
+    score_refreshed_at: datetime | None = None
+    score_refresh_trigger: str | None = None
+    score_refresh_auto: bool = False  # 서버 자동 갱신(SCORE_REFRESH_AUTO) 켜짐 여부
     by_type: list[TypeKPI] = []
 
 

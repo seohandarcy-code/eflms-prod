@@ -64,7 +64,7 @@
 
 ## 데이터 적재 파이프라인 (시드 · 임포트 공용)
 
-> **점수 갱신(Stage 21-1, 2026-11-19)** — 저장된 입력으로 기준일만 바꿔 다시 계산하고 **점수 테이블만** 다시 쓰는 경로가 따로 있다: `ingest.save_scores(row, equipment_id)` = 모듈 `ingest_scores()`(계산 결과 테이블) + `score_snapshot`. 입력 테이블의 `measured_at`/`updated_at` = **진단 데이터 반영일**(임포트·행 편집 때만 바뀜), 계산 결과 테이블의 `today` = **점수 기준일**(갱신마다 바뀜). 서비스 `app/services/score_refresh_service.py`(유형마다 한 트랜잭션, 실패한 유형만 이전 점수 유지, 실행 기록 `score_refresh_run`), 명령 `python -m app.db.recalculate --as-of today --trigger schedule`(매일 정기 실행 — PDEP CronJob), 관리자 `POST /api/admin/score-refresh`. 점수 갱신·실제 반영 임포트·참고표 넣기/리셋은 데이터 작업 잠금(`data_job_lock`, `app/services/job_lock.py`, 30분 만료)을 잡고 돌아 서로 겹치지 않는다(검증만은 잠그지 않음). 기본 계산 기준일은 한국 시간 오늘(`app/core/clock.today_kst`, 컨테이너 UTC 대비).
+> **점수 갱신(Stage 21-1, 2026-11-19)** — 저장된 입력으로 기준일만 바꿔 다시 계산하고 **점수 테이블만** 다시 쓰는 경로가 따로 있다: `ingest.save_scores(row, equipment_id)` = 모듈 `ingest_scores()`(계산 결과 테이블) + `score_snapshot`. 입력 테이블의 `measured_at`/`updated_at` = **진단 데이터 반영일**(임포트·행 편집 때만 바뀜), 계산 결과 테이블의 `today` = **점수 기준일**(갱신마다 바뀜). 서비스 `app/services/score_refresh_service.py`(유형마다 한 트랜잭션, 실패한 유형만 이전 점수 유지, 실행 기록 `score_refresh_run`), **서버 자동 갱신**(Stage 21-1b, `app/services/score_scheduler.py`): lifespan이 백그라운드 작업을 띄워 시작 직후와 날짜가 바뀐 뒤 점수 기준일이 오늘보다 이전이면 갱신(이미 오늘이면 아무것도 안 함, DB가 최신이 아니면 `schema_check`로 막고 로그 안내, 실패 시 1시간 뒤 재시도, `SCORE_REFRESH_AUTO`). 수동은 명령 `python -m app.db.recalculate --as-of today`와 관리자 `POST /api/admin/score-refresh`. 점수 갱신·실제 반영 임포트·참고표 넣기/리셋은 데이터 작업 잠금(`data_job_lock`, `app/services/job_lock.py`, 30분 만료)을 잡고 돌아 서로 겹치지 않는다(검증만은 잠그지 않음). 기본 계산 기준일은 한국 시간 오늘(`app/core/clock.today_kst`, 컨테이너 UTC 대비).
 
 ```
 [데이터 소스]                              [공통 파이프라인]                         [저장]

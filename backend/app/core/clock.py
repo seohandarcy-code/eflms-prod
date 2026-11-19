@@ -13,5 +13,10 @@ def now_kst() -> datetime:
     return datetime.now(KST)
 
 
+def now_kst_naive() -> datetime:
+    """DB에 저장하는 시각(타임존 없는 DateTime 컬럼) — 한국 시간 기준으로 기록한다(Stage 21-1c)."""
+    return now_kst().replace(tzinfo=None)
+
+
 def today_kst() -> date:
     return now_kst().date()

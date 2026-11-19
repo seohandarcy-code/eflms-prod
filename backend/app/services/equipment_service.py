@@ -7,9 +7,12 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Equipment, ScoreSnapshot
+from app.core.config import get_settings
+from app.db.models import Equipment, ScoreRefreshRun, ScoreSnapshot
+from app.services.job_lock import factory_for
 from app.equipment_types.base import EquipmentTypeModule
 from app.equipment_types.registry import UnknownEquipmentTypeError, all_modules, get_module
 from app.services.reference_data import calc_options
@@ -166,6 +169,7 @@ async def get_summary(session: AsyncSession, ef_code: str | None = None) -> Summ
         for code, statuses in sorted(statuses_by_type.items())
     ]
     score_dates, diag_dates = await _summary_dates(session, list(statuses_by_type))
+    last_run = await _last_refresh(session)
     return SummaryKPI(
         total_equipment=len(rows),
         review_count=sum(t.review_count for t in by_type),
@@ -174,8 +178,27 @@ async def get_summary(session: AsyncSession, ef_code: str | None = None) -> Summ
         score_as_of=min(score_dates, default=None),
         score_as_of_latest=max(score_dates, default=None),
         data_updated_on=max(diag_dates, default=None),
+        score_refreshed_at=last_run[0] if last_run else None,
+        score_refresh_trigger=last_run[1] if last_run else None,
+        score_refresh_auto=get_settings().score_refresh_auto,
         by_type=by_type,
     )
+
+
+async def _last_refresh(session: AsyncSession) -> tuple | None:
+    """마지막 점수 갱신(성공·일부 실패)의 (종료 시각, 구분). 마이그레이션 전 DB(테이블 없음)면 None —
+    요청 세션의 트랜잭션을 더럽히지 않게 별도 세션으로 읽는다(Stage 21-1c)."""
+    try:
+        async with factory_for(session)() as other:
+            stmt = (
+                select(ScoreRefreshRun.finished_at, ScoreRefreshRun.trigger)
+                .where(ScoreRefreshRun.status.in_(("success", "partial")))
+                .order_by(ScoreRefreshRun.run_id.desc())
+                .limit(1)
+            )
+            return (await other.execute(stmt)).first()
+    except DBAPIError:
+        return None
 
 
 async def _summary_dates(session: AsyncSession, ef_codes: list[str]) -> tuple[list[date], list[date]]:

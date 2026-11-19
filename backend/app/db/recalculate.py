@@ -19,7 +19,7 @@ from app.db.session import async_session_factory
 from app.equipment_types.registry import resolve_codes
 from app.services.score_refresh_service import refresh_scores
 
-TRIGGERS = ("cli", "schedule")
+TRIGGERS = ("cli", "schedule")  # 서버 자동 갱신은 startup/daily(app/services/score_scheduler.py)
 
 
 def parse_as_of(value: str | None) -> date | None:
@@ -32,7 +32,7 @@ def parse_as_of(value: str | None) -> date | None:
 
 async def run(ef_code: str, as_of: date | None = None, trigger: str = "cli") -> bool:
     result = await refresh_scores(async_session_factory, resolve_codes(ef_code), as_of, trigger, requested_by=trigger)
-    if result.status == "busy":
+    if result.status in ("busy", "unavailable"):
         print(f"[중단] {result.message}")
         return False
     basis = f"기준일 {as_of}" if as_of else "저장된 기준일"

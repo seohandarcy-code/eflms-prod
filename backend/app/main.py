@@ -1,6 +1,7 @@
+import asyncio
 import logging
 import secrets
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +12,7 @@ from app.core.config import get_settings
 from app.db import seed
 from app.db.session import async_session_factory
 from app.equipment_types.registry import registered_codes
+from app.services import score_scheduler
 from app.services.dataset_service import is_type_empty
 
 settings = get_settings()
@@ -30,7 +32,19 @@ async def lifespan(app: FastAPI):
                 if await is_type_empty(session, ef_code):
                     await seed.seed_type(session, ef_code, rows=30, reset=False)
                     await session.commit()
-    yield
+    # 서버 자동 점수 갱신(Stage 21-1b) — 시작 직후와 날짜가 바뀐 뒤 오늘 기준으로(백그라운드, 서버 응답은 바로 시작)
+    refresher = None
+    if settings.score_refresh_auto:
+        refresher = asyncio.create_task(
+            score_scheduler.run_forever(async_session_factory, settings.score_refresh_check_minutes)
+        )
+    try:
+        yield
+    finally:
+        if refresher is not None:
+            refresher.cancel()
+            with suppress(asyncio.CancelledError):
+                await refresher
 
 
 app = FastAPI(title="EFLMS API", lifespan=lifespan)

@@ -15,7 +15,7 @@ import { getEvidence, getReasonsByAxis } from "../utils/scoreBreakdown";
 import type { ReasonsByAxis } from "../utils/scoreBreakdown";
 import { formatMonth } from "../utils/formatDate";
 import { AXIS_NAME, formatScore } from "../utils/formatValue";
-import { scoreDateText } from "../utils/scoreRefresh";
+import { refreshCaption, refreshTooltip, scoreDateText } from "../utils/scoreRefresh";
 import { statusColor, statusLabel } from "../utils/statusStyle";
 import type { EquipmentDetail, EquipmentSummary } from "../types/equipment";
 
@@ -27,6 +27,10 @@ const hoveredId = ref<number | null>(null);
 const reasonScrollEl = ref<HTMLDivElement | null>(null);
 // 점수 시뮬레이터 팝업(Stage 19) — 설비유형 필터가 하나면 그 유형으로 연다
 const simulatorOpen = ref(false);
+// 점수 기준일 칸 캡션 — 마지막 점수 갱신 시각(자동/수동), Stage 21-1c
+const refreshCaptionText = computed(() =>
+  refreshCaption(store.summary?.score_refreshed_at, store.summary?.score_refresh_trigger),
+);
 const simulatorType = computed(() => (store.equipmentTypeFilters.length === 1 ? store.equipmentTypeFilters[0] : null));
 
 // 사업장 옵션은 받아 둔 설비 목록에 실제로 있는 사업장만(store.factoryCodes) — 데이터가 늘면 자동으로 나타난다.
@@ -297,11 +301,12 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
               <div class="kpi-value" :style="{ color: statusColor('replace') }">{{ replaceCount }}<span class="unit">대</span></div>
               <div class="kpi-sub">POF 기준 미달</div>
             </div>
-            <div class="card kpi">
-              <!-- 점수 기준일(매일 갱신)과 진단 데이터 반영일(임포트·행 편집)을 나눠 보여준다(Stage 21-1) -->
+            <div class="card kpi" :title="refreshTooltip(store.summary?.score_refresh_auto ?? false)">
+              <!-- 점수 기준일(매일 갱신)·마지막 갱신 시각과 진단 데이터 최근 반영일(입력·수정)을 나눠 보여준다(Stage 21-1/21-1c) -->
               <div class="kpi-label">점수 기준일</div>
               <div class="kpi-value small">{{ scoreDateText(store.summary?.score_as_of, store.summary?.score_as_of_latest) }}</div>
-              <div class="kpi-sub">진단 데이터 반영 {{ store.summary?.data_updated_on ?? "-" }}</div>
+              <div v-if="refreshCaptionText" class="kpi-sub">{{ refreshCaptionText }}</div>
+              <div class="kpi-sub kpi-sub-tight">진단 데이터 최근 반영일 <span class="nowrap">{{ store.summary?.data_updated_on ?? "-" }}</span></div>
             </div>
           </div>
 
@@ -636,6 +641,12 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   font-size: 11px;
   color: #8891a0;
   margin-top: 4px;
+}
+.kpi-sub-tight {
+  margin-top: 1px;
+}
+.nowrap {
+  white-space: nowrap;
 }
 .risk-panel {
   background: #fff;

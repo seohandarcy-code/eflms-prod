@@ -317,7 +317,7 @@ async def import_file(
     # 점수 갱신·다른 반영과 겹치지 않게 데이터 작업 잠금을 잡는다(Stage 21-1, app/services/job_lock.py).
     try:
         lock_token = await job_lock.acquire(session, f"임포트 {ef_code}")
-    except job_lock.DataJobBusyError as exc:
+    except job_lock.DataJobError as exc:
         result.file_errors.append(str(exc))
         return result
     try:

@@ -228,3 +228,35 @@ def test_refresh_tables_migration_round_trip(tmp_path, monkeypatch):
         assert {"score_refresh_run", "data_job_lock"} <= tables()
     finally:
         get_settings.cache_clear()
+
+
+# ------------------------------------------------------------------ Stage 21-1c: 요약 API의 마지막 갱신 시각
+async def test_summary_reports_last_refresh_time_and_trigger(client, session_factory, monkeypatch):
+    from app.services import score_refresh_service
+
+    first = (await client.get("/api/summary")).json()
+    assert first["score_refreshed_at"] is None and first["score_refresh_trigger"] is None
+    assert first["score_refresh_auto"] is True
+
+    stamp = datetime(2026, 11, 19, 0, 5, 30)  # 한국 시간으로 기록된다(now_kst_naive)
+    monkeypatch.setattr(score_refresh_service, "now_kst_naive", lambda: stamp)
+    await refresh_scores(session_factory, ["EF1"], clock.today_kst(), trigger="daily", requested_by="server")
+    body = (await client.get("/api/summary")).json()
+    assert body["score_refreshed_at"] == "2026-11-19T00:05:30" and body["score_refresh_trigger"] == "daily"
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("실패 흉내")
+
+    from app.equipment_types import ef1_transformer
+
+    monkeypatch.setattr(ef1_transformer, "calculate", boom)
+    monkeypatch.setattr(score_refresh_service, "now_kst_naive", lambda: stamp + timedelta(hours=1))
+    failed = await refresh_scores(session_factory, ["EF1"], clock.today_kst(), trigger="admin", requested_by="admin")
+    assert failed.status == "failed"
+    assert (await client.get("/api/summary")).json()["score_refresh_trigger"] == "daily"  # 전부 실패한 갱신은 반영 안 함
+
+
+def test_now_kst_naive_is_kst_without_tzinfo():
+    value = clock.now_kst_naive()
+    assert value.tzinfo is None
+    assert abs((clock.now_kst().replace(tzinfo=None) - value).total_seconds()) < 5

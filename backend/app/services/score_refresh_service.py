@@ -16,6 +16,7 @@ from datetime import date, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.core.clock import now_kst_naive
 from app.db.models import Equipment, ScoreRefreshRun
 from app.equipment_types.registry import get_module
 from app.services import job_lock
@@ -35,7 +36,7 @@ class TypeRefreshResult:
 @dataclass
 class RefreshResult:
     run_id: int | None
-    status: str  # success / partial / failed / busy
+    status: str  # success / partial / failed / busy(다른 작업 진행 중) / unavailable(DB 업그레이드 필요)
     as_of: date | None
     types: list[TypeRefreshResult] = field(default_factory=list)
     message: str | None = None
@@ -87,10 +88,12 @@ async def refresh_scores(
         token = await job_lock.acquire(engine, f"점수 갱신({trigger})")
     except job_lock.DataJobBusyError as exc:
         return RefreshResult(run_id=None, status="busy", as_of=as_of, message=str(exc))
+    except job_lock.DataJobUnavailableError as exc:  # 마이그레이션 전 DB
+        return RefreshResult(run_id=None, status="unavailable", as_of=as_of, message=str(exc))
     try:
         async with factory() as session:
             run = ScoreRefreshRun(
-                started_at=datetime.now(), status="running", trigger=trigger, requested_by=requested_by, as_of=as_of
+                started_at=now_kst_naive(), status="running", trigger=trigger, requested_by=requested_by, as_of=as_of
             )
             session.add(run)
             await session.commit()
@@ -102,7 +105,7 @@ async def refresh_scores(
 
         async with factory() as session:
             run = await session.get(ScoreRefreshRun, run_id)
-            run.finished_at = datetime.now()
+            run.finished_at = now_kst_naive()
             run.status = status
             run.equipment_count = sum(t.count for t in types)
             run.summary = json.dumps(

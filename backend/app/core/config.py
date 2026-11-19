@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     auth_mode: Literal["none", "local", "sso"] = "none"
     auto_seed_if_empty: bool = False
+    # 서버 자동 점수 갱신(Stage 21-1b) — 시작 직후와 날짜(한국 시간)가 바뀐 뒤, 점수 기준일이 오늘보다 이전이면
+    # 저장된 입력으로 오늘 기준 점수를 다시 계산한다(app/services/score_scheduler.py). 확인 간격(분).
+    score_refresh_auto: bool = True
+    score_refresh_check_minutes: int = 10
     admin_bootstrap_password: str = ""
 
     # AUTH_MODE=sso 전용 — Stage 6, docs/ARCHITECTURE.md "인증" 참고.

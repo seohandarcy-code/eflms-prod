@@ -13,16 +13,29 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
 from sqlalchemy import delete, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from app.core.clock import now_kst_naive
 from app.db.models import DataJobLock
+from app.services.schema_check import UPGRADE_HINT
 
 LOCK_NAME = "data"
 LOCK_TTL = timedelta(minutes=30)
 
 
-class DataJobBusyError(RuntimeError):
+class DataJobError(RuntimeError):
+    """데이터 작업을 시작할 수 없다(잠금이 잡혀 있거나 잠금 테이블이 없음)."""
+
+
+class DataJobUnavailableError(DataJobError):
+    """잠금 테이블이 없다 — 마이그레이션 전 DB(Stage 21-1b). 500 대신 업그레이드 안내를 보여 준다."""
+
+    def __init__(self):
+        super().__init__(UPGRADE_HINT)
+
+
+class DataJobBusyError(DataJobError):
     """다른 데이터 작업이 잠금을 잡고 있다."""
 
     def __init__(self, holder: str, acquired_at: datetime | None):
@@ -40,10 +53,14 @@ def factory_for(bind: AsyncEngine | AsyncSession) -> async_sessionmaker:
 
 async def acquire(bind, holder: str, now: datetime | None = None) -> str:
     """잠금을 잡고 토큰을 돌려준다. 이미 잡혀 있으면(만료 전) DataJobBusyError."""
-    now = now or datetime.now()
+    now = now or now_kst_naive()
     token = uuid.uuid4().hex
     async with factory_for(bind)() as session:
-        await session.execute(delete(DataJobLock).where(DataJobLock.name == LOCK_NAME, DataJobLock.expires_at < now))
+        try:
+            await session.execute(delete(DataJobLock).where(DataJobLock.name == LOCK_NAME, DataJobLock.expires_at < now))
+        except DBAPIError as exc:  # 잠금 테이블이 없다(마이그레이션 전 DB)
+            await session.rollback()
+            raise DataJobUnavailableError() from exc
         session.add(DataJobLock(name=LOCK_NAME, holder=holder, token=token, acquired_at=now, expires_at=now + LOCK_TTL))
         try:
             await session.commit()
@@ -72,7 +89,10 @@ async def data_job(bind, holder: str):
 
 async def current_holder(bind) -> DataJobLock | None:
     async with factory_for(bind)() as session:
-        lock = (await session.execute(select(DataJobLock).where(DataJobLock.name == LOCK_NAME))).scalar_one_or_none()
-        if lock is not None and lock.expires_at < datetime.now():
+        try:
+            lock = (await session.execute(select(DataJobLock).where(DataJobLock.name == LOCK_NAME))).scalar_one_or_none()
+        except DBAPIError:  # 잠금 테이블이 없다(마이그레이션 전 DB) — 진행 중인 작업 없음으로 본다
+            return None
+        if lock is not None and lock.expires_at < now_kst_naive():
             return None
         return lock

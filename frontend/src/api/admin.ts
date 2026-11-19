@@ -291,7 +291,7 @@ export interface ScoreRefreshRun {
   started_at: string;
   finished_at: string | null;
   status: "running" | "success" | "partial" | "failed";
-  trigger: "schedule" | "cli" | "admin";
+  trigger: "schedule" | "cli" | "admin" | "startup" | "daily";
   requested_by: string | null;
   as_of: string | null;
   equipment_count: number;
@@ -300,6 +300,10 @@ export interface ScoreRefreshRun {
 
 export interface ScoreRefreshStatus {
   today: string;
+  // DB 버전 — ok=false면(마이그레이션 전) 기록 대신 hint(업그레이드 안내), Stage 21-1b
+  schema: { current: string | null; head: string; ok: boolean; known: boolean; hint: string | null };
+  // 서버 자동 갱신(시작 시·날짜가 바뀌면) 설정
+  auto: { enabled: boolean; check_minutes: number };
   running: { holder: string; acquired_at: string } | null;
   runs: ScoreRefreshRun[];
 }

@@ -206,7 +206,7 @@ async def import_reference_file(
 
     try:
         lock_token = await job_lock.acquire(session, f"참고표 {ef_code} {table}")
-    except job_lock.DataJobBusyError as exc:
+    except job_lock.DataJobError as exc:
         result.file_errors.append(str(exc))
         return result
     try:
@@ -252,7 +252,7 @@ async def reset_reference(session: AsyncSession, ef_code: str, table: str) -> Re
         return result
     try:
         lock_token = await job_lock.acquire(session, f"참고표 리셋 {ef_code}")
-    except job_lock.DataJobBusyError as exc:
+    except job_lock.DataJobError as exc:
         result.errors.append(str(exc))
         return result
     try:

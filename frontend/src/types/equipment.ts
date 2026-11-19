@@ -32,6 +32,10 @@ export interface SummaryKPI {
   score_as_of: string | null;
   score_as_of_latest: string | null;
   data_updated_on: string | null;
+  // 마지막 점수 갱신 시각(한국 시간)·구분(startup/daily/schedule = 자동, admin/cli = 수동)·서버 자동 갱신 켜짐(Stage 21-1c)
+  score_refreshed_at: string | null;
+  score_refresh_trigger: string | null;
+  score_refresh_auto: boolean;
   by_type: TypeKPI[];
 }
 

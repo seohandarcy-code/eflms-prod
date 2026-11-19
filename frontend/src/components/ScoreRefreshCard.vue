@@ -18,7 +18,8 @@ const showHistory = ref(false);
 
 const last = computed<ScoreRefreshRun | null>(() => status.value?.runs[0] ?? null);
 const failedTypes = computed(() => last.value?.types.filter((t) => t.error) ?? []);
-const busy = computed(() => running.value || !!status.value?.running);
+const schemaOutdated = computed(() => status.value?.schema && !status.value.schema.ok);
+const busy = computed(() => running.value || !!status.value?.running || !!schemaOutdated.value);
 
 function errorText(e: unknown): string {
   const detail = (e as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
@@ -63,7 +64,7 @@ onMounted(load);
         <h3>점수 갱신</h3>
         <p class="card-hint">
           저장된 진단 데이터로 <b>오늘 기준 점수</b>를 다시 계산합니다 — 경과연수·부품 노화처럼 날짜에 따라 바뀌는 감점이 맞춰지고,
-          진단 데이터와 최근 진단일은 바뀌지 않습니다. 매일 새벽 자동으로 실행됩니다.
+          진단 데이터와 최근 진단일은 바뀌지 않습니다.
         </p>
       </div>
       <button type="button" class="rc-btn" :disabled="busy || loading" @click="refreshNow">
@@ -71,6 +72,15 @@ onMounted(load);
       </button>
     </div>
 
+    <div v-if="status" class="rc-auto">
+      자동 갱신:
+      <template v-if="status.auto.enabled"><b>켜짐</b> — 서버가 시작될 때와 날짜가 바뀌면(점수가 오늘 기준이 아닐 때만, {{ status.auto.check_minutes }}분마다 확인)</template>
+      <template v-else><b>꺼짐</b> — "지금 갱신" 또는 명령으로만 갱신됩니다(SCORE_REFRESH_AUTO=false)</template>
+    </div>
+    <div v-if="schemaOutdated" class="rc-error rc-schema">
+      DB 업그레이드 필요(현재 {{ status?.schema.current }} / 최신 {{ status?.schema.head }}) — backend에서
+      <code>python -m alembic upgrade head</code> 실행 후 서버를 다시 시작하면 자동으로 오늘 기준 점수가 계산됩니다.
+    </div>
     <div v-if="status?.running && !running" class="rc-note">
       다른 데이터 작업({{ status.running.holder }})이 진행 중입니다 — {{ formatStamp(status.running.acquired_at) }} 시작
     </div>
@@ -83,7 +93,7 @@ onMounted(load);
       <span>· 설비 {{ last.equipment_count }}대</span>
       <span class="rc-muted">· {{ REFRESH_TRIGGER_LABEL[last.trigger] ?? last.trigger }}</span>
     </div>
-    <div v-else-if="!loading" class="rc-muted">아직 갱신 기록이 없습니다.</div>
+    <div v-else-if="!loading && !schemaOutdated" class="rc-muted">아직 갱신 기록이 없습니다.</div>
 
     <ul v-if="failedTypes.length" class="rc-failed">
       <li v-for="t in failedTypes" :key="t.ef_code"><b>{{ t.ef_code }}</b> 반영 안 됨(이전 점수 유지) — {{ t.error }}</li>
@@ -178,6 +188,14 @@ h3 {
 .rc-muted {
   color: #8891a0;
   font-size: 12px;
+}
+.rc-auto {
+  font-size: 12px;
+  color: #4a5361;
+  margin-bottom: 8px;
+}
+.rc-schema {
+  font-weight: 600;
 }
 .rc-note {
   font-size: 12px;

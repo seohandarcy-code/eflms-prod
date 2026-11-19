@@ -60,8 +60,8 @@ npm run dev
 - `api/client.ts`의 `installAuthInterceptors()`가 모든 요청에 토큰을 싣고, 보낸 토큰이 401이면 세션을 지운다(→ 로그인 화면).
 - `App.vue`: `auth-config`의 `dashboard_login_required`(AUTH_MODE=sso)이고 미로그인이면 `/admin` 외 화면 대신 `LoginGate.vue`를 보여준다. SSO 버튼은 `ssoLoginUrl(현재 경로)`로 돌아올 화면을 넘긴다.
 - 관리자 화면 탭: 테이블 조회 / 데이터 입력(`DataImportPanel.vue` — 입력 방법 붙여넣기(붙여넣기 → 검증 → 입력값 미리보기 → 확정) 또는 행 편집(`DataRowEditor.vue`, Stage 18 — 지금 데이터를 표로 고치고 고친·추가 행만 같은 `/import` 추가·갱신으로, 순수 함수 `utils/rowEditor.ts`), 내려받기. 데이터 입력 탭은 `KeepAlive`라 다른 탭에 다녀와도 내용 유지) / 접근 권한 관리 — 뒤의 둘은 admin만. 테이블 조회는 admin이면 `SqlQueryPanel.vue`(SQL 입력창 + 결과 그리드, Stage 16-5), 등록 사용자는 테이블을 눌러 보는 페이지 조회. general 역할은 "조회 전용 계정" 안내만 본다.
-- 붙여넣기 파싱은 `utils/pasteData.ts`(백엔드와 같은 규칙 — 빈 줄은 건너뛰되 줄 번호 유지, 서버 오류 `row_number`와 미리보기 행이 맞아야 함). SQL 화면 순수 함수는 `utils/sqlResult.ts`. 데이터 입력 탭 내려받기 카드 맨 위에 전체 DB .sql 버튼(`downloadFullSqlDump`, Stage 16-8). 데이터 입력 탭 맨 위는 "점수 갱신" 카드(`ScoreRefreshCard.vue`, Stage 21-1 — 마지막 갱신 결과·실패 유형·최근 기록, "지금 갱신" → `POST /api/admin/score-refresh`, 표시 규칙 `utils/scoreRefresh.ts`).
-- 메인 화면 KPI 다섯째 칸은 "점수 기준일"(요약 API `score_as_of`~`score_as_of_latest`, 설비마다 다르면 범위)과 아래 줄 "진단 데이터 반영"(`data_updated_on`) — 점수는 매일 갱신되고 진단 데이터 날짜는 임포트·행 편집 때만 바뀐다(Stage 21-1). `last_updated`는 쓰지 않는다.
+- 붙여넣기 파싱은 `utils/pasteData.ts`(백엔드와 같은 규칙 — 빈 줄은 건너뛰되 줄 번호 유지, 서버 오류 `row_number`와 미리보기 행이 맞아야 함). SQL 화면 순수 함수는 `utils/sqlResult.ts`. 데이터 입력 탭 내려받기 카드 맨 위에 전체 DB .sql 버튼(`downloadFullSqlDump`, Stage 16-8). 데이터 입력 탭 맨 위는 "점수 갱신" 카드(`ScoreRefreshCard.vue`, Stage 21-1 — 마지막 갱신 결과·실패 유형·최근 기록, "지금 갱신" → `POST /api/admin/score-refresh`, 표시 규칙 `utils/scoreRefresh.ts`. 21-1b: 서버 자동 갱신 켜짐/꺼짐 표시, DB가 최신 버전이 아니면 빨간 업그레이드 안내 + 버튼 막음, 실행 구분 `startup` "서버 시작"·`daily` "자동").
+- 메인 화면 KPI 다섯째 칸은 "점수 기준일"(요약 API `score_as_of`~`score_as_of_latest`, 설비마다 다르면 범위) + 캡션 두 줄: "자동 갱신 11-19 00:05"/"수동 갱신 …"(`score_refreshed_at`·`score_refresh_trigger` — startup/daily/schedule = 자동, Stage 21-1c, `utils/scoreRefresh.ts`의 `refreshCaption`) / "진단 데이터 최근 반영일 YYYY-MM-DD"(`data_updated_on`, 날짜는 줄바꿈 안 함). 칸에 마우스를 올리면 자동 갱신 설명(`refreshTooltip`). 점수는 매일 갱신되고 진단 데이터 날짜는 입력·수정 때만 바뀐다(Stage 21-1). `last_updated`는 쓰지 않는다.
 
 ## 컨벤션
 

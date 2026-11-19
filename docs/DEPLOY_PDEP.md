@@ -33,7 +33,8 @@ eflms를 사내 DevOps 플랫폼(PDEP, Jenkins → 사내 레지스트리 → He
 |---|---|---|
 | 관리자 로그인 세션이 메모리 | `app/auth/state.py` `AdminAuthStore._sessions` — 파드마다 따로, 재시작 시 소멸 | 당분간 backend **replicas: 1** 고정. 여러 개가 필요해지면 세션을 DB/Redis로 이전(코드 변경, 별도 계획) |
 | `SESSION_SECRET_KEY` 비면 기동마다 임의 생성 | SSO state/nonce 쿠키 서명 키가 파드 재시작·다중 파드마다 달라져 로그인 왕복 중 실패 | 운영은 Secret으로 **필수** 주입 + `SESSION_COOKIE_SECURE=true` |
-| 시간대 | 계산 기준일이 `date.today()`(`ef1_transformer.py`, `ef2_gis.py`) — 컨테이너 기본은 UTC | KST 00~09시에 기준일이 하루 이전으로 계산됨 → 컨테이너에 `TZ=Asia/Seoul`(slim 이미지는 `tzdata` 필요) |
+| 시간대 | ~~계산 기준일이 `date.today()` — 컨테이너 기본은 UTC~~ → 2026-11-19(Stage 21-1)부터 기본 계산 기준일은 `app/core/clock.today_kst()`(UTC+9 고정) | 코드로 해결 — `TZ` 설정·`tzdata` 없이도 KST 기준. (로그 시각만 UTC로 찍힐 수 있음) |
+| 점수 매일 갱신 | 점수가 마지막 임포트일에 멈추지 않도록 **서버가 자동 갱신**(Stage 21-1b — 시작 직후·날짜가 바뀌면, `SCORE_REFRESH_AUTO=true` 기본) | 별도 CronJob 불필요(선택). replicas를 늘려도 데이터 작업 잠금(`data_job_lock`)으로 한 대만 갱신. 배포 직후 migrate Job이 먼저 끝나야 함 — DB가 최신이 아니면 갱신하지 않고 로그 `EFLMS score refresh: DB 업그레이드 필요` |
 | 마이그레이션 실행 절차 없음 | 앱 기동 시 `alembic upgrade`를 하지 않음(`create_all`도 없음) | 배포마다 **migrate Job(또는 initContainer) 1회** 실행 → 그 뒤 Deployment 롤아웃. 여러 replica가 동시에 돌리지 않게(ROADMAP Phase 4 미결 항목) |
 | `AUTO_SEED_IF_EMPTY` | true면 빈 설비유형에 mock 30건 자동 투입 | 운영은 **반드시 false**(기본값 false — ConfigMap에서 명시) |
 | SQLite 기본값 | `DATABASE_URL` 없고 `DB_HOST`도 없으면 `./eflms.db`로 폴백 | 컨테이너 파일은 재시작 시 사라짐 → 운영은 PostgreSQL만. 기동 로그로 DB 대상 확인 |
