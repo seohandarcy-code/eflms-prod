@@ -32,10 +32,12 @@ from app.db.models import (
     TransformerSpec,
 )
 from app.equipment_types import ef2_gis
-from app.equipment_types.rounding import SCORE_FIELDS, round1
+from app.equipment_types.rounding import round1
 from app.services.dataset_service import count_type
 from app.services.import_service import _check_allowed, import_file
 from app.services.ingest import ingest_row
+
+from tests.reference_rules import expected_from_reference, reference_formula
 
 REF_PATH = BACKEND_DIR.parent / "ref_data" / "schema_eflms_gis.py"
 CALC_NAMES = [c["name"] for c in ef2_gis.CALCULATED_COLUMNS]
@@ -67,14 +69,14 @@ def _ref_calculate(ref, row, cb_op_char_over="N"):
 
 
 def _expected(ref, row):
-    """원본 결과에 우리 쪽 변경(age_minus를 전기적 감점에 합산)을 얹은 기대값."""
-    exp = _ref_calculate(ref, row)
-    age = exp["age_minus"]
-    exp["gis_elec_minus"] += age
-    exp["pof_minus"] += age
-    exp["pof"] = 100 + exp["pof_minus"]
-    exp["total_score"] = 0.5 * exp["pof"] + 0.3 * exp["cof"] + 0.2 * exp["dof"]
-    return exp
+    """원본 공식에 우리 쪽 변경을 얹은 기대값(tests/reference_rules.py) — age_minus를 전기적 감점·PoF에 합산,
+    차단기·절연 상태 감점은 정수 반올림 없이 소수 그대로(2026-11-19)."""
+    elec = reference_formula(ref, "gis_elec_minus")  # 원본 pof_minus는 전기적 소계를 더하므로 거기서 함께 반영된다
+    return expected_from_reference(ref, {**row, "cb_op_char_over": "N"}, {
+        "cb_stat_minus": lambda r: (r["cb_stat"] - 1) * 100 * 1,
+        "insul_stat_minus": lambda r: (r["insul_stat"] - 1) * 100 * 2,
+        "gis_elec_minus": lambda r: elec(r) + r["age_minus"],
+    })
 
 
 def _base_row(**overrides):
@@ -107,7 +109,7 @@ BRANCHES = [
     # 소수값(2026-10-19 float 전환)
     ({"cum_trip_current": 24.9}, "cum_trip_current_minus", 0), ({"cum_trip_current": 25.0}, "cum_trip_current_minus", -8),
     ({"cum_trip_current": 101.5}, "cum_trip_current_minus", -12),
-    ({"operation_start_time": date.today() - timedelta(days=int(12.5 * 365))}, "age_minus", -12),
+    ({"operation_start_time": date.today() - timedelta(days=int(12.5 * 365))}, "age_minus", -12.5),  # 소수 그대로(2026-11-19, 원본은 floor → -12)
     ({"operation_start_time": date.today() - timedelta(days=12 * 365)}, "gis_elec_minus", -12),
     ({"load_percent": 70.0}, "load_minus", 0), ({"load_percent": 70.1}, "load_minus", -10),
     ({"load_percent": 80.1}, "load_minus", -20), ({"load_percent": 90.1}, "load_minus", -30),
@@ -149,14 +151,14 @@ def test_aging_and_totals_at_30_years():
     row = ef2_gis.calculate(_base_row(operation_start_time=date.today() - timedelta(days=30 * 365)))
     assert row["operation_year"] == 30.0
     assert row["age_minus"] == -30
-    assert row["cb_stat_minus"] == -6       # e^-((30/72)^3.21) = 0.9416
-    assert row["insul_stat_minus"] == -5    # e^-((30/4199)^0.75) = 0.9757, ×2
-    assert row["gis_mech_minus"] == -11
+    assert row["cb_stat_minus"] == -5.8     # e^-((30/72)^3.21) = 0.9416 → -5.84(소수 그대로, 2026-11-19)
+    assert row["insul_stat_minus"] == -4.9  # e^-((30/4199)^0.75) = 0.9757, ×2 → -4.85
+    assert row["gis_mech_minus"] == -10.7
     # age_minus는 전기적 감점에 합산한다(2026-10-19, 원본은 미합산) — 고장확률 감점과 함께 깎인다
     assert row["gis_elec_minus"] == -30
-    assert row["pof"] == 100 - 11 - 30
+    assert row["pof"] == 59.3  # 100 - 10.7 - 30
     assert row["cof"] == 100 and row["dof"] == 100
-    assert row["total_score"] == pytest.approx(0.5 * 59 + 0.3 * 100 + 0.2 * 100)
+    assert row["total_score"] == 79.7  # 0.5 × 59.3 + 30 + 20 = 79.65 → 엑셀식 반올림
 
 
 def test_worst_case_scores_can_go_negative_and_are_kept():
@@ -176,9 +178,7 @@ def test_matches_reference_formulas(ref):
         ours = ef2_gis.calculate(row)
         theirs = _expected(ref, row)
         for name in CALC_NAMES:
-            # 점수 지표는 소수 첫째 자리로 반올림해 저장한다(2026-11-06) — 원본 값에 같은 반올림을 적용해 비교
-            expected = round1(theirs[name]) if name in SCORE_FIELDS else theirs[name]
-            assert ours[name] == expected, (name, row)
+            assert ours[name] == theirs[name], (name, row)
 
 
 def test_age_minus_is_added_to_electrical_unlike_reference(ref):
@@ -187,8 +187,8 @@ def test_age_minus_is_added_to_electrical_unlike_reference(ref):
     ours, theirs = ef2_gis.calculate(row), _ref_calculate(ref, row)
     assert ours["age_minus"] == theirs["age_minus"] == -20
     assert theirs["gis_elec_minus"] == 0 and ours["gis_elec_minus"] == -20
-    assert ours["pof"] == theirs["pof"] - 20
-    assert ours["total_score"] == pytest.approx(theirs["total_score"] - 10)
+    # 원본 PoF엔 경과연수가 없다 — 우리 PoF = 100 + 기계적 + (경과연수 -20) + 화학적
+    assert ours["pof"] == round1(100 + ours["gis_mech_minus"] - 20 + ours["gis_chem_minus"])
     assert {"field": "age_minus", "label": "경과연수", "group": "전기적"} in ef2_gis.BREAKDOWN["pof"]
 
 

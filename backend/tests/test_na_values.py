@@ -18,6 +18,7 @@ from app.core.config import BACKEND_DIR, get_settings
 from app.db.models import DgaReading, Equipment, PeriodicInspection, ScoreSnapshot, SwitchgearCondition
 from app.equipment_types import ef1_transformer, ef4_switchgear
 from app.equipment_types.na import is_na_token
+from app.equipment_types.rounding import round1
 from app.equipment_types.registry import all_modules
 from app.services.dataset_service import count_type
 from app.services.import_service import NOT_NULLABLE_COLUMNS, import_file
@@ -60,7 +61,7 @@ def test_null_input_only_zeroes_the_deductions_that_use_it(module):
             for field in leaves:
                 assert out[field] in (base[field], 0), (name, field, base[field], out[field])
             assert all(out[k] is not None for k in out if k.endswith("_minus")), name
-            assert out["pof"] == 100 + out["pof_minus"]
+            assert out["pof"] == round1(100 + out["pof_minus"])
 
 
 def test_ef1_na_judgement_no_longer_scores_as_bad():

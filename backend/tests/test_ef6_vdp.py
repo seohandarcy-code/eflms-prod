@@ -33,10 +33,27 @@ from app.services.dataset_service import count_type
 from app.services.import_service import _check_allowed, import_file
 from app.services.ingest import ingest_row
 
+from tests.reference_rules import expected_from_reference
+
+
+def _over(limit, field, rate):
+    """원본: s = limit - 값, s > 0이면 0, 아니면 int(s × rate) — int()를 뺀 공식."""
+    return lambda r: 0 if limit - r[field] > 0 else (limit - r[field]) * rate
+
+
+# 감점을 정수로 만들던 원본 round()/int()를 뺀 공식(2026-11-19)
+CHANGES = {
+    **{name: (lambda stat: lambda r: (r[stat] - 1) * 100 * 3)(name.replace("_minus", "")) for name in [
+        "cb_stat_minus", "cap_stat_minus", "fan_stat_minus", "igbt_stat_minus", "board_stat_minus"]},
+    "elec_room_max_temp_minus": lambda r: (25 - r["elec_room_max_temp"]) * 1.5,
+    "load_minus": _over(95, "load", 0.75),
+    "mod_cir_curr_minus": _over(5, "mod_cir_curr", 0.5),
+    "mod_vol_diff_minus": _over(5, "mod_vol_diff", 0.5),
+    "noise_minus": _over(80, "noise", 0.25),
+}
+
 REF_PATH = BACKEND_DIR.parent / "ref_data" / "schema_eflms_vdp.py"
 CALC_NAMES = [c["name"] for c in ef6_vdp.CALCULATED_COLUMNS]
-# 원본이 소수를 내는 감점 — 소수 첫째 자리로 반올림한다(2026-11-06 사용자 결정)
-ROUNDED_DEDUCTIONS = {"capa_times_load_minus", "thermal_img_chk_minus", "ex_box_chk_minus"}
 WEIBULL = ["cb_stat_minus", "cap_stat_minus", "fan_stat_minus", "igbt_stat_minus", "board_stat_minus"]
 
 
@@ -54,25 +71,11 @@ def ref():
     return module
 
 
-def _ref_calculate(ref, row):
-    row = dict(row)
-    for col in ref.CALCULATED_COLUMNS:
-        row[col["name"]] = col["formula"](row)
-    return row
-
-
 def _expected(ref, row):
     """원본 결과에 우리 반올림 규칙을 적용한 값 — 감점을 먼저 소수 첫째 자리로 반올림하고, 축 점수는
     100 + (반올림된 감점)이다(화면의 POF = 100 + 감점이 항상 맞도록). 예: 원본 COF 감점 -40.05 → -40.1,
     COF 59.9(원본 COF 59.95를 바로 반올림한 60.0이 아님)."""
-    exp = _ref_calculate(ref, row)
-    for name in ROUNDED_DEDUCTIONS:
-        exp[name] = round1(exp[name])
-    for axis in ("pof", "cof", "dof"):
-        exp[f"{axis}_minus"] = round1(exp[f"{axis}_minus"])
-        exp[axis] = round1(100 + exp[f"{axis}_minus"])
-    exp["total_score"] = round1(0.5 * exp["pof"] + 0.3 * exp["cof"] + 0.2 * exp["dof"])
-    return exp
+    return expected_from_reference(ref, row, CHANGES)
 
 
 def _years_ago(years):
@@ -96,21 +99,21 @@ def _base_row(**overrides):
 
 # (덮어쓸 입력, 확인할 계산 컬럼, 기대값) — mock 범위에서 한 번도 안 나오는 분기(*)도 전부 포함
 BRANCHES = [
-    ({"operation_start_time": _years_ago(12.5)}, "age_minus", -12),
+    ({"operation_start_time": _years_ago(12.5)}, "age_minus", -12.5),  # 소수 그대로(2026-11-19, 원본은 floor → -12)
     ({"operation_start_time": _years_ago(12.5)}, "cb_replace_no", 1),
     ({"operation_start_time": _years_ago(7)}, "cb_replace_no", 0),
     ({"operation_start_time": _years_ago(20)}, "cb_replace_no", 1),  # 교체는 최대 1회
-    ({"operation_start_time": _years_ago(3.8)}, "board_stat_minus", -14),
-    ({"operation_start_time": _years_ago(3.8), "elec_room_max_temp": 28.0}, "board_stat_minus", -17),  # 더울수록 수명 단축
-    ({"operation_start_time": _years_ago(3.8)}, "igbt_stat_minus", -2),
+    ({"operation_start_time": _years_ago(3.8)}, "board_stat_minus", -14.3),
+    ({"operation_start_time": _years_ago(3.8), "elec_room_max_temp": 28.0}, "board_stat_minus", -16.5),  # 더울수록 수명 단축
+    ({"operation_start_time": _years_ago(3.8)}, "igbt_stat_minus", -1.8),
     ({"operation_start_time": _years_ago(20), "fan_replace_no": 5}, "fan_life_year", 0),  # * max(0, …)
     ({"operation_start_time": _years_ago(20), "fan_replace_no": 5}, "fan_stat_minus", 0),  # *
-    ({"elec_room_max_temp": 22.0}, "elec_room_max_temp_minus", 4),  # 가점, Python round(4.5) → 4
+    ({"elec_room_max_temp": 22.0}, "elec_room_max_temp_minus", 4.5),  # 가점(원본은 Python round → 4)
     ({"elec_room_max_temp": 27.0}, "elec_room_max_temp_minus", -3),
-    ({"elec_room_max_temp": 28.0}, "elec_room_max_temp_minus", -4),  # round(-4.5) → -4
-    ({"load": 95.0}, "load_minus", 0), ({"load": 96.0}, "load_minus", 0),  # * int(-0.75) → 0
-    ({"load": 100.0}, "load_minus", -3),  # *
-    ({"mod_cir_curr": 6}, "mod_cir_curr_minus", 0), ({"mod_cir_curr": 7}, "mod_cir_curr_minus", -1),  # *
+    ({"elec_room_max_temp": 28.0}, "elec_room_max_temp_minus", -4.5),
+    ({"load": 95.0}, "load_minus", 0), ({"load": 96.0}, "load_minus", -0.8),  # * -0.75 → -0.8(원본은 int → 0)
+    ({"load": 100.0}, "load_minus", -3.8),  # * -3.75
+    ({"mod_cir_curr": 6}, "mod_cir_curr_minus", -0.5), ({"mod_cir_curr": 7}, "mod_cir_curr_minus", -1),  # *
     ({"mod_vol_diff": 9}, "mod_vol_diff_minus", -2),  # *
     ({"noise": 80}, "noise_minus", 0), ({"noise": 84}, "noise_minus", -1),  # *
     ({"thermal_img_chk": "이상"}, "thermal_img_chk_minus", -0.5),  # *

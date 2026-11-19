@@ -39,13 +39,12 @@ from app.services.ingest import ingest_row
 from app.services.reference_data import calc_options, ensure_mock_reference, mock_reference
 from app.services.reference_service import _check_row_extra
 
+from tests.reference_rules import expected_from_reference
+
 REF_PATH = BACKEND_DIR.parent / "ref_data" / "schema_eflms_battery.py"
 CALC_NAMES = [c["name"] for c in ef7_battery.CALCULATED_COLUMNS]
 MOCK_REF = mock_reference(ef7_battery)
 # 원본이 소수를 내는 감점 — 소수 첫째 자리로 반올림한다(2026-11-16 사용자 결정)
-ROUNDED_DEDUCTIONS = {
-    "soh_minus", "bms_minus", "vol_diff_minus", "temp_diff_minus", "temp_range_over_minus", "capa_times_load_minus",
-}
 
 
 @pytest.fixture(scope="module")
@@ -66,24 +65,10 @@ def _calc(row, reference=MOCK_REF, **kw):
     return ef7_battery.calculate(row, reference=reference, **kw)
 
 
-def _ref_calculate(ref, row):
-    row = dict(row)
-    for col in ref.CALCULATED_COLUMNS:
-        row[col["name"]] = col["formula"](row)
-    return row
-
-
 def _expected(ref, row):
     """원본 결과에 우리 반올림 규칙을 적용한 값 — 감점을 먼저 소수 첫째 자리로 반올림하고, 축 감점은
     (반올림된 감점)의 합, 축 점수는 100 + 축 감점이다(화면의 POF = 100 + 감점이 항상 맞도록)."""
-    exp = _ref_calculate(ref, row)
-    for name in ROUNDED_DEDUCTIONS:
-        exp[name] = round1(exp[name])
-    for axis in ("pof", "cof", "dof"):
-        exp[f"{axis}_minus"] = round1(sum(exp[i["field"]] for i in ef7_battery.BREAKDOWN[axis]))
-        exp[axis] = round1(100 + exp[f"{axis}_minus"])
-    exp["total_score"] = round1(0.5 * exp["pof"] + 0.3 * exp["cof"] + 0.2 * exp["dof"])
-    return exp
+    return expected_from_reference(ref, row)
 
 
 def _years_ago(years):
@@ -109,7 +94,7 @@ NO_HISTORY = {"factory_code": "Z9"}
 
 # (덮어쓸 입력, 확인할 계산 컬럼, 기대값) — mock 범위에서 한 번도 안 나오는 분기(*)도 전부 포함
 BRANCHES = [
-    ({"operation_start_time": _years_ago(12.5)}, "age_minus", -12),
+    ({"operation_start_time": _years_ago(12.5)}, "age_minus", -12.5),  # 소수 그대로(2026-11-19, 원본은 floor → -12)
     # 방전인덱스합 — 목업 참고표 H1 10건 중 설치일 이후만(원본 코드대로 날짜 비교, 같은 날 포함)
     ({"operation_start_time": date(2005, 1, 1)}, "disch_index", 103.085),  # H1 전체
     ({"operation_start_time": date(2021, 9, 1)}, "disch_index", 40.114),   # 2021-07-21은 설치 전이라 빠짐
@@ -201,7 +186,7 @@ def test_na_room_temperature_zeroes_temperature_based_deductions():
     out = _calc(_base_row(operation_start_time=date(2016, 1, 1), bat_room_temp=None))
     assert (out["soh_minus"], out["bms_minus"], out["bat_room_temp_minus"]) == (0, 0, 0)
     assert out["temp_dec_coef"] is None and out["bms_stat"] is None
-    assert out["disch_index"] == 103.085 and out["age_minus"] == -10
+    assert out["disch_index"] == 103.085 and out["age_minus"] == -out["operation_year"]
 
 
 def test_matches_reference_formulas(ref):

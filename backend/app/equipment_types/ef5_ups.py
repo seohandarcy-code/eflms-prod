@@ -2,10 +2,13 @@
 
 `ref_data/schema_eflms_ups.py`(2026-11-06 수정본)의 INPUT_COLUMNS/CALCULATED_COLUMNS 공식을
 **그대로** 이식했다 — 온도 보정 와이블(척도 × 2^((25−T)/10)), 차단기 7.5년 1회 교체 가정, 팬 사용수명
-max(0, …), 전기실 온도 가점(25℃ 미만이면 +), 원본 안의 정수 반올림(round()/int())은 모두 원본대로다.
+max(0, …), 전기실 온도 가점(25℃ 미만이면 +), 감점을 정수로 만들던 원본의 round()/int()는
+2026-11-19부터 빼고 소수 그대로 계산한다(차단기 교체 횟수 int()는 횟수라 그대로).
 tests/test_ef5_ups.py가 같은 입력으로 원본과 결과를 대조한다.
 
 원본과 다른 점:
+- **감점 소수 계산(2026-11-19, 사용자 결정)**: 원본이 감점을 정수로 만들던 floor()/round()/int()를 빼고 소수 그대로
+  계산한다(경과연수 감점 = -운전년수 등). 감점 항목은 na.evaluate()가 float·소수 첫째 자리로 통일한다(rounding.py).
 - 소수 첫째 자리(2026-11-06 사용자 결정): 원본이 소수를 내는 사고영향성·열화상·외함 감점을 round1()
   (엑셀 ROUND식, -0.25 → -0.3)로 반올림한다. POF·COF·DOF와 종합점수는 na.evaluate()가 공통으로 반올림한다.
 - 계산 기준일을 calculate(as_of=)로 받는다(기본 오늘 — 원본과 같은 결과). EF1~EF4와 같다.
@@ -151,25 +154,25 @@ def cb_replace_no_cal(row):
 def load_minus_cal(row):
     s = 95 - row["load"]
     if s > 0: return 0
-    return int(s * 0.75)
+    return s * 0.75
 
 
 def mod_cir_curr_minus_cal(row):
     s = 5 - row["mod_cir_curr"]
     if s > 0: return 0
-    return int(s * 0.5)
+    return s * 0.5
 
 
 def mod_vol_diff_minus_cal(row):
     s = 5 - row["mod_vol_diff"]
     if s > 0: return 0
-    return int(s * 0.5)
+    return s * 0.5
 
 
 def noise_minus_cal(row):
     s = 80 - row["noise"]
     if s > 0: return 0
-    return int(s * 0.25)
+    return s * 0.25
 
 
 def _weibull_stat(life_field, scale, shape):
@@ -178,7 +181,7 @@ def _weibull_stat(life_field, scale, shape):
 
 
 def _stat_minus(stat_field):
-    return lambda row: round((row[stat_field] - 1) * 100 * 3)
+    return lambda row: (row[stat_field] - 1) * 100 * 3
 
 
 _INS_BUILD_RANK = {"A": -6, "B": -3, "C": 0}
@@ -190,8 +193,8 @@ _EMERGE_SYS = {"불가": -4, "EMG": -2, "타설비": 0}
 CALCULATED_COLUMNS = [
     # 계산 기준일은 calculate(as_of=)로 받는다(기본 오늘 — 원본과 같은 결과).
     {"name": "today", "formula": lambda row: row["_as_of"]},
-    {"name": "operation_year", "formula": lambda row: round((row["today"] - row["operation_start_time"]).days / 365, 1)},
-    {"name": "age_minus", "formula": lambda row: -(math.floor(row["operation_year"]))},
+    {"name": "operation_year", "formula": lambda row: round1((row["today"] - row["operation_start_time"]).days / 365)},
+    {"name": "age_minus", "formula": lambda row: -row["operation_year"]},
     {"name": "cb_replace_no", "formula": cb_replace_no_cal},
     {"name": "cb_life_year", "formula": lambda row: row["operation_year"] - 7.5 * row["cb_replace_no"]},
     {"name": "cb_stat", "formula": _weibull_stat("cb_life_year", 37.44, 8.55)},
@@ -209,7 +212,7 @@ CALCULATED_COLUMNS = [
     {"name": "board_stat", "formula": _weibull_stat("board_life_year", 283.18, 0.7)},
     {"name": "board_stat_minus", "formula": _stat_minus("board_stat")},
     # 25℃보다 낮으면 가점(+)이 된다 — 원본대로(2026-11-06 확인).
-    {"name": "elec_room_max_temp_minus", "formula": lambda row: round((25 - row["elec_room_max_temp"]) * 1.5)},
+    {"name": "elec_room_max_temp_minus", "formula": lambda row: (25 - row["elec_room_max_temp"]) * 1.5},
     {"name": "load_minus", "formula": load_minus_cal},
     {"name": "mod_cir_curr_minus", "formula": mod_cir_curr_minus_cal},
     {"name": "mod_vol_diff_minus", "formula": mod_vol_diff_minus_cal},

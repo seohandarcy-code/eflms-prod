@@ -26,7 +26,7 @@
 
 **EF4(수배전반) 전용 도메인 테이블**(Stage 10) — 입력: `switchgear_spec`, `switchgear_condition`, `switchgear_consequence_attribute`, `switchgear_design_attribute` / 계산: `switchgear_score_detail`. 계산기 `backend/app/equipment_types/ef4_switchgear.py`. 원본에 전압이 없어 공통 `equipment.voltage`에는 0을 넣는다(계산기가 채움 — 공통 적재 코드 불변). 같은 Stage에서 공통 화면의 전압 표시를 가동년월로 바꿨다(10-0, 목록 API에 `operation_start_time` 추가 — 테이블 변경 없음).
 
-**EF5(UPS) 전용 도메인 테이블**(Stage 13) — 입력: `ups_spec`, `ups_condition`, `ups_consequence_attribute`, `ups_design_attribute` / 계산: `ups_score_detail`. 계산기 `backend/app/equipment_types/ef5_ups.py`. 전압은 EF4처럼 0. 같은 Stage에서 점수 지표를 모든 유형 공통으로 소수 첫째 자리로 바꿨다(13-0, `score_snapshot` 점수 컬럼 FLOAT — 사용자 승인 공통 테이블 변경, `docs/DATA_DICTIONARY.md` "점수 지표 소수 첫째 자리").
+**EF5(UPS) 전용 도메인 테이블**(Stage 13) — 입력: `ups_spec`, `ups_condition`, `ups_consequence_attribute`, `ups_design_attribute` / 계산: `ups_score_detail`. 계산기 `backend/app/equipment_types/ef5_ups.py`. 전압은 EF4처럼 0. 같은 Stage에서 점수 지표를 모든 유형 공통으로 소수 첫째 자리로 바꿨다(13-0, `score_snapshot` 점수 컬럼 FLOAT — 사용자 승인 공통 테이블 변경, `docs/DATA_DICTIONARY.md` "점수 지표 소수 첫째 자리"). 2026-11-19(Stage 20)에 감점도 정수 반올림 없이 소수로 계산하게 바꾸고 EF1~EF4 계산 결과 테이블 감점 컬럼을 FLOAT로(공통 테이블은 그대로, "감점 소수 계산").
 
 **EF6(VDP) 전용 도메인 테이블**(Stage 14) — 입력: `vdp_spec`, `vdp_condition`, `vdp_consequence_attribute`, `vdp_design_attribute` / 계산: `vdp_score_detail`. 계산기 `backend/app/equipment_types/ef6_vdp.py`. 지금은 EF5(UPS)와 구조·공식이 거의 같지만(모델type만 다름) 앞으로 달라질 수 있어 모듈·테이블·화면을 공유하지 않고 독립으로 붙였다.
 

@@ -4,6 +4,10 @@
 다른 설비유형(EF2~)은 이 파일과 같은 패턴으로 별도 모듈을 추가하고 registry.py에 등록한다
 (app/equipment_types/base.py의 EquipmentTypeModule 인터페이스).
 
+원본과 다른 점:
+- **감점 소수 계산(2026-11-19, 사용자 결정)**: 원본이 감점을 정수로 만들던 floor()/round()/int()를 빼고 소수 그대로
+  계산한다(경과연수 감점 = -운전년수 등). 감점 항목은 na.evaluate()가 float·소수 첫째 자리로 통일한다(rounding.py).
+
 공개 인터페이스:
 - generate_input_row() -> dict      : mock 입력 1건 생성 (시드용)
 - calculate(input_row, as_of=None) -> dict : 입력 dict 하나로 전체 계산 컬럼을 산출(as_of=계산 기준일, 기본 오늘)
@@ -11,7 +15,6 @@
 - load_inputs / last_diag_dates / load_detail / BREAKDOWN : 조회용 (Stage 8-4)
 """
 import itertools
-import math
 import random
 from datetime import date, timedelta
 
@@ -31,6 +34,7 @@ from app.db.models import (
     TransformerSpec,
 )
 from app.equipment_types.na import evaluate
+from app.equipment_types.rounding import round1
 from app.schemas.ef1 import (
     DesignAttributeOut,
     DgaReadingOut,
@@ -460,8 +464,8 @@ def dof_minus_cal(row):
 CALCULATED_COLUMNS = [
     # 계산 기준일은 calculate(as_of=)로 받는다(기본 오늘) — Stage 8-4, N년 뒤 점수 예측용. 결과는 이전과 같다.
     {"name": "today", "formula": lambda row: row["_as_of"]},
-    {"name": "operation_year", "formula": lambda row: round((row["today"] - row["operation_start_time"]).days / 365, 1)},
-    {"name": "age_minus", "formula": lambda row: -(math.floor(row["operation_year"]))},
+    {"name": "operation_year", "formula": lambda row: round1((row["today"] - row["operation_start_time"]).days / 365)},
+    {"name": "age_minus", "formula": lambda row: -row["operation_year"]},
     {"name": "dga_tcg", "formula": dga_tcg_cal},
     {"name": "dga_diag", "formula": dga_diag_cal},
     {"name": "dga_minus", "formula": dga_minus_cal},

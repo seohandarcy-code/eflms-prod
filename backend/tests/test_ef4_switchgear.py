@@ -28,10 +28,26 @@ from app.db.models import (
     SwitchgearSpec,
 )
 from app.equipment_types import ef3_cable, ef4_switchgear
-from app.equipment_types.rounding import SCORE_FIELDS, round1
 from app.services.dataset_service import count_type
 from app.services.import_service import _check_allowed, import_file
 from app.services.ingest import ingest_row
+
+from tests.reference_rules import expected_from_reference, operation_year
+
+
+def _scale_dam_chk_minus(r):
+    s = r["scale_dam_chk"]
+    if s > 5000: return -30
+    if s >= 0: return (-6) * s / 1000
+    return 0
+
+
+# 감점을 정수로 만들던 원본 round()를 뺀 공식(2026-11-19), 차단기 운전년수도 운전년수와 같은 반올림
+CHANGES = {
+    "cb_op_year": operation_year,
+    "cb_stat_minus": lambda r: (r["cb_stat"] - 1) * 100 * 4.5,
+    "scale_dam_chk_minus": _scale_dam_chk_minus,
+}
 
 REF_PATH = BACKEND_DIR.parent / "ref_data" / "schema_eflms_subaejeon.py"
 CALC_NAMES = [c["name"] for c in ef4_switchgear.CALCULATED_COLUMNS]
@@ -49,13 +65,6 @@ def ref():
     finally:
         sys.dont_write_bytecode = prev
     return module
-
-
-def _ref_calculate(ref, row):
-    row = dict(row)
-    for col in ref.CALCULATED_COLUMNS:
-        row[col["name"]] = col["formula"](row)
-    return row
 
 
 def _years_ago(years):
@@ -80,10 +89,10 @@ def _base_row(**overrides):
 
 # (덮어쓸 입력, 확인할 계산 컬럼, 기대값) — mock 범위에서 한 번도 안 나오는 분기(*)도 전부 포함
 BRANCHES = [
-    ({"operation_start_time": _years_ago(12.5)}, "age_minus", -12),
-    ({"operation_start_time": _years_ago(12.5)}, "cb_stat_minus", 0),
-    ({"operation_start_time": _years_ago(20)}, "cb_stat_minus", -4),
-    ({"operation_start_time": _years_ago(30)}, "cb_stat_minus", -63),  # *
+    ({"operation_start_time": _years_ago(12.5)}, "age_minus", -12.5),  # 소수 그대로(2026-11-19, 원본은 floor → -12)
+    ({"operation_start_time": _years_ago(12.5)}, "cb_stat_minus", -0.1),
+    ({"operation_start_time": _years_ago(20)}, "cb_stat_minus", -3.9),
+    ({"operation_start_time": _years_ago(30)}, "cb_stat_minus", -63.2),  # *
     ({"part_thermal_chk": "불량"}, "part_thermal_chk_minus", -4),  # *
     ({"elec_room_avg_temp": 30}, "elec_room_avg_temp_minus", 0), ({"elec_room_avg_temp": 31}, "elec_room_avg_temp_minus", -2),  # *
     ({"elec_room_avg_temp": 35}, "elec_room_avg_temp_minus", -10),  # *
@@ -95,9 +104,9 @@ BRANCHES = [
     ({"load_chk": 0.81}, "load_minus", -8),  # *
     ({"ex_box_chk": "불량"}, "ex_box_chk_minus", -1), ({"noise_chk": "불량"}, "noise_chk_minus", -1),  # *
     ({"bolt_chk": "불량"}, "bolt_chk_minus", -1),  # *
-    ({"scale_dam_chk": 100.0}, "scale_dam_chk_minus", -1),
-    ({"scale_dam_chk": 750.0}, "scale_dam_chk_minus", -4),  # Python round: -4.5 → -4(짝수 쪽, 원본대로)
-    ({"scale_dam_chk": 1250.0}, "scale_dam_chk_minus", -8),  # *  -7.5 → -8
+    ({"scale_dam_chk": 100.0}, "scale_dam_chk_minus", -0.6),
+    ({"scale_dam_chk": 750.0}, "scale_dam_chk_minus", -4.5),  # 소수 그대로(원본은 Python round → -4)
+    ({"scale_dam_chk": 1250.0}, "scale_dam_chk_minus", -7.5),  # *
     ({"scale_dam_chk": 5000.0}, "scale_dam_chk_minus", -30), ({"scale_dam_chk": 5001.0}, "scale_dam_chk_minus", -30),  # *
     ({"install_building": "FAB동"}, "install_building_minus", -12), ({"install_building": "UT동"}, "install_building_minus", -8),
     ({"install_building": "GCS동"}, "install_building_minus", -8),  # *
@@ -132,8 +141,8 @@ def test_base_row_totals_and_subtotals():
     assert (base["pof"], base["cof"], base["dof"], base["total_score"]) == (100, 100, 100, 100)
     aged = ef4_switchgear.calculate(_base_row(operation_start_time=_years_ago(20), load_chk=0.6))
     # 내구성 = 경과년수 + 차단기고장확률, 열적 = 부하율 등 — 원본 소계 그대로 PoF에 합산
-    assert aged["durability_minus"] == -20 - 4 and aged["thermal_minus"] == -4
-    assert aged["pof"] == 100 - 24 - 4
+    assert aged["durability_minus"] == -23.9 and aged["thermal_minus"] == -4  # 경과년수 -20 + 차단기 -3.9
+    assert aged["pof"] == 72.1  # 100 - 23.9 - 4
 
 
 def test_worst_case_scores_can_go_negative_and_are_kept():
@@ -153,11 +162,9 @@ def test_matches_reference_formulas(ref):
     rows += [_base_row(**overrides) for overrides, _, _ in BRANCHES]
     for row in rows:
         ours = ef4_switchgear.calculate(row)
-        theirs = _ref_calculate(ref, row)
+        theirs = expected_from_reference(ref, row, CHANGES)
         for name in CALC_NAMES:
-            # 점수 지표는 소수 첫째 자리로 반올림해 저장한다(2026-11-06) — 원본 값에 같은 반올림을 적용해 비교
-            expected = round1(theirs[name]) if name in SCORE_FIELDS else theirs[name]
-            assert ours[name] == expected, (name, row)
+            assert ours[name] == theirs[name], (name, row)
 
 
 def test_columns_match_reference_names(ref):

@@ -1,11 +1,13 @@
 """EF4(수배전반) 설비유형 계산기 (Stage 10-2).
 
 `ref_data/schema_eflms_subaejeon.py`(2026-10-29 수정본)의 INPUT_COLUMNS/CALCULATED_COLUMNS 공식을
-**그대로** 이식했다 — 공식을 원본과 다르게 해석한 곳은 없다(관통형CT 미적용 -1, 피해규모 감점의
-Python round(.5는 짝수 쪽), 음수 점수 허용 모두 원본대로, docs/DATA_DICTIONARY.md EF4 절).
+**그대로** 이식했다 — 공식을 원본과 다르게 해석한 곳은 없다(관통형CT 미적용 -1, 음수 점수 허용은
+원본대로(피해규모 감점의 Python round는 2026-11-19부터 빼고 소수 그대로), docs/DATA_DICTIONARY.md EF4 절).
 tests/test_ef4_switchgear.py가 같은 입력으로 원본과 결과를 대조한다.
 
 원본과 다른 점:
+- **감점 소수 계산(2026-11-19, 사용자 결정)**: 원본이 감점을 정수로 만들던 floor()/round()/int()를 빼고 소수 그대로
+  계산한다(경과연수 감점 = -운전년수 등). 감점 항목은 na.evaluate()가 float·소수 첫째 자리로 통일한다(rounding.py).
 - 계산 기준일을 calculate(as_of=)로 받는다(기본 오늘 — 원본과 같은 결과). EF1~EF3과 같다.
 - 원본에 전압 입력이 없어 calculate()가 voltage=0을 채운다 — 공통 equipment.voltage가 필수라서다.
   공통 화면은 전압을 표시하지 않는다(Stage 10-0). 원본·실데이터 파일에는 전압 컬럼이 필요 없다.
@@ -34,6 +36,7 @@ from app.db.models import (
     SwitchgearSpec,
 )
 from app.equipment_types.na import evaluate
+from app.equipment_types.rounding import round1
 from app.schemas.ef4 import (
     Ef4Detail,
     SwitchgearConditionOut,
@@ -187,7 +190,7 @@ def load_minus_cal(row):
 def scale_dam_chk_minus_cal(row):
     s = row["scale_dam_chk"]
     if s > 5000: return -30
-    if s >= 0: return round((-6) * s / 1000)  # 원본대로 Python round(2026-10-29 결정)
+    if s >= 0: return (-6) * s / 1000  # 소수 그대로(2026-11-19 — 원본은 Python round)
     return 0
 
 
@@ -225,11 +228,11 @@ def spec_use_minus_cal(row):
 CALCULATED_COLUMNS = [
     # 계산 기준일은 calculate(as_of=)로 받는다(기본 오늘 — 원본과 같은 결과).
     {"name": "today", "formula": lambda row: row["_as_of"]},
-    {"name": "operation_year", "formula": lambda row: round((row["today"] - row["operation_start_time"]).days / 365, 1)},
-    {"name": "age_minus", "formula": lambda row: -(math.floor(row["operation_year"]))},
-    {"name": "cb_op_year", "formula": lambda row: round((row["today"] - row["operation_start_time"]).days / 365, 1)},
+    {"name": "operation_year", "formula": lambda row: round1((row["today"] - row["operation_start_time"]).days / 365)},
+    {"name": "age_minus", "formula": lambda row: -row["operation_year"]},
+    {"name": "cb_op_year", "formula": lambda row: round1((row["today"] - row["operation_start_time"]).days / 365)},
     {"name": "cb_stat", "formula": lambda row: math.e ** (-1 * ((row["cb_op_year"] / 39.24) ** 7.03))},
-    {"name": "cb_stat_minus", "formula": lambda row: round((row["cb_stat"] - 1) * 100 * 4.5)},
+    {"name": "cb_stat_minus", "formula": lambda row: (row["cb_stat"] - 1) * 100 * 4.5},
     {"name": "durability_minus", "formula": lambda row: row["age_minus"] + row["cb_stat_minus"]},
     {"name": "part_thermal_chk_minus", "formula": _good_minus("part_thermal_chk", -4)},
     {"name": "elec_room_avg_temp_minus", "formula": elec_room_avg_temp_minus_cal},

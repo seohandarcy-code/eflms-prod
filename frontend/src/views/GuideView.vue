@@ -86,6 +86,7 @@ onMounted(async () => {
         <p class="lead">세 축의 점수를 아래 비율로 가중합해 종합점수를 만듭니다 — POF의 비중이 가장 크고, DOF가 가장 작습니다.</p>
         <div class="formula formula-main">종합점수 = 0.5 × POF + 0.3 × COF + 0.2 × DOF</div>
         <p class="lead lead-after">입력 데이터에 값이 없어 <b>N/A</b>로 들어온 항목은 평가하지 않습니다 — 그 항목의 감점은 0이고, 상세 화면에는 값이 "N/A"로 표시됩니다. 따라서 N/A가 많은 설비는 실제보다 점수가 높게 보일 수 있습니다.</p>
+        <p class="lead lead-after">감점은 소수까지 계산해 항목마다 소수 첫째 자리로 반올림합니다(5에서 올림) — 예) 경과연수 12.7년 → -12.7. 그래서 화면의 항목 감점을 더하면 POF·COF·DOF 감점과 정확히 맞습니다.</p>
       </section>
 
       <section class="card">

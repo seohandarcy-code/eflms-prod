@@ -6,6 +6,8 @@ d = 1823 × (1/298.15 − 1/(배터리실온도+273.15))), BMS 온도 보정 와
 모두 원본대로다. tests/test_ef7_battery.py가 같은 입력으로 원본과 결과를 대조한다.
 
 원본과 다른 점:
+- **감점 소수 계산(2026-11-19, 사용자 결정)**: 원본이 감점을 정수로 만들던 floor()/round()/int()를 빼고 소수 그대로
+  계산한다(경과연수 감점 = -운전년수 등). 감점 항목은 na.evaluate()가 float·소수 첫째 자리로 통일한다(rounding.py).
 - **참고표**(Stage 15-0, 2026-11-16 사용자 결정): 원본 파일에 하드코딩된 방전이력·온도감소계수 표를 DB 테이블로
   옮겼다. 계산에는 DB에 지금 들어 있는 참고표를 쓰고, calculate(row, reference=...)로 받는다 — 호출하는 쪽이
   app/services/reference_data.calc_options()를 넘긴다. 원본의 두 표는 목업 참고표(MOCK_*)로 그대로 둔다.
@@ -301,8 +303,8 @@ _MODEL_GEN = {2: -12, 3: -6, 4: 0}
 CALCULATED_COLUMNS = [
     # 계산 기준일은 calculate(as_of=)로 받는다(기본 오늘 — 원본과 같은 결과).
     {"name": "today", "formula": lambda row: row["_as_of"]},
-    {"name": "operation_year", "formula": lambda row: round((row["today"] - row["operation_start_time"]).days / 365, 1)},
-    {"name": "age_minus", "formula": lambda row: -(math.floor(row["operation_year"]))},
+    {"name": "operation_year", "formula": lambda row: round1((row["today"] - row["operation_start_time"]).days / 365)},
+    {"name": "age_minus", "formula": lambda row: -row["operation_year"]},
     {"name": "disch_index", "formula": disch_index_cal},
     {"name": "disch_dec_coef", "formula": lambda row: row["disch_index"] * 0.000579},
     {"name": "temp_dec_coef", "formula": temp_dec_coef_cal},

@@ -27,10 +27,17 @@ from app.db.models import (
     ScoreSnapshot,
 )
 from app.equipment_types import ef2_gis, ef3_cable
-from app.equipment_types.rounding import SCORE_FIELDS, round1
 from app.services.dataset_service import count_type
 from app.services.import_service import _check_allowed, import_file
 from app.services.ingest import ingest_row
+
+from tests.reference_rules import expected_from_reference
+
+# 감점을 정수로 만들던 원본 round()를 뺀 공식(2026-11-19)
+CHANGES = {
+    "failure_rate_minus": lambda r: r["failure_rate"] * (-1000),
+    "risk_mva_minus": lambda r: r["cable_mva"] * 0.01 * (-1),
+}
 
 REF_PATH = BACKEND_DIR.parent / "ref_data" / "schema_eflms_cable.py"
 CALC_NAMES = [c["name"] for c in ef3_cable.CALCULATED_COLUMNS]
@@ -48,13 +55,6 @@ def ref():
     finally:
         sys.dont_write_bytecode = prev
     return module
-
-
-def _ref_calculate(ref, row):
-    row = dict(row)
-    for col in ref.CALCULATED_COLUMNS:
-        row[col["name"]] = col["formula"](row)
-    return row
 
 
 def _base_row(**overrides):
@@ -82,7 +82,7 @@ BRANCHES = [
     ({"max_temp": 80.1}, "temp_minus", -10), ({"max_temp": 90.1}, "temp_minus", -20),  # *
     ({"diff_temp": 5.0}, "diff_temp_minus", 0), ({"diff_temp": 5.1}, "diff_temp_minus", -5),  # *
     ({"diff_temp": 10.1}, "diff_temp_minus", -10),  # *
-    ({"failure_rate": 0.0006}, "failure_rate_minus", -1), ({"failure_rate": 0.007}, "failure_rate_minus", -7),
+    ({"failure_rate": 0.0006}, "failure_rate_minus", -0.6), ({"failure_rate": 0.007}, "failure_rate_minus", -7),
     ({"pd_num": 1}, "pd_minus", -10), ({"pd_num": 3}, "pd_minus", -20),
     ({"sys_cycle_curr": 50.0}, "sys_cycle_curr_minus", 0), ({"sys_cycle_curr": 50.1}, "sys_cycle_curr_minus", -5),  # *
     ({"sys_cycle_curr": 100.1}, "sys_cycle_curr_minus", -10),  # *
@@ -92,7 +92,7 @@ BRANCHES = [
     ({"cable_move": 1.0}, "cable_move_minus", 0), ({"cable_move": 1.1}, "cable_move_minus", -5),
     ({"cable_move": 3.1}, "cable_move_minus", -10), ({"cable_move": 5.1}, "cable_move_minus", -15),
     ({"cable_move": 10.1}, "cable_move_minus", -20),  # *
-    ({"cable_mva": 414}, "risk_mva_minus", -4), ({"cable_mva": 984}, "risk_mva_minus", -10),
+    ({"cable_mva": 414}, "risk_mva_minus", -4.1), ({"cable_mva": 984}, "risk_mva_minus", -9.8),
     ({"laying_type": "철탑"}, "laying_type_minus", -30),  # *
     ({"laying_type": "공동구"}, "laying_type_minus", -20), ({"laying_type": "관로구"}, "laying_type_minus", -10),
     ({"mid_joint": 7}, "mid_joint_minus", -7),
@@ -109,7 +109,7 @@ BRANCHES = [
     ({"live_line_diag": "X"}, "live_line_diag_minus", -10), ({"cable_move_diag": "X"}, "cable_move_diag_minus", -10),
     ({"offline_diag": "미실시"}, "offline_diag_minus", -20), ({"offline_diag": "3년이내"}, "offline_diag_minus", -10),  # *
     ({"longlife_insul": "X"}, "longlife_insul_minus", -10),
-    ({"operation_start_time": date.today() - timedelta(days=int(12.5 * 365))}, "age_minus", -12),
+    ({"operation_start_time": date.today() - timedelta(days=int(12.5 * 365))}, "age_minus", -12.5),  # 소수 그대로(2026-11-19, 원본은 floor → -12)
 ]
 
 
@@ -144,11 +144,9 @@ def test_matches_reference_formulas(ref):
     rows += [_base_row(**overrides) for overrides, _, _ in BRANCHES]
     for row in rows:
         ours = ef3_cable.calculate(row)
-        theirs = _ref_calculate(ref, row)
+        theirs = expected_from_reference(ref, row, CHANGES)
         for name in CALC_NAMES:
-            # 점수 지표는 소수 첫째 자리로 반올림해 저장한다(2026-11-06) — 원본 값에 같은 반올림을 적용해 비교
-            expected = round1(theirs[name]) if name in SCORE_FIELDS else theirs[name]
-            assert ours[name] == expected, (name, row)
+            assert ours[name] == theirs[name], (name, row)
 
 
 def test_columns_match_reference_names(ref):

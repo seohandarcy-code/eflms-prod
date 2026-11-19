@@ -56,47 +56,47 @@ class SwitchgearScoreDetailOut(BaseModel):
     computed_at: datetime
     today: date
     operation_year: float
-    age_minus: int
+    age_minus: float
     cb_op_year: float
     cb_stat: float
-    cb_stat_minus: int
-    durability_minus: int
-    part_thermal_chk_minus: int
-    elec_room_avg_temp_minus: int
-    temp_diff_chk_minus: int
-    max_temp_chk_minus: int
-    load_minus: int
-    thermal_minus: int
-    ex_box_chk_minus: int
-    noise_chk_minus: int
-    bolt_chk_minus: int
-    phy_minus: int
-    scale_dam_chk_minus: int
-    install_building_minus: int
-    sup_sys_chk_minus: int
-    cof_sys_minus: int
-    prod_chk_minus: int
-    op_chk_minus: int
-    replace_chk_minus: int
-    cof_cost_minus: int
-    recovery_time_chk_minus: int
-    replace_time_chk_minus: int
-    cof_recov_minus: int
+    cb_stat_minus: float
+    durability_minus: float
+    part_thermal_chk_minus: float
+    elec_room_avg_temp_minus: float
+    temp_diff_chk_minus: float
+    max_temp_chk_minus: float
+    load_minus: float
+    thermal_minus: float
+    ex_box_chk_minus: float
+    noise_chk_minus: float
+    bolt_chk_minus: float
+    phy_minus: float
+    scale_dam_chk_minus: float
+    install_building_minus: float
+    sup_sys_chk_minus: float
+    cof_sys_minus: float
+    prod_chk_minus: float
+    op_chk_minus: float
+    replace_chk_minus: float
+    cof_cost_minus: float
+    recovery_time_chk_minus: float
+    replace_time_chk_minus: float
+    cof_recov_minus: float
     operation_start_year: int
-    reliability_minus: int
-    ato_minus: int
-    dof_sys_minus: int
-    cb_inspect_minus: int
-    relay_chk_minus: int
-    online_diag_minus: int
-    dof_cost_minus: int
-    part_shortage_minus: int
+    reliability_minus: float
+    ato_minus: float
+    dof_sys_minus: float
+    cb_inspect_minus: float
+    relay_chk_minus: float
+    online_diag_minus: float
+    dof_cost_minus: float
+    part_shortage_minus: float
     ct_use: str
-    ct_use_minus: int
+    ct_use_minus: float
     longlife_fan_use: str
     lighting_use: str
-    spec_use_minus: int
-    dof_recov_minus: int
+    spec_use_minus: float
+    dof_recov_minus: float
 
 
 class Ef4Detail(BaseModel):

@@ -6,6 +6,8 @@
 판단"). tests/test_ef2_gis.py가 같은 입력으로 원본과 결과를 대조한다.
 
 원본과 다른 점:
+- **감점 소수 계산(2026-11-19, 사용자 결정)**: 원본이 감점을 정수로 만들던 floor()/round()/int()를 빼고 소수 그대로
+  계산한다(경과연수 감점 = -운전년수 등). 감점 항목은 na.evaluate()가 float·소수 첫째 자리로 통일한다(rounding.py).
 - **`cb_op_char_over`(CB 동작특성 기준치 초과) 미사용(2026-10-19, 사용자 결정)** — 입력 컬럼과
   `cb_op_char_over_minus`(Y면 -9)를 빼고, `gis_elec_minus`는 나머지 4항목만 더한다. 원본에
   "N"(감점 0)을 넣은 결과와 같다(테스트가 그렇게 대조). 실제 파일에 이 컬럼이 있으면
@@ -38,6 +40,7 @@ from app.db.models import (
     GisSf6Reading,
 )
 from app.equipment_types.na import evaluate
+from app.equipment_types.rounding import round1
 from app.schemas.ef2 import (
     Ef2Detail,
     GisConsequenceAttributeOut,
@@ -343,15 +346,15 @@ def dof_minus_cal(row):
 CALCULATED_COLUMNS = [
     # 계산 기준일은 calculate(as_of=)로 받는다(기본 오늘 — 원본과 같은 결과). Stage 8-4, 점수 예측용.
     {"name": "today", "formula": lambda row: row["_as_of"]},
-    {"name": "operation_year", "formula": lambda row: round((row["today"] - row["operation_start_time"]).days / 365, 1)},
-    {"name": "age_minus", "formula": lambda row: -(math.floor(row["operation_year"]))},
+    {"name": "operation_year", "formula": lambda row: round1((row["today"] - row["operation_start_time"]).days / 365)},
+    {"name": "age_minus", "formula": lambda row: -row["operation_year"]},
     {"name": "cb_op_num_minus", "formula": cb_op_num_minus_cal},
     {"name": "cb_op_year", "formula": lambda row: row["operation_year"]},
     {"name": "cb_stat", "formula": lambda row: math.e ** (-1 * ((row["operation_year"] / 72) ** 3.21))},
-    {"name": "cb_stat_minus", "formula": lambda row: round((row["cb_stat"] - 1) * 100 * 1)},
+    {"name": "cb_stat_minus", "formula": lambda row: (row["cb_stat"] - 1) * 100 * 1},
     {"name": "insul_year", "formula": lambda row: row["operation_year"]},
     {"name": "insul_stat", "formula": lambda row: math.e ** (-1 * ((row["operation_year"] / 4199) ** 0.75))},
-    {"name": "insul_stat_minus", "formula": lambda row: round((row["insul_stat"] - 1) * 100 * 2)},
+    {"name": "insul_stat_minus", "formula": lambda row: (row["insul_stat"] - 1) * 100 * 2},
     {"name": "gis_mech_minus", "formula": gis_mech_minus_cal},
     {"name": "rated_trip_count_minus", "formula": rated_trip_count_minus_cal},
     {"name": "cum_trip_current_minus", "formula": cum_trip_current_minus_cal},

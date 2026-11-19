@@ -64,41 +64,41 @@ class GisScoreDetailOut(BaseModel):
     computed_at: datetime
     today: date
     operation_year: float
-    age_minus: int
-    cb_op_num_minus: int
+    age_minus: float
+    cb_op_num_minus: float
     cb_op_year: float
     cb_stat: float
-    cb_stat_minus: int
+    cb_stat_minus: float
     insul_year: float
     insul_stat: float
-    insul_stat_minus: int
-    gis_mech_minus: int
-    rated_trip_count_minus: int
-    cum_trip_current_minus: int
-    load_minus: int
-    leakage_curr_minus: int
-    gis_elec_minus: int
-    part_dischar_minus: int
-    sf6_minus: int
-    elec_room_minus: int
-    gis_chem_minus: int
-    in_vol_minus: int
-    productivity_minus: int
-    fire_spread_minus: int
-    env_minus: int
-    emerge_resp_minus: int
-    rep_cost_minus: int
-    rep_time_minus: int
-    in_line_minus: int
-    ato_minus: int
-    reliability_minus: int
-    online_diag_minus: int
-    offline_diag_minus: int
-    tbm_minus: int
-    conn_rev_minus: int
-    leak_str_minus: int
-    insul_str_minus: int
-    vt_la_minus: int
+    insul_stat_minus: float
+    gis_mech_minus: float
+    rated_trip_count_minus: float
+    cum_trip_current_minus: float
+    load_minus: float
+    leakage_curr_minus: float
+    gis_elec_minus: float
+    part_dischar_minus: float
+    sf6_minus: float
+    elec_room_minus: float
+    gis_chem_minus: float
+    in_vol_minus: float
+    productivity_minus: float
+    fire_spread_minus: float
+    env_minus: float
+    emerge_resp_minus: float
+    rep_cost_minus: float
+    rep_time_minus: float
+    in_line_minus: float
+    ato_minus: float
+    reliability_minus: float
+    online_diag_minus: float
+    offline_diag_minus: float
+    tbm_minus: float
+    conn_rev_minus: float
+    leak_str_minus: float
+    insul_str_minus: float
+    vt_la_minus: float
 
 
 class Ef2Detail(BaseModel):

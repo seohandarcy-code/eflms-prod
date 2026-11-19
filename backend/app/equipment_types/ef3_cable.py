@@ -6,6 +6,8 @@
 tests/test_ef3_cable.py가 같은 입력으로 원본과 결과를 대조한다.
 
 원본과 다른 점:
+- **감점 소수 계산(2026-11-19, 사용자 결정)**: 원본이 감점을 정수로 만들던 floor()/round()/int()를 빼고 소수 그대로
+  계산한다(경과연수 감점 = -운전년수 등). 감점 항목은 na.evaluate()가 float·소수 첫째 자리로 통일한다(rounding.py).
 - 계산 기준일을 calculate(as_of=)로 받는다(기본 오늘 — 원본과 같은 결과). EF1·EF2와 같다.
 - 임포트 허용값(choices/min/required) 추가 — 원본은 모르는 문자열을 조용히 감점 0으로 처리하므로,
   오타가 0점으로 섞이지 않게 원본 판정에 쓰이는 값만 받는다. 회선별용량은 부하율의 분모라 1 이상.
@@ -16,7 +18,6 @@ tests/test_ef3_cable.py가 같은 입력으로 원본과 결과를 대조한다.
 공개 인터페이스는 app/equipment_types/base.py의 EquipmentTypeModule.
 """
 import itertools
-import math
 import random
 from datetime import date, timedelta
 
@@ -32,6 +33,7 @@ from app.db.models import (
     Equipment,
 )
 from app.equipment_types.na import evaluate
+from app.equipment_types.rounding import round1
 from app.schemas.ef3 import (
     CableConditionOut,
     CableConsequenceAttributeOut,
@@ -255,13 +257,13 @@ def dof_minus_cal(row):
 CALCULATED_COLUMNS = [
     # 계산 기준일은 calculate(as_of=)로 받는다(기본 오늘 — 원본과 같은 결과).
     {"name": "today", "formula": lambda row: row["_as_of"]},
-    {"name": "operation_year", "formula": lambda row: round((row["today"] - row["operation_start_time"]).days / 365, 1)},
-    {"name": "age_minus", "formula": lambda row: -(math.floor(row["operation_year"]))},
+    {"name": "operation_year", "formula": lambda row: round1((row["today"] - row["operation_start_time"]).days / 365)},
+    {"name": "age_minus", "formula": lambda row: -row["operation_year"]},
     {"name": "load_percent", "formula": lambda row: row["max_load"] / row["cable_mva"] * 100},
     {"name": "load_minus", "formula": load_minus_cal},
     {"name": "temp_minus", "formula": temp_minus_cal},
     {"name": "diff_temp_minus", "formula": diff_temp_minus_cal},
-    {"name": "failure_rate_minus", "formula": lambda row: round(row["failure_rate"] * (-1000))},
+    {"name": "failure_rate_minus", "formula": lambda row: row["failure_rate"] * (-1000)},
     {"name": "pd_minus", "formula": pd_minus_cal},
     {"name": "sys_cycle_curr_minus", "formula": sys_cycle_curr_minus_cal},
     {"name": "svl_leak_curr_minus", "formula": svl_leak_curr_minus_cal},
@@ -270,7 +272,7 @@ CALCULATED_COLUMNS = [
     {"name": "pof_minus", "formula": pof_minus_cal},
     {"name": "pof", "formula": lambda row: 100 + row["pof_minus"]},
     {"name": "risk_mva", "formula": lambda row: row["cable_mva"]},
-    {"name": "risk_mva_minus", "formula": lambda row: round(row["cable_mva"] * 0.01 * (-1))},
+    {"name": "risk_mva_minus", "formula": lambda row: row["cable_mva"] * 0.01 * (-1)},
     {"name": "laying_type_minus", "formula": lambda row: _LAYING_TYPE.get(row["laying_type"], 0)},
     {"name": "mid_joint_minus", "formula": lambda row: (-1) * row["mid_joint"]},
     {"name": "end_joint_minus", "formula": lambda row: _END_JOINT.get(row["end_joint"], 0)},

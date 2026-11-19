@@ -100,53 +100,53 @@ class TransformerScoreDetailOut(BaseModel):
     computed_at: datetime
     today: date
     operation_year: float
-    age_minus: int
+    age_minus: float
     dga_tcg: float | None
     dga_diag: str | None
-    dga_minus: int
-    load_minus: int
-    temp_minus: int
+    dga_minus: float
+    load_minus: float
+    temp_minus: float
     dielec_str_te_avg: float | None
     dielec_str_te_diag: str | None
-    dielec_str_te_minus: int
+    dielec_str_te_minus: float
     acid_measure_desc: str | None
-    acid_measure_minus: int
+    acid_measure_minus: float
     moisture_desc: str | None
-    moisture_minus: int
+    moisture_minus: float
     furan_total: float | None
     furan_total_per_year: float | None
     furan_desc: str | None
-    furan_minus: int
-    part_discharge_minus: int
-    oltc_96t_minus: int
+    furan_minus: float
+    part_discharge_minus: float
+    oltc_96t_minus: float
     oltc_diag: str | None
-    oltc_minus: int
-    thermal_img_minus: int
-    noise_minus: int
+    oltc_minus: float
+    thermal_img_minus: float
+    noise_minus: float
     first_voltage: int
-    first_voltage_minus: int
+    first_voltage_minus: float
     capa_times_load: float | None
-    productivity_minus: int
-    fire_minus: int
-    fire_spread_minus: int
-    emerge_response_minus: int
+    productivity_minus: float
+    fire_minus: float
+    fire_spread_minus: float
+    emerge_response_minus: float
     rep_cost: float
-    rep_cost_minus: int
+    rep_cost_minus: float
     rep_time: int
-    rep_time_minus: int
-    redundancy_minus: int
-    ato_minus: int
-    online_og_minus: int
-    offline_safety_minus: int
-    sec_minus: int
-    alarm_minus: int
-    winding_minus: int
-    prod_life_minus: int
-    connect_part_minus: int
-    temp_inc_limit_minus: int
-    test_reliability_minus: int
-    bushing_minus: int
-    oltc2_minus: int
+    rep_time_minus: float
+    redundancy_minus: float
+    ato_minus: float
+    online_og_minus: float
+    offline_safety_minus: float
+    sec_minus: float
+    alarm_minus: float
+    winding_minus: float
+    prod_life_minus: float
+    connect_part_minus: float
+    temp_inc_limit_minus: float
+    test_reliability_minus: float
+    bushing_minus: float
+    oltc2_minus: float
 
 
 class Ef1Detail(BaseModel):

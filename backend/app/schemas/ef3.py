@@ -55,33 +55,33 @@ class CableScoreDetailOut(BaseModel):
     computed_at: datetime
     today: date
     operation_year: float
-    age_minus: int
+    age_minus: float
     load_percent: float | None
-    load_minus: int
-    temp_minus: int
-    diff_temp_minus: int
-    failure_rate_minus: int
-    pd_minus: int
-    sys_cycle_curr_minus: int
-    svl_leak_curr_minus: int
-    joint_ex_damage_minus: int
-    cable_move_minus: int
+    load_minus: float
+    temp_minus: float
+    diff_temp_minus: float
+    failure_rate_minus: float
+    pd_minus: float
+    sys_cycle_curr_minus: float
+    svl_leak_curr_minus: float
+    joint_ex_damage_minus: float
+    cable_move_minus: float
     risk_mva: int | None
-    risk_mva_minus: int
-    laying_type_minus: int
-    mid_joint_minus: int
-    end_joint_minus: int
-    emerge_resp_minus: int
+    risk_mva_minus: float
+    laying_type_minus: float
+    mid_joint_minus: float
+    end_joint_minus: float
+    emerge_resp_minus: float
     rep_cost: float | None
-    rep_cost_minus: int
-    rep_time_minus: int
-    reliability_minus: int
-    temp_diag_minus: int
-    pd_diag_minus: int
-    live_line_diag_minus: int
-    cable_move_diag_minus: int
-    offline_diag_minus: int
-    longlife_insul_minus: int
+    rep_cost_minus: float
+    rep_time_minus: float
+    reliability_minus: float
+    temp_diag_minus: float
+    pd_diag_minus: float
+    live_line_diag_minus: float
+    cable_move_diag_minus: float
+    offline_diag_minus: float
+    longlife_insul_minus: float
 
 
 class Ef3Detail(BaseModel):
