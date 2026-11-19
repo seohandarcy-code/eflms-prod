@@ -278,3 +278,50 @@ export async function downloadFullSqlDump(token: string): Promise<{ tables: numb
   URL.revokeObjectURL(url);
   return { tables: Number(response.headers["x-table-count"] ?? 0), rows: Number(response.headers["x-row-count"] ?? 0) };
 }
+
+// ------------------------------------------------------------------ 점수 갱신(Stage 21-1)
+export interface RefreshTypeResult {
+  ef_code: string;
+  count: number;
+  error: string | null;
+}
+
+export interface ScoreRefreshRun {
+  run_id: number;
+  started_at: string;
+  finished_at: string | null;
+  status: "running" | "success" | "partial" | "failed";
+  trigger: "schedule" | "cli" | "admin";
+  requested_by: string | null;
+  as_of: string | null;
+  equipment_count: number;
+  types: RefreshTypeResult[];
+}
+
+export interface ScoreRefreshStatus {
+  today: string;
+  running: { holder: string; acquired_at: string } | null;
+  runs: ScoreRefreshRun[];
+}
+
+export interface ScoreRefreshResult {
+  run_id: number;
+  status: ScoreRefreshRun["status"];
+  as_of: string;
+  equipment_count: number;
+  types: RefreshTypeResult[];
+}
+
+export async function fetchScoreRefresh(token: string): Promise<ScoreRefreshStatus> {
+  const { data } = await apiClient.get<ScoreRefreshStatus>("/api/admin/score-refresh", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data;
+}
+
+export async function runScoreRefresh(token: string): Promise<ScoreRefreshResult> {
+  const { data } = await apiClient.post<ScoreRefreshResult>("/api/admin/score-refresh", null, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data;
+}

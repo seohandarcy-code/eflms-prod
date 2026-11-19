@@ -25,6 +25,7 @@ from app.services.reference_data import has_reference, mock_reference
 
 DB_TO_CALC = {"oltc_96t_minus": "oltc_96T_minus", "first_voltage_minus": "1st_voltage_minus"}
 FLOAT_MIGRATION = "f3b8d1e6a9c4"
+BEFORE_FLOAT = "9df1f3504cfe"  # 감점 FLOAT 마이그레이션 바로 전
 SCORE_DETAIL_TABLES = ("transformer_score_detail", "gis_score_detail", "cable_score_detail", "switchgear_score_detail")
 
 
@@ -119,7 +120,7 @@ def test_score_detail_float_migration_round_trip(tmp_path, monkeypatch):
         assert {col_type(t) for t in SCORE_DETAIL_TABLES} == {"FLOAT"}
         assert col_type("switchgear_score_detail", "scale_dam_chk_minus") == "FLOAT"
 
-        command.downgrade(cfg, "-1")  # 소수 감점이 없으면 되돌릴 수 있다
+        command.downgrade(cfg, BEFORE_FLOAT)  # 소수 감점이 없으면 되돌릴 수 있다
         assert {col_type(t) for t in SCORE_DETAIL_TABLES} == {"INTEGER"}
 
         command.upgrade(cfg, "head")
@@ -135,7 +136,7 @@ def test_score_detail_float_migration_round_trip(tmp_path, monkeypatch):
                 list(values.values()),
             )
         with pytest.raises(RuntimeError, match="cable_score_detail.age_minus"):
-            command.downgrade(cfg, "-1")
+            command.downgrade(cfg, BEFORE_FLOAT)
         assert col_type("cable_score_detail") == "FLOAT"
     finally:
         get_settings.cache_clear()

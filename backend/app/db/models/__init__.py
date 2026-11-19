@@ -17,6 +17,7 @@ from app.db.models.cable import (
 )
 from app.db.models.equipment import Equipment, EquipmentType
 from app.db.models.extra import EquipmentExtraAttribute
+from app.db.models.jobs import DataJobLock, ScoreRefreshRun
 from app.db.models.gis import (
     GisConsequenceAttribute,
     GisDesignAttribute,
@@ -59,6 +60,8 @@ from app.db.models.vdp import (
 )
 
 __all__ = [
+    "DataJobLock",
+    "ScoreRefreshRun",
     "AllowedUser",
     "Equipment",
     "EquipmentType",

@@ -59,10 +59,25 @@ async def ingest_row(row: dict, session: AsyncSession) -> int:
     eq_id = equipment.equipment_id
 
     await module.ingest_domain(row, eq_id, session)
+    await _merge_snapshot(row, eq_id, session)
+    await session.flush()
+    return eq_id
 
+
+async def save_scores(row: dict, equipment_id: int, session: AsyncSession) -> None:
+    """점수만 저장한다 — 계산 결과 테이블(모듈 ingest_scores) + score_snapshot. 입력 테이블·equipment·미등록
+    컬럼은 건드리지 않아 '최근 진단일'(입력 테이블 날짜)이 그대로 남는다(점수 갱신·재계산, Stage 21-1).
+    commit하지 않는다."""
+    module = get_module(row["EF_code"])
+    await module.ingest_scores(row, equipment_id, session)
+    await _merge_snapshot(row, equipment_id, session)
+    await session.flush()
+
+
+async def _merge_snapshot(row: dict, equipment_id: int, session: AsyncSession) -> None:
     await session.merge(
         ScoreSnapshot(
-            equipment_id=eq_id,
+            equipment_id=equipment_id,
             pof_minus=row["pof_minus"],
             pof=row["pof"],
             cof_minus=row["cof_minus"],
@@ -72,5 +87,3 @@ async def ingest_row(row: dict, session: AsyncSession) -> int:
             total_score=row["total_score"],
         )
     )
-    await session.flush()
-    return eq_id

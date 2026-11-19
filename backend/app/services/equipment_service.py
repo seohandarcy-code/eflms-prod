@@ -165,13 +165,33 @@ async def get_summary(session: AsyncSession, ef_code: str | None = None) -> Summ
         )
         for code, statuses in sorted(statuses_by_type.items())
     ]
+    score_dates, diag_dates = await _summary_dates(session, list(statuses_by_type))
     return SummaryKPI(
         total_equipment=len(rows),
         review_count=sum(t.review_count for t in by_type),
         replace_count=sum(t.replace_count for t in by_type),
         last_updated=max((computed_at for *_, computed_at in rows), default=None),
+        score_as_of=min(score_dates, default=None),
+        score_as_of_latest=max(score_dates, default=None),
+        data_updated_on=max(diag_dates, default=None),
         by_type=by_type,
     )
+
+
+async def _summary_dates(session: AsyncSession, ef_codes: list[str]) -> tuple[list[date], list[date]]:
+    """유형별 계산 결과 테이블의 점수 기준일(today)과 최근 진단일(입력 테이블 날짜)을 모은다(Stage 21-1)."""
+    score_dates: list[date] = []
+    diag_dates: list[date] = []
+    for code in ef_codes:
+        try:
+            module = get_module(code)
+        except UnknownEquipmentTypeError:
+            continue
+        model = module.SCORE_DETAIL_MODEL
+        score_dates += [d for d in (await session.execute(select(model.today))).scalars() if d is not None]
+        ids = (await session.execute(select(Equipment.equipment_id).where(Equipment.ef_code == code))).scalars().all()
+        diag_dates += [d for d in (await module.last_diag_dates(session, list(ids))).values() if d is not None]
+    return score_dates, diag_dates
 
 
 async def list_equipment_types(session: AsyncSession) -> list[EquipmentTypeOut]:

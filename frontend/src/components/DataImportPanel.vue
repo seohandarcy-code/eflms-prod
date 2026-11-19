@@ -16,6 +16,7 @@ import {
   type ImportResultBody,
 } from "../api/admin";
 import DataRowEditor from "./DataRowEditor.vue";
+import ScoreRefreshCard from "./ScoreRefreshCard.vue";
 import { useAuthStore } from "../stores/auth";
 import { actionCountsOf, applyLines, DTYPE_LABEL, naSummary, ruleText, warningsOf } from "../utils/dataAdmin";
 import { decodeFileBytes, errorKey, parsePasted, type PastedRow, type PastedTable } from "../utils/pasteData";
@@ -293,6 +294,9 @@ onMounted(async () => {
 <template>
   <div class="data-panel">
     <div v-if="loadError" class="panel-error">{{ loadError }}</div>
+
+    <!-- 점수 갱신(Stage 21-1) — 오늘 기준으로 점수만 다시 계산, 끝나면 대상 건수도 다시 읽는다 -->
+    <ScoreRefreshCard @refreshed="loadTargets" />
 
     <section class="card">
       <h3>데이터 입력</h3>

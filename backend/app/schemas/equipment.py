@@ -90,7 +90,12 @@ class SummaryKPI(BaseModel):
     total_equipment: int
     review_count: int
     replace_count: int
-    last_updated: datetime | None = None
+    last_updated: datetime | None = None  # 호환용(점수 행을 처음 만든 시각) — 화면은 아래 두 날짜를 쓴다
+    # 점수 기준일(계산 결과 테이블 today) — 설비마다 다를 수 있어 가장 이른 날과 가장 늦은 날(Stage 21-1)
+    score_as_of: date | None = None
+    score_as_of_latest: date | None = None
+    # 진단 데이터 반영일 — 설비별 '최근 진단일' 중 가장 최근(점수 갱신으로는 바뀌지 않는다)
+    data_updated_on: date | None = None
     by_type: list[TypeKPI] = []
 
 

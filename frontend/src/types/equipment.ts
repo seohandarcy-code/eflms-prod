@@ -28,6 +28,10 @@ export interface SummaryKPI {
   review_count: number;
   replace_count: number;
   last_updated: string | null;
+  // 점수 기준일(설비마다 다를 수 있어 가장 이른 날·가장 늦은 날)과 진단 데이터 반영일(Stage 21-1)
+  score_as_of: string | null;
+  score_as_of_latest: string | null;
+  data_updated_on: string | null;
   by_type: TypeKPI[];
 }
 

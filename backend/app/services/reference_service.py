@@ -2,7 +2,7 @@
 
 설비 파일처럼 참고표도 넣기(추가·갱신) / 교체(replace) / 검증만(dry_run) / 리셋을 한다.
 참고표가 바뀌면 **같은 트랜잭션 안에서** 그 유형의 설비 점수를 전부 다시 계산한다 — 계산 기준일은 저장된 그대로 두고
-참고표 변화만 반영한다(모듈의 load_inputs → calculate(as_of=저장 기준일) → ingest_row).
+참고표 변화만 반영한다(모듈의 load_inputs → calculate(as_of=저장 기준일) → save_scores — 점수만, Stage 21-1).
 
 파일 규칙은 설비 임포트와 같다(app/services/import_service.py의 읽기·형식 변환·허용값 검사를 그대로 쓴다):
 - 탭 구분, 헤더 = 참고표 컬럼 name. UTF-8(BOM)/CP949, 따옴표, 날짜 4가지 표기.
@@ -21,7 +21,8 @@ from app.db.models import Equipment
 from app.equipment_types.na import is_na_token
 from app.equipment_types.registry import UnknownEquipmentTypeError, get_module
 from app.services.import_service import RowError, _cast_value, _check_allowed, _parse_lines, _read_text
-from app.services.ingest import ingest_row
+from app.services import job_lock
+from app.services.ingest import save_scores
 from app.services.reference_data import calc_options, count_rows, empty_reference_warnings, reference_specs, scope_warnings
 
 
@@ -92,7 +93,8 @@ async def recalculate_type(session: AsyncSession, module) -> int:
         if loaded is None:
             continue
         input_row, as_of = loaded
-        await ingest_row(module.calculate(input_row, as_of=as_of, **options), session)
+        # 점수만 다시 쓴다 — 입력 테이블(최근 진단일)은 그대로(Stage 21-1)
+        await save_scores(module.calculate(input_row, as_of=as_of, **options), eq_id, session)
         count += 1
     return count
 
@@ -203,6 +205,19 @@ async def import_reference_file(
         return result
 
     try:
+        lock_token = await job_lock.acquire(session, f"참고표 {ef_code} {table}")
+    except job_lock.DataJobBusyError as exc:
+        result.file_errors.append(str(exc))
+        return result
+    try:
+        await _store_reference(session, result, module, spec, model, rows, replace)
+    finally:
+        await job_lock.release(session, lock_token)
+    return result
+
+
+async def _store_reference(session, result, module, spec, model, rows, replace) -> None:
+    try:
         if replace:
             result.deleted_rows = (await session.execute(delete(model))).rowcount or 0
         for row in rows:
@@ -225,7 +240,6 @@ async def import_reference_file(
         await session.rollback()
         result.inserted_rows = result.updated_rows = result.deleted_rows = result.recalculated = 0
         result.file_errors.append(f"반영 중 오류로 전체 rollback(0건 반영): {type(exc).__name__}: {exc}")
-    return result
 
 
 async def reset_reference(session: AsyncSession, ef_code: str, table: str) -> ReferenceResetResult:
@@ -237,6 +251,19 @@ async def reset_reference(session: AsyncSession, ef_code: str, table: str) -> Re
         result.errors.append(str(exc))
         return result
     try:
+        lock_token = await job_lock.acquire(session, f"참고표 리셋 {ef_code}")
+    except job_lock.DataJobBusyError as exc:
+        result.errors.append(str(exc))
+        return result
+    try:
+        await _reset_tables(session, result, module, specs)
+    finally:
+        await job_lock.release(session, lock_token)
+    return result
+
+
+async def _reset_tables(session, result, module, specs) -> None:
+    try:
         for name, spec in specs.items():
             result.deleted[name] = (await session.execute(delete(spec["model"]))).rowcount or 0
         result.recalculated = await recalculate_type(session, module)
@@ -246,4 +273,3 @@ async def reset_reference(session: AsyncSession, ef_code: str, table: str) -> Re
         await session.rollback()
         result.deleted, result.recalculated = {}, 0
         result.errors.append(f"리셋 중 오류로 전체 rollback: {type(exc).__name__}: {exc}")
-    return result

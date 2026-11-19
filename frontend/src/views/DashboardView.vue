@@ -15,6 +15,7 @@ import { getEvidence, getReasonsByAxis } from "../utils/scoreBreakdown";
 import type { ReasonsByAxis } from "../utils/scoreBreakdown";
 import { formatMonth } from "../utils/formatDate";
 import { AXIS_NAME, formatScore } from "../utils/formatValue";
+import { scoreDateText } from "../utils/scoreRefresh";
 import { statusColor, statusLabel } from "../utils/statusStyle";
 import type { EquipmentDetail, EquipmentSummary } from "../types/equipment";
 
@@ -206,11 +207,6 @@ function onChartHover(equipmentId: number | null) {
   reasonScrollEl.value.querySelector(`[data-equipment-id="${equipmentId}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
-function formatDateTime(value: string | null): string {
-  if (!value) return "-";
-  return value.replace("T", " ").slice(0, 16);
-}
-
 function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   const color = statusColor(item.status);
   return isActive ? { borderColor: color, boxShadow: `0 0 0 2px ${color}26` } : { borderColor: color };
@@ -302,9 +298,10 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
               <div class="kpi-sub">POF 기준 미달</div>
             </div>
             <div class="card kpi">
-              <div class="kpi-label">최근 데이터 갱신</div>
-              <div class="kpi-value small">{{ formatDateTime(store.summary?.last_updated ?? null) }}</div>
-              <div class="kpi-sub">정기점검 데이터 반영</div>
+              <!-- 점수 기준일(매일 갱신)과 진단 데이터 반영일(임포트·행 편집)을 나눠 보여준다(Stage 21-1) -->
+              <div class="kpi-label">점수 기준일</div>
+              <div class="kpi-value small">{{ scoreDateText(store.summary?.score_as_of, store.summary?.score_as_of_latest) }}</div>
+              <div class="kpi-sub">진단 데이터 반영 {{ store.summary?.data_updated_on ?? "-" }}</div>
             </div>
           </div>
 

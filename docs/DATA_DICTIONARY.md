@@ -506,6 +506,15 @@ POF·COF·DOF가 소수 첫째 자리로 정해졌으므로, 감점도 **소수�
 
 이 규칙(과 EF2 결정)을 원본 양식에 반영한 참고용 수정본은 `ref_data_revised/`(원본 `ref_data/`는 그대로) — 시스템 계산기와 결과가 같다(`backend/tests/test_reference_revised.py`).
 
+## 점수 갱신 실행 기록·데이터 작업 잠금 — Stage 21-1(2026-11-19, 마이그레이션 `a6c2e9f4d1b8`)
+
+| 테이블 | 컬럼 | 설명 |
+|---|---|---|
+| `score_refresh_run` | `run_id`(PK), `started_at`, `finished_at`, `status`(running/success/partial/failed), `trigger`(schedule/cli/admin), `requested_by`, `as_of`(null = 저장된 기준일 재계산), `equipment_count`, `summary`(유형별 `[{ef_code, count, error}]` JSON) | 점수 갱신 1회 = 1행. 관리자 "점수 갱신" 카드·테이블 조회(`ALLOWED_TABLES`)에서 본다 |
+| `data_job_lock` | `name`(PK, 지금은 `data` 하나), `holder`, `token`, `acquired_at`, `expires_at`(30분) | 점수 갱신·실제 반영 임포트·참고표 변경이 겹치지 않게. 비정상 종료로 남으면 만료 후 다음 작업이 지운다. 내부용이라 테이블 조회에는 없음 |
+
+날짜의 뜻: 입력 테이블의 `measured_at`/`updated_at`(및 EF1 `diag_time` 등) = **진단 데이터 반영일**(임포트·행 편집 때만 바뀜, 화면 "최근 진단일"·"진단 데이터 반영"), 계산 결과 테이블(`*_score_detail`)의 `today` = **점수 기준일**(점수 갱신마다 바뀜, 화면 "점수 기준일"). `score_snapshot.computed_at`은 행을 처음 만든 시각이라 화면에서 쓰지 않는다. 날짜에 따라 바뀌는 감점은 POF뿐이다(운전년수 → 경과연수, EF1 Furan 연평균, EF2·EF4·EF5·EF6 와이블 고장확률, EF7 SOH·BMS).
+
 ## 미확정/자동 캡처 컬럼
 
 사내 입력파일에 위 목록에 없는 헤더가 오면 `equipment_extra_attribute`(equipment_id, column_name, value, inferred_type, source_file, imported_at)에 자동 보관된다 — 정식 컬럼으로 승격하려면 이 문서와 위 테이블 정의를 함께 갱신하는 마이그레이션이 필요하다.

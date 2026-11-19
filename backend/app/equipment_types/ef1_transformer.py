@@ -64,6 +64,8 @@ DOMAIN_TABLES = [
     PeriodicInspection,
     DesignAttribute,
 ]
+# 계산 결과 테이블 — 점수 기준일(today)을 여기서 읽는다(Stage 21-1, 요약 API의 점수 기준일)
+SCORE_DETAIL_MODEL = TransformerScoreDetail
 
 # ------------------------------------------------------------------
 # 1. INPUT COLUMNS
@@ -648,6 +650,12 @@ async def ingest_domain(row: dict, equipment_id: int, session: AsyncSession) -> 
         )
     )
 
+    await ingest_scores(row, equipment_id, session)
+
+
+async def ingest_scores(row: dict, equipment_id: int, session: AsyncSession) -> None:
+    """계산 결과 테이블만 upsert한다 — 점수 갱신(app/services/score_refresh_service.py)은 입력 테이블을 건드리지 않고
+    이것만 부른다(2026-11-19, Stage 21-1). commit하지 않는다."""
     await session.merge(
         TransformerScoreDetail(
             equipment_id=equipment_id,

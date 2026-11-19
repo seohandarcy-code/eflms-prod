@@ -21,6 +21,8 @@ class EquipmentTypeModule(Protocol):
     INPUT_COLUMNS: list[dict[str, Any]]
     # 이 유형 전용 테이블(모두 equipment_id FK). 유형 단위 리셋 시 이 순서대로 지운다.
     DOMAIN_TABLES: list[type]
+    # 계산 결과 테이블(today = 점수 기준일, Stage 21-1)
+    SCORE_DETAIL_MODEL: type
     # 축별 감점 항목 메타데이터 {"pof"|"cof"|"dof": [{field, label, group?, summed?}]} — 화면 표시용(Stage 8-4)
     BREAKDOWN: dict[str, list[dict[str, Any]]]
     # (선택) 원본 파일에 있지만 쓰지 않는 컬럼 이름 튜플 — 임포트가 저장하지 않고 건너뛴다.
@@ -39,6 +41,11 @@ class EquipmentTypeModule(Protocol):
 
     async def ingest_domain(self, row: dict, equipment_id: int, session: AsyncSession) -> None:
         """calculate()가 만든 flat dict에서 이 유형 전용 테이블들에 upsert한다. commit하지 않는다."""
+        ...
+
+    async def ingest_scores(self, row: dict, equipment_id: int, session: AsyncSession) -> None:
+        """계산 결과 테이블만 upsert한다 — 점수 갱신은 입력 테이블을 건드리지 않고 이것만 부른다(Stage 21-1).
+        ingest_domain()은 입력 테이블을 저장한 뒤 이것을 부른다. commit하지 않는다."""
         ...
 
     # --- 조회 (Stage 8-4) ---

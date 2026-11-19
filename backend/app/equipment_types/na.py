@@ -16,6 +16,7 @@ float로 바꿔 소수 첫째 자리로 반올림하고(2026-11-19), 점수 지�
 from datetime import date
 from typing import Any
 
+from app.core.clock import today_kst
 from app.equipment_types.rounding import SCORE_FIELDS, is_deduction, round1
 
 # 임포트가 null로 저장하는 표기(앞뒤 공백 제거·대소문자 무시 후 비교)
@@ -43,7 +44,7 @@ class _NullAwareRow(dict):
 def evaluate(input_row: dict, columns: list[dict[str, Any]], as_of: date | None) -> dict:
     """CALCULATED_COLUMNS를 위에서부터 계산해 입력+계산 전체 dict를 돌려준다(입력 dict는 바꾸지 않음)."""
     row = _NullAwareRow(input_row)
-    row["_as_of"] = as_of or date.today()
+    row["_as_of"] = as_of or today_kst()  # 기본 기준일은 한국 시간 오늘(Stage 21-1)
     for col in columns:
         try:
             row[col["name"]] = col["formula"](row)

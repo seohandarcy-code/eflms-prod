@@ -29,6 +29,7 @@ from app.db.models import EquipmentExtraAttribute
 from app.equipment_types.na import is_na_token
 from app.equipment_types.registry import UnknownEquipmentTypeError, get_module
 from app.services.dataset_service import count_type, reset_type
+from app.services import job_lock
 from app.services.ingest import ingest_row
 from app.services.reference_data import calc_options, empty_reference_warnings, scope_warnings
 
@@ -313,6 +314,19 @@ async def import_file(
         return result
 
     # 3) 저장 — 기존 시드와 동일한 경로. 파일 전체를 한 트랜잭션으로.
+    # 점수 갱신·다른 반영과 겹치지 않게 데이터 작업 잠금을 잡는다(Stage 21-1, app/services/job_lock.py).
+    try:
+        lock_token = await job_lock.acquire(session, f"임포트 {ef_code}")
+    except job_lock.DataJobBusyError as exc:
+        result.file_errors.append(str(exc))
+        return result
+    try:
+        return await _store(session, result, ef_code, replace, full_rows, extras_per_row, path, len(parsed_rows))
+    finally:
+        await job_lock.release(session, lock_token)
+
+
+async def _store(session, result, ef_code, replace, full_rows, extras_per_row, path, parsed_count):
     try:
         if replace:
             result.replaced_rows = await reset_type(session, ef_code)
@@ -335,5 +349,5 @@ async def import_file(
         result.file_errors.append(f"반영 중 오류로 전체 rollback(0건 반영): {type(exc).__name__}: {exc}")
         return result
 
-    result.imported_rows = len(parsed_rows)
+    result.imported_rows = parsed_count
     return result

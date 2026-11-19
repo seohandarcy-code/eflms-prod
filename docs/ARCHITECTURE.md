@@ -37,14 +37,14 @@
 ## 계산 로직 — "설비 타입 계산기 레지스트리"
 
 - `ref_data/`의 `INPUT_COLUMNS`/`CALCULATED_COLUMNS` 패턴을 설비 타입별 모듈로 일반화한다: `backend/app/equipment_types/ef1_transformer.py`, `ef2_gis.py` (추후 `ef3_xxx.py` ...).
-- 공통 인터페이스: `backend/app/equipment_types/base.py`의 `EquipmentTypeModule` — `calculate(input_row, as_of=None)`(입력 + 전체 계산 컬럼 flat dict), `generate_input_row`, `ingest_domain`, `load_inputs`/`last_diag_dates`/`load_detail`, 메타데이터 `EF_CODE`/`EF_NAME`/`NAME_FIELD`/`INPUT_COLUMNS`/`DOMAIN_TABLES`/`BREAKDOWN`. 레지스트리는 `registry.py`.
+- 공통 인터페이스(2026-11-19에 `ingest_scores`·`SCORE_DETAIL_MODEL` 추가 — 사용자 승인 공통 레이어 변경): `backend/app/equipment_types/base.py`의 `EquipmentTypeModule` — `calculate(input_row, as_of=None)`(입력 + 전체 계산 컬럼 flat dict), `generate_input_row`, `ingest_domain`, `ingest_scores`(계산 결과 테이블만 — 점수 갱신용, Stage 21-1), `load_inputs`/`last_diag_dates`/`load_detail`, 메타데이터 `EF_CODE`/`EF_NAME`/`NAME_FIELD`/`INPUT_COLUMNS`/`DOMAIN_TABLES`/`SCORE_DETAIL_MODEL`/`BREAKDOWN`. 레지스트리는 `registry.py`.
 - `EF_code → 계산기` 매핑으로 라우팅. 계산은 데이터 적재(시드/임포트) 시점에 수행하고 결과를 `score_snapshot`/`*_score_detail`에 저장한다(매 조회마다 재계산하지 않음 — 성능·감사 추적 목적).
 
 ### 참고표 — 계산에 쓰는 설비 밖의 표 (Stage 15-0, 2026-11-16 사용자 결정)
 
 - 대부분의 유형은 입력 한 행만으로 계산하지만, EF7(배터리)은 사업장별 방전이력과 년차별 온도감소계수 표를 함께 읽는다. 이런 유형은 모듈에 선택 항목 `REFERENCE_TABLES`(표 이름 → 모델·컬럼·검증·같은 행 판정 열쇠·목업 행)를 선언하고, `calculate(row, as_of=None, reference=None)`로 표 내용을 받는다. 참고표 테이블은 `equipment_id`가 없는 독립 테이블이다.
 - 계산기를 부르는 곳(임포트 `import_service`, 시드 `seed.seed_type`, 예측 그래프 `equipment_service._projection`, 참고표 재계산)은 `app/services/reference_data.calc_options(session, module)`를 펼쳐 넘긴다 — 참고표가 없는 유형은 빈 dict라 EF1~EF6 동작은 그대로다(공통 코드 예외 — 사용자 승인). 참고표가 필요한 유형은 `reference`를 빠뜨리면 조용히 0으로 계산하지 않고 오류를 낸다.
-- 운영(`app/services/reference_service.py`, CLI `app.db.import_reference` / `app.db.reset_reference`): 설비 파일과 같은 규칙으로 넣기(같은 행 갱신·새 행 추가) / `--replace` / `--check` / 리셋. 참고표가 바뀌면 같은 트랜잭션에서 그 유형 설비를 `load_inputs` → `calculate(as_of=저장 기준일)` → `ingest_row`로 다시 계산한다. 빈 표는 원본 수식대로 0이고 경고만 낸다.
+- 운영(`app/services/reference_service.py`, CLI `app.db.import_reference` / `app.db.reset_reference`): 설비 파일과 같은 규칙으로 넣기(같은 행 갱신·새 행 추가) / `--replace` / `--check` / 리셋. 참고표가 바뀌면 같은 트랜잭션에서 그 유형 설비를 `load_inputs` → `calculate(as_of=저장 기준일)` → `save_scores`(점수만, Stage 21-1)로 다시 계산한다. 빈 표는 원본 수식대로 0이고 경고만 낸다.
 - 시드는 비어 있는 참고표에만 목업을 넣는다(`ensure_mock_reference`). 유형 리셋(`dataset_service.reset_type`)은 `DOMAIN_TABLES`만 지우므로 참고표는 남는다.
 - **사업장별 참고표(Stage 19, 2026-11-18 사용자 결정)**: 참고표 정의에 `"scope": "factory_code"`를 달면 사업장마다 따로 관리하는 표가 된다(지금 EF7 방전이력 — 실제 데이터는 H1만). 원본 합계식은 그 사업장 행이 없으면 조용히 0이 되므로 `reference_data`가 판단한다: 시뮬레이터는 행이 없는 사업장을 선택지에서 빼고 계산을 거부(`calculable_sites`), 설비 입력·참고표 재계산은 막지 않고 사업장별 경고(`scope_warnings` — "참고표 '방전이력'에 H2 사업장 행이 없음 — 설비 N대는 0으로 계산됨"). 관리자가 그 사업장 행을 넣으면 코드 변경 없이 바로 계산 대상이 된다. 다른 유형에 사업장별 표가 생겨도 `scope`만 달면 같은 규칙이 적용된다.
 - **점수 시뮬레이터(Stage 19)**: `/api/simulator/{ef}/form|sample|calculate`(대시보드와 같은 `require_viewer`, DB 쓰기 없음, `app/services/simulator_service.py`). 입력 양식은 데이터 입력 양식(`data_admin_service.template`), 값 검사는 데이터 입력과 같은 함수(`import_service`의 형식 변환·허용값·N/A)라 붙여넣기로 들어갈 값이면 계산된다. 사업장은 DB에 그 유형 설비가 있는 곳만(+ 사업장별 참고표), 계산 기준일은 오늘, 시작값 결과(baseline)도 같은 기준일로 계산해 차이는 바꾼 값 때문만 나온다.
@@ -63,6 +63,8 @@
 - **관리자 SQL 조회(Stage 16-5)**: `POST /api/admin/sql`(admin만). 조회 한 문장·허용 목록 테이블·1,000행·5초를 DB 쪽에서 강제(SQLite 읽기 전용 별도 연결 + authorizer + EXPLAIN 테이블 검사, PostgreSQL 읽기 전용 트랜잭션). 운영 PostgreSQL에서 테이블 제한은 읽기 전용 DB 계정 분리로.
 
 ## 데이터 적재 파이프라인 (시드 · 임포트 공용)
+
+> **점수 갱신(Stage 21-1, 2026-11-19)** — 저장된 입력으로 기준일만 바꿔 다시 계산하고 **점수 테이블만** 다시 쓰는 경로가 따로 있다: `ingest.save_scores(row, equipment_id)` = 모듈 `ingest_scores()`(계산 결과 테이블) + `score_snapshot`. 입력 테이블의 `measured_at`/`updated_at` = **진단 데이터 반영일**(임포트·행 편집 때만 바뀜), 계산 결과 테이블의 `today` = **점수 기준일**(갱신마다 바뀜). 서비스 `app/services/score_refresh_service.py`(유형마다 한 트랜잭션, 실패한 유형만 이전 점수 유지, 실행 기록 `score_refresh_run`), 명령 `python -m app.db.recalculate --as-of today --trigger schedule`(매일 정기 실행 — PDEP CronJob), 관리자 `POST /api/admin/score-refresh`. 점수 갱신·실제 반영 임포트·참고표 넣기/리셋은 데이터 작업 잠금(`data_job_lock`, `app/services/job_lock.py`, 30분 만료)을 잡고 돌아 서로 겹치지 않는다(검증만은 잠그지 않음). 기본 계산 기준일은 한국 시간 오늘(`app/core/clock.today_kst`, 컨테이너 UTC 대비).
 
 ```
 [데이터 소스]                              [공통 파이프라인]                         [저장]
@@ -106,7 +108,7 @@ EF2(GIS)를 붙이며 실제로 거친 순서다(Stage 8-0~8-5, `docs/ROADMAP.md
 
 1. **원본 분석·확정** — `ref_data/`의 계산 툴을 실제로 돌려본다(캐시를 남기지 않게 `python -I -B`). 실행 불가 오류, 컬럼 이름 불일치, 비정상 점수 범위를 찾아 원본 작성자에게 확인한다. 원본과 다르게 해석할 곳이 없도록 하고, "원본 그대로 유지하는 판단"과 입력 허용값을 `docs/DATA_DICTIONARY.md`에 절로 남긴다. `ref_data/` 파일은 수정하지 않는다(참고자료로 커밋).
 2. **DB** — `backend/app/db/models/<유형>.py`에 입력 도메인 테이블(설비당 1행 + 시점 컬럼)과 `<유형>_score_detail`, `models/__init__.py` 등록, Alembic 마이그레이션(새 테이블 생성만 — 공통·기존 테이블 변경 금지). 관리자 화이트리스트(`admin_service.ALLOWED_TABLES`)에 추가.
-3. **계산기 모듈** — `backend/app/equipment_types/ef<N>_<이름>.py`에 `base.py` 인터페이스 전부: 원본 공식을 그대로 옮긴 `CALCULATED_COLUMNS`(날짜는 `row["_as_of"]`/`row["today"]` 사용), 허용값(`choices`/`min`/`max`/`required`)을 붙인 `INPUT_COLUMNS`, `NAME_FIELD`, `DOMAIN_TABLES`, `ingest_domain`, `load_inputs`, `last_diag_dates`, `load_detail`, `BREAKDOWN`(축별 감점 라벨 — PoF 합산에 안 들어가는 항목은 넣지 않거나 `summed: False`). `registry.py`에 한 줄 등록. `calculate()`는 공통 `na.evaluate()`로 공식을 돌린다(N/A(null) 입력 → 그 감점 0, Stage 11). 입력 테이블의 입력 컬럼은 null 허용으로 만든다.
+3. **계산기 모듈** — `backend/app/equipment_types/ef<N>_<이름>.py`에 `base.py` 인터페이스 전부: 원본 공식을 그대로 옮긴 `CALCULATED_COLUMNS`(날짜는 `row["_as_of"]`/`row["today"]` 사용), 허용값(`choices`/`min`/`max`/`required`)을 붙인 `INPUT_COLUMNS`, `NAME_FIELD`, `DOMAIN_TABLES`, `SCORE_DETAIL_MODEL`(계산 결과 테이블), `ingest_domain`(입력 테이블 저장 후 `ingest_scores` 호출), `ingest_scores`(계산 결과 테이블만 — 점수 갱신이 이것만 부른다), `load_inputs`, `last_diag_dates`, `load_detail`, `BREAKDOWN`(축별 감점 라벨 — PoF 합산에 안 들어가는 항목은 넣지 않거나 `summed: False`). `registry.py`에 한 줄 등록. `calculate()`는 공통 `na.evaluate()`로 공식을 돌린다(N/A(null) 입력 → 그 감점 0, Stage 11). 입력 테이블의 입력 컬럼은 null 허용으로 만든다.
 4. **응답 스키마** — `backend/app/schemas/ef<N>.py`에 `Ef<N>Detail`(`ef_code: Literal[...]`)과 하위 스키마, `schemas/equipment.py`의 `TypeDetail` union에 추가.
 5. **샘플·테스트** — `python scripts/generate_sample_dat.py --ef-code EF<N>`(`sample_data/ef<n>/`). 테스트: 원본 파일과 전 계산 컬럼 일치, 감점 분기별 정답값(mock에서 안 나오는 분기 포함), mock 생성값의 허용값 통과·허용값 밖 거부, `load_inputs` 왕복(재계산 = 저장 점수, `tests/test_type_queries.py`에 파라미터 추가), "새 유형만 `--replace`해도 기존 유형 불변", 마이그레이션 왕복. 참고 예시: `tests/test_ef2_gis.py`.
 6. **프론트** — `types/equipment.ts`에 `Ef<N>TypeDetail`(→ `TypeDetail` union), `components/detail/Ef<N>DetailBody.vue`("원본 데이터 전체 보기" 본문), `utils/scoreBreakdown.ts`에 근거 문구 맵, `EquipmentDetailPanel.vue`의 헤더 부제(`typeSubtitle`), 가이드 계산 방법 설명(`utils/typeGuide.ts`), (선택) 설비 안내 문구·사진(`utils/facilityInfo.ts`의 `FACILITY_INFO` + `assets/facilities/ef<N>.png`·`.gif` — 없으면 대시보드 카드는 아이콘, 안내 페이지는 이름·항목만 표시. 계통도에 넣으려면 `FacilityFlowDiagram.vue`의 배치도 추가). 필터·KPI·분포도 마커·감점 사유 라벨·가이드는 `/api/equipment-types` 메타데이터로 자동 반영된다.

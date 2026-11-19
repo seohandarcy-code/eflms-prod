@@ -15,6 +15,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.clock import today_kst
 from app.db.models import Equipment
 from app.equipment_types.na import is_na_token
 from app.equipment_types.registry import UnknownEquipmentTypeError, get_module
@@ -182,7 +183,7 @@ def _calculate(module, options: dict[str, Any], site_codes: list[str], values: d
     row, errors = _parse(module, values, site_codes)
     if errors:
         return SimulatorResult(ok=False, errors=errors)
-    as_of = date.today()
+    as_of = today_kst()
     try:
         out = module.calculate(row, as_of=as_of, **options)
     except Exception as exc:  # 원본 계산식이 처리하지 못한 값 조합 — 화면에 그대로 알린다
