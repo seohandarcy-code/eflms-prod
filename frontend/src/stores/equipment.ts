@@ -39,6 +39,11 @@ export const useEquipmentStore = defineStore("equipment", {
       }
       return [...filtered].sort((a, b) => a.total_score - b.total_score);
     },
+    // 사업장 필터 선택지 — 받아 둔 전체 설비에 실제로 있는 사업장만(이름순). 코드에 고정하지 않아서
+    // 실제 데이터(H1만)면 H1만, 다른 사업장 설비가 들어오면 자동으로 나타난다. 설비유형 필터와는 무관하다.
+    factoryCodes(state): string[] {
+      return [...new Set(state.allEquipment.map((item) => item.factory_code))].sort();
+    },
     typeNames(state): Record<string, string> {
       return Object.fromEntries(state.equipmentTypes.map((t) => [t.ef_code, t.ef_name]));
     },
@@ -62,6 +67,11 @@ export const useEquipmentStore = defineStore("equipment", {
         this.allEquipment = list;
         this.summary = summary;
         this.equipmentTypes = types;
+        // 다시 불러온 데이터에 없는 사업장은 선택에서 뺀다 — "전체"처럼 보이는데 걸러지는 상황 방지
+        const present = new Set(list.map((item) => item.factory_code));
+        if (this.factoryFilters.some((code) => !present.has(code))) {
+          this.factoryFilters = this.factoryFilters.filter((code) => present.has(code));
+        }
       } catch (err) {
         this.error = err instanceof Error ? err.message : "데이터를 불러오지 못했습니다";
       } finally {

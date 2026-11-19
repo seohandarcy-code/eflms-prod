@@ -30,7 +30,7 @@ from app.equipment_types.na import is_na_token
 from app.equipment_types.registry import UnknownEquipmentTypeError, get_module
 from app.services.dataset_service import count_type, reset_type
 from app.services.ingest import ingest_row
-from app.services.reference_data import calc_options, empty_reference_warnings
+from app.services.reference_data import calc_options, empty_reference_warnings, scope_warnings
 
 
 # N/A(null)를 받지 않는 컬럼 — 설비 식별(+ 유형별 NAME_FIELD)과 공통 equipment의 필수 값.
@@ -295,6 +295,8 @@ async def import_file(
     # 참고표가 있는 유형(EF7~)은 DB의 참고표를 같이 넘긴다 — 없는 유형은 빈 인자(Stage 15-0).
     options = await calc_options(session, module)
     result.reference_warnings = empty_reference_warnings(module, options)
+    # 사업장별 참고표(EF7 방전이력)에 행이 없는 사업장 — 막지 않고 경고(Stage 19)
+    result.reference_warnings += scope_warnings(module, options, [row.get("factory_code") for _, row in parsed_rows])
     full_rows: list[dict] = []
     for i, row in parsed_rows:
         try:

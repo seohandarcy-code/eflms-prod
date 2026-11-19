@@ -146,6 +146,8 @@ REFERENCE_TABLES = {
         ],
         "key": ("factory_code", "disch_date"),
         "mock_rows": MOCK_DISCHARGE_HISTORY,
+        # 사업장마다 따로 관리 — 행이 없는 사업장은 시뮬레이터 계산 불가, 입력·재계산은 경고(Stage 19)
+        "scope": "factory_code",
     },
     "temp_decay_coef": {
         "label": "온도감소계수",

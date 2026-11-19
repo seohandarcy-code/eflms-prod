@@ -19,6 +19,7 @@ import DataRowEditor from "./DataRowEditor.vue";
 import { useAuthStore } from "../stores/auth";
 import { actionCountsOf, applyLines, DTYPE_LABEL, naSummary, ruleText, warningsOf } from "../utils/dataAdmin";
 import { decodeFileBytes, errorKey, parsePasted, type PastedRow, type PastedTable } from "../utils/pasteData";
+import { typeLabel } from "../utils/formatValue";
 
 const auth = useAuthStore();
 
@@ -59,7 +60,7 @@ const target = computed(() => targets.value.find((t) => t.ef_code === efCode.val
 const referenceTable = computed(() => target.value?.reference_tables.find((r) => r.name === table.value) ?? null);
 const targetLabel = computed(() => {
   if (!target.value) return "";
-  const base = `${target.value.ef_code} ${target.value.ef_name}`;
+  const base = typeLabel(target.value.ef_name, target.value.ef_code);
   return referenceTable.value ? `${base} · 참고표 ${referenceTable.value.label}` : `${base} · 설비 데이터`;
 });
 const unit = computed(() => (table.value ? "행" : "건"));
@@ -310,7 +311,7 @@ onMounted(async () => {
           <span class="field-label">설비유형</span>
           <select v-model="efCode" :disabled="busy">
             <option v-for="t in targets" :key="t.ef_code" :value="t.ef_code">
-              {{ t.ef_code }} {{ t.ef_name }} ({{ t.equipment_count }}건)
+              {{ typeLabel(t.ef_name, t.ef_code) }} ({{ t.equipment_count }}건)
             </option>
           </select>
         </label>
@@ -566,7 +567,7 @@ psql -v ON_ERROR_STOP=1 -d eflms_new -f eflms_full_YYYYMMDD_HHMM.sql</pre>
         </thead>
         <tbody>
           <tr v-for="t in targets" :key="t.ef_code">
-            <td><span class="mono">{{ t.ef_code }}</span> {{ t.ef_name }}</td>
+            <td>{{ t.ef_name }} <small class="type-code">{{ t.ef_code }}</small></td>
             <td>
               <button
                 type="button"
@@ -970,6 +971,11 @@ select {
 .tag-error {
   color: #c4392b;
   background: #fde3e0;
+}
+.type-code {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8891a0;
 }
 .mono {
   font-family: "IBM Plex Mono", ui-monospace, monospace;

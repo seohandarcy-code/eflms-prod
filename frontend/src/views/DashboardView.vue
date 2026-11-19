@@ -8,6 +8,9 @@ import EquipmentListTable from "../components/EquipmentListTable.vue";
 import EquipmentDetailPanel from "../components/EquipmentDetailPanel.vue";
 import MultiSelectFilter from "../components/MultiSelectFilter.vue";
 import SelectedFacilityCard from "../components/SelectedFacilityCard.vue";
+import ScoreSimulatorDialog from "../components/ScoreSimulatorDialog.vue";
+import UserBadge from "../components/UserBadge.vue";
+import FilterSummaryBox from "../components/FilterSummaryBox.vue";
 import { getEvidence, getReasonsByAxis } from "../utils/scoreBreakdown";
 import type { ReasonsByAxis } from "../utils/scoreBreakdown";
 import { formatMonth } from "../utils/formatDate";
@@ -21,27 +24,16 @@ const router = useRouter();
 const selectedId = ref<number | null>(null);
 const hoveredId = ref<number | null>(null);
 const reasonScrollEl = ref<HTMLDivElement | null>(null);
+// 점수 시뮬레이터 팝업(Stage 19) — 설비유형 필터가 하나면 그 유형으로 연다
+const simulatorOpen = ref(false);
+const simulatorType = computed(() => (store.equipmentTypeFilters.length === 1 ? store.equipmentTypeFilters[0] : null));
 
-const FACTORY_OPTIONS = [
-  { value: "H1", label: "H1" },
-  { value: "H2", label: "H2" },
-  { value: "K1", label: "K1" },
-  { value: "P1", label: "P1" },
-];
+// 사업장 옵션은 받아 둔 설비 목록에 실제로 있는 사업장만(store.factoryCodes) — 데이터가 늘면 자동으로 나타난다.
+const factoryOptions = computed(() => store.factoryCodes.map((code) => ({ value: code, label: code })));
 // 설비유형 옵션은 백엔드 레지스트리(/api/equipment-types)에서 온다 — 새 유형이 등록되면 자동으로 나타난다.
 const equipmentTypeOptions = computed(() =>
-  store.equipmentTypes.map((t) => ({ value: t.ef_code, label: `${t.ef_code} · ${t.ef_name}` })),
+  store.equipmentTypes.map((t) => ({ value: t.ef_code, label: t.ef_name, sub: t.ef_code })),
 );
-
-function typeLabel(efCode: string): string {
-  return `${efCode} · ${store.typeNames[efCode] ?? efCode}`;
-}
-
-const filterSummaryText = computed(() => {
-  const factoryText = store.factoryFilters.length === 0 ? "전체 사업장" : store.factoryFilters.join(", ");
-  const typeText = store.equipmentTypeFilters.length === 0 ? "전체 설비유형" : store.equipmentTypeFilters.map(typeLabel).join(", ");
-  return `${typeText} · ${factoryText}`;
-});
 
 // KPI "전체 설비" 아래에 유형별 대수를 나눠 보여준다(필터 적용 후 목록 기준).
 const typeCountText = computed(() =>
@@ -240,12 +232,23 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
         </div>
       </div>
       <div class="filters">
-        <span class="filter-badge">{{ filterSummaryText }}</span>
+        <!-- 위 오른쪽: 사업장·설비유형 2단 요약 + 맨 오른쪽 로그인 카드(2026-11-19 시안 D) -->
+        <FilterSummaryBox :factories="store.factoryFilters" :types="store.equipmentTypeFilters" :type-names="store.typeNames" />
+        <UserBadge />
       </div>
     </header>
 
     <div class="body">
       <aside class="rail">
+        <MultiSelectFilter
+          label="사업장"
+          :options="factoryOptions"
+          empty-text="사업장 데이터 없음"
+          :model-value="store.factoryFilters"
+          all-label="전체 사업장"
+          @update:model-value="store.setFactoryFilters"
+        />
+
         <div class="rail-group">
           <MultiSelectFilter
             label="설비유형"
@@ -263,14 +266,6 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
             :type-names="store.typeNames"
           />
         </div>
-
-        <MultiSelectFilter
-          label="사업장"
-          :options="FACTORY_OPTIONS"
-          :model-value="store.factoryFilters"
-          all-label="전체 사업장"
-          @update:model-value="store.setFactoryFilters"
-        />
 
         <RouterLink to="/admin" class="admin-link">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -324,6 +319,28 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
                     <span class="gt-name">지표 설명 보기</span>
                   </div>
                   <div class="gt-caption">POF·COF·DOF 정의, 계산식, 판정 기준을 확인할 수 있어요</div>
+                </div>
+              </span>
+              <span class="guide-link-wrap">
+                <button type="button" class="sim-link" @click="simulatorOpen = true">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="4" y="2" width="16" height="20" rx="2" />
+                    <line x1="8" y1="6" x2="16" y2="6" />
+                    <line x1="8" y1="11" x2="8" y2="11" />
+                    <line x1="12" y1="11" x2="12" y2="11" />
+                    <line x1="16" y1="11" x2="16" y2="11" />
+                    <line x1="8" y1="15" x2="8" y2="15" />
+                    <line x1="12" y1="15" x2="12" y2="15" />
+                    <line x1="16" y1="15" x2="16" y2="18" />
+                  </svg>
+                  시뮬레이터
+                </button>
+                <div class="guide-tooltip">
+                  <div class="gt-head">
+                    <span class="gt-dot"></span>
+                    <span class="gt-name">점수 시뮬레이터</span>
+                  </div>
+                  <div class="gt-caption">설비유형과 입력값을 넣어 POF·COF·DOF와 종합점수를 직접 계산해 볼 수 있어요(DB에는 저장되지 않음)</div>
                 </div>
               </span>
             </div>
@@ -441,6 +458,12 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
           </div>
 
           <EquipmentDetailPanel v-if="selectedId !== null" :equipment-id="selectedId" />
+          <ScoreSimulatorDialog
+            :open="simulatorOpen"
+            :types="store.equipmentTypes"
+            :initial-type="simulatorType"
+            @close="simulatorOpen = false"
+          />
 
           <div v-if="displayList.length === 0" class="muted" style="padding: 24px 0">검색 결과가 없습니다</div>
           <template v-else>
@@ -493,12 +516,14 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
+  gap: 32px;
   padding: 0 32px 14px;
 }
 .brand {
   display: flex;
   align-items: center;
   gap: 14px;
+  min-width: 0;
 }
 .brand-icon {
   flex: 0 0 auto;
@@ -522,15 +547,8 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
 .filters {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-.filter-badge {
-  font-size: 12px;
-  font-weight: 600;
-  color: #4a5361;
-  border: 1px solid #e2e5ea;
-  border-radius: 6px;
-  padding: 5px 10px;
+  gap: 12px;
+  min-width: 0;
 }
 .body {
   display: flex;
@@ -826,6 +844,28 @@ function reasonCardStyle(item: EquipmentSummary, isActive: boolean) {
   vertical-align: middle;
 }
 .guide-link:hover {
+  background: #1b8a5a;
+  color: #fff;
+}
+.sim-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  margin-left: 6px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid #1b8a5a;
+  background: #fff;
+  color: #1b8a5a;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.sim-link:hover,
+.sim-link:focus-visible {
   background: #1b8a5a;
   color: #fff;
 }

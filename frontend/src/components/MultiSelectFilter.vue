@@ -3,9 +3,12 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 
 const props = defineProps<{
   label: string;
-  options: { value: string; label: string }[];
+  // sub: 이름 뒤에 작게 붙일 글자(예: 설비유형 코드 "EF1")
+  options: { value: string; label: string; sub?: string }[];
   modelValue: string[];
   allLabel?: string;
+  // 선택지가 하나도 없을 때 목록에 흐리게 보여 줄 문구(예: 사업장 필터 — 받아 둔 설비가 없을 때).
+  emptyText?: string;
   // 제목 옆 "?" 안내 링크(Stage 17 — 설비유형 필터 → 설비 안내 페이지). 없으면 표시하지 않는다.
   helpTo?: string;
   helpTitle?: string;
@@ -16,14 +19,12 @@ const emit = defineEmits<{ "update:modelValue": [values: string[]] }>();
 const open = ref(false);
 const rootEl = ref<HTMLDivElement | null>(null);
 
+// 1~2개 골랐으면 고른 항목을 그대로(작은 글자 포함), 그 외에는 문구 하나.
+const summaryItems = computed(() =>
+  props.modelValue.length >= 1 && props.modelValue.length <= 2 ? props.options.filter((o) => props.modelValue.includes(o.value)) : [],
+);
 const summary = computed(() => {
   if (props.modelValue.length === 0) return props.allLabel ?? `전체 ${props.label}`;
-  if (props.modelValue.length <= 2) {
-    return props.options
-      .filter((o) => props.modelValue.includes(o.value))
-      .map((o) => o.label)
-      .join(", ");
-  }
   return `${props.modelValue.length}개 선택`;
 });
 
@@ -59,15 +60,21 @@ onUnmounted(() => document.removeEventListener("mousedown", onDocMouseDown));
       </span>
     </div>
     <button type="button" class="msf-trigger" :class="{ open }" @click="open = !open">
-      <span class="msf-summary">{{ summary }}</span>
+      <span class="msf-summary">
+        <template v-if="summaryItems.length">
+          <template v-for="(o, i) in summaryItems" :key="o.value">{{ i > 0 ? ", " : "" }}{{ o.label }}<small v-if="o.sub" class="msf-sub">{{ o.sub }}</small></template>
+        </template>
+        <template v-else>{{ summary }}</template>
+      </span>
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :style="{ transform: open ? 'rotate(180deg)' : 'none' }">
         <path d="M6 9 L12 15 L18 9" />
       </svg>
     </button>
     <div v-if="open" class="msf-panel">
+      <div v-if="options.length === 0 && emptyText" class="msf-empty">{{ emptyText }}</div>
       <label v-for="opt in options" :key="opt.value" class="msf-option">
         <input type="checkbox" :checked="modelValue.includes(opt.value)" @change="toggle(opt.value)" />
-        {{ opt.label }}
+        {{ opt.label }}<small v-if="opt.sub" class="msf-sub">{{ opt.sub }}</small>
       </label>
       <button v-if="modelValue.length > 0" type="button" class="msf-clear" @click="clearAll">전체 해제</button>
     </div>
@@ -77,6 +84,11 @@ onUnmounted(() => document.removeEventListener("mousedown", onDocMouseDown));
 <style scoped>
 .msf {
   position: relative;
+}
+.msf-empty {
+  padding: 6px 4px;
+  font-size: 13px;
+  color: #9aa2b1;
 }
 .msf-title {
   font: 600 13px "IBM Plex Sans", sans-serif;
@@ -200,6 +212,12 @@ onUnmounted(() => document.removeEventListener("mousedown", onDocMouseDown));
   font-size: 13px;
   color: #1a2230;
   cursor: pointer;
+}
+.msf-sub {
+  margin-left: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #8891a0;
 }
 .msf-option:hover {
   background: #f4f5f7;

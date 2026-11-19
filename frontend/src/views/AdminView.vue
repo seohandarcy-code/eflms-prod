@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UserBadge from "../components/UserBadge.vue";
 import { onMounted, ref } from "vue";
 import AccessUsersPanel from "../components/AccessUsersPanel.vue";
 import DataImportPanel from "../components/DataImportPanel.vue";
@@ -53,8 +54,8 @@ function goToPage(page: number) {
   if (selectedTable.value) selectTable(selectedTable.value, page);
 }
 
-async function onLogout() {
-  await auth.logout();
+// 로그아웃 버튼은 UserBadge(공통) — 세션을 지운 뒤 이 화면 상태만 비운다.
+function onLoggedOut() {
   tables.value = [];
   selectedTable.value = null;
   tablePage.value = null;
@@ -84,8 +85,7 @@ onMounted(async () => {
         </div>
       </div>
       <div class="header-actions">
-        <span v-if="auth.isAuthenticated" class="user-badge">{{ auth.name ?? "관리자" }}<span v-if="auth.isAdmin" class="admin-tag">admin</span><span v-else-if="auth.role === 'general'" class="admin-tag muted-tag">조회 전용</span></span>
-        <button v-if="auth.isAuthenticated" type="button" class="logout-btn" @click="onLogout">로그아웃</button>
+        <UserBadge @logged-out="onLoggedOut" />
         <RouterLink to="/" class="back-link">← 대시보드로</RouterLink>
       </div>
     </header>
@@ -236,23 +236,7 @@ onMounted(async () => {
   align-items: center;
   gap: 10px;
 }
-.user-badge {
-  font-size: 13px;
-  color: #4a5361;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.admin-tag {
-  font-size: 10px;
-  font-weight: 700;
-  color: #0f8a8a;
-  border: 1px solid #0f8a8a;
-  border-radius: 4px;
-  padding: 1px 6px;
-}
-.back-link,
-.logout-btn {
+.back-link {
   font-size: 13px;
   font-weight: 600;
   color: #4a5361;
@@ -264,8 +248,7 @@ onMounted(async () => {
   background: #fff;
   cursor: pointer;
 }
-.back-link:hover,
-.logout-btn:hover {
+.back-link:hover {
   background: #f4f5f7;
 }
 .body {
@@ -296,10 +279,6 @@ onMounted(async () => {
   font-weight: 600;
   font-size: 13px;
   text-decoration: none;
-}
-.muted-tag {
-  color: #8891a0;
-  border-color: #c9ced6;
 }
 .general-note {
   font-size: 13px;

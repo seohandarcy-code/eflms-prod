@@ -23,6 +23,7 @@ onMounted(async () => {
   // 첫 경로가 정해진 뒤에 판단한다(그 전엔 route.name이 비어 /admin에서도 로그인 화면이 잠깐 뜰 수 있음).
   const [config] = await Promise.all([fetchAuthConfig().catch(() => null), router.isReady()]);
   authConfig.value = config;
+  auth.authMode = config?.auth_mode ?? null;
   configLoaded.value = true;
 });
 </script>

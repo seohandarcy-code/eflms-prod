@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mount } from "@vue/test-utils";
-import { formatScore, na } from "./formatValue";
+import { formatScore, na, typeLabel } from "./formatValue";
 import Ef4DetailBody from "../components/detail/Ef4DetailBody.vue";
 import type { Ef4TypeDetail } from "../types/equipment";
 
@@ -38,5 +38,12 @@ describe("formatScore", () => {
     expect(formatScore(-0.3)).toBe("-0.3");
     expect(formatScore(86.3)).toBe("86.3");
     expect(formatScore(-24.8)).toBe("-24.8");
+  });
+});
+
+describe("typeLabel", () => {
+  it("설비명 뒤에 EF 코드를 붙이고, 이름이 없으면 코드만", () => {
+    expect(typeLabel("변압기", "EF1")).toBe("변압기 EF1");
+    expect(typeLabel(undefined, "EF9")).toBe("EF9");
   });
 });

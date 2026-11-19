@@ -22,7 +22,7 @@ from app.equipment_types.na import is_na_token
 from app.equipment_types.registry import UnknownEquipmentTypeError, get_module
 from app.services.import_service import RowError, _cast_value, _check_allowed, _parse_lines, _read_text
 from app.services.ingest import ingest_row
-from app.services.reference_data import calc_options, count_rows, empty_reference_warnings, reference_specs
+from app.services.reference_data import calc_options, count_rows, empty_reference_warnings, reference_specs, scope_warnings
 
 
 @dataclass
@@ -95,6 +95,15 @@ async def recalculate_type(session: AsyncSession, module) -> int:
         await ingest_row(module.calculate(input_row, as_of=as_of, **options), session)
         count += 1
     return count
+
+
+async def _warnings(session: AsyncSession, module) -> list[str]:
+    """재계산 뒤 경고 — 빈 참고표 + 사업장별 참고표(EF7 방전이력)에 행이 없는 사업장(Stage 19, 막지 않음)."""
+    options = await calc_options(session, module)
+    sites = (
+        await session.execute(select(Equipment.factory_code).where(Equipment.ef_code == module.EF_CODE))
+    ).scalars().all()
+    return empty_reference_warnings(module, options) + scope_warnings(module, options, list(sites))
 
 
 def _key_of(spec: dict, row: dict) -> tuple:
@@ -210,7 +219,7 @@ async def import_reference_file(
                 result.updated_rows += 1
         result.recalculated = await recalculate_type(session, module)
         result.table_rows_after = await count_rows(session, model)
-        result.warnings = empty_reference_warnings(module, await calc_options(session, module))
+        result.warnings = await _warnings(session, module)
         await session.commit()
     except Exception as exc:
         await session.rollback()
@@ -231,7 +240,7 @@ async def reset_reference(session: AsyncSession, ef_code: str, table: str) -> Re
         for name, spec in specs.items():
             result.deleted[name] = (await session.execute(delete(spec["model"]))).rowcount or 0
         result.recalculated = await recalculate_type(session, module)
-        result.warnings = empty_reference_warnings(module, await calc_options(session, module))
+        result.warnings = await _warnings(session, module)
         await session.commit()
     except Exception as exc:
         await session.rollback()

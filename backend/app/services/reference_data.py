@@ -14,7 +14,14 @@ REFERENCE_TABLES 형식(유형 모듈):
         "columns": [{name, label, dtype, required?/min?/max?/gt?}, ...],  # dat 헤더 = name
         "key": ("factory_code", "disch_date"),  # 같은 행 판정(넣기 = 갱신/추가, 파일 안 중복 거부)
         "mock_rows": [...],                    # 목업(시드)용 — 표가 비어 있을 때만 넣는다
+        "scope": "factory_code",               # (선택) 사업장별로 관리하는 표 — 아래 "사업장별 참고표"
     }}
+
+사업장별 참고표(Stage 19, 2026-11-18 사용자 결정): `scope`를 선언한 표는 사업장마다 따로 관리된다(EF7 방전이력 —
+실제 데이터는 지금 H1만). 그 표에 행이 없는 사업장은 원본 합계식이 조용히 0으로 계산되므로,
+- 시뮬레이터는 그 사업장을 선택지에서 빼고 계산을 거부하고(`calculable_sites`),
+- 데이터 입력·참고표 재계산은 막지 않고 사업장별 경고를 남긴다(`scope_warnings`).
+관리자가 그 사업장 행을 넣으면 코드 변경 없이 바로 계산 대상이 된다.
 """
 from typing import Any
 
@@ -83,3 +90,52 @@ async def ensure_mock_reference(session: AsyncSession, module) -> list[str]:
     if filled:
         await session.flush()
     return filled
+
+
+# --- 사업장별 참고표 (Stage 19) ---
+
+
+def scoped_tables(module) -> dict[str, dict[str, Any]]:
+    """`scope`를 선언한 참고표만 {표 이름: spec}."""
+    return {name: spec for name, spec in reference_specs(module).items() if spec.get("scope")}
+
+
+def missing_scope(module, options: dict[str, Any], site: str) -> list[str]:
+    """이 사업장 행이 없는 사업장별 참고표의 라벨 목록 — 빈 목록이면 계산할 수 있다."""
+    reference = options.get("reference") or {}
+    labels = []
+    for name, spec in scoped_tables(module).items():
+        column = spec["scope"]
+        if not any(r.get(column) == site for r in reference.get(name, [])):
+            labels.append(spec["label"])
+    return labels
+
+
+def calculable_sites(module, options: dict[str, Any], sites: list[str]) -> tuple[list[str], dict[str, list[str]]]:
+    """sites를 (계산 가능한 사업장, {제외된 사업장: 빠진 참고표 라벨})로 나눈다. 순서는 sites 그대로."""
+    ok: list[str] = []
+    excluded: dict[str, list[str]] = {}
+    for site in sites:
+        missing = missing_scope(module, options, site)
+        if missing:
+            excluded[site] = missing
+        else:
+            ok.append(site)
+    return ok, excluded
+
+
+def scope_warnings(module, options: dict[str, Any], sites: list[str]) -> list[str]:
+    """설비가 있는 사업장 목록(설비마다 하나씩, 중복 허용)으로 사업장별 참고표 경고를 만든다 — 막지 않고 알리기만."""
+    counts: dict[str, int] = {}
+    for site in sites:
+        counts[site] = counts.get(site, 0) + 1
+    # 표 전체가 빈 경우는 empty_reference_warnings가 이미 알린다 — 사업장마다 같은 말을 되풀이하지 않는다.
+    reference = options.get("reference") or {}
+    empty_labels = {spec["label"] for name, spec in scoped_tables(module).items() if not reference.get(name)}
+    warnings = []
+    for site in sorted(s for s in counts if s):
+        for label in missing_scope(module, options, site):
+            if label in empty_labels:
+                continue
+            warnings.append(f"참고표 '{label}'에 {site} 사업장 행이 없음 — 이 사업장 설비 {counts[site]}대는 해당 값이 0으로 계산됨")
+    return warnings

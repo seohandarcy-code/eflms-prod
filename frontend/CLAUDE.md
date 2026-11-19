@@ -21,7 +21,7 @@ npm run dev
 
 - `src/router/` — vue-router
 - `src/stores/` — Pinia 스토어
-- `src/views/` — 화면 단위 컴포넌트 (`DashboardView.vue` 메인 대시보드, `GuideView.vue` — POF/COF/DOF 지표·판정기준 안내 `/guide`, `FacilityGuideView.vue` — 설비 안내 `/guide/facilities`. 두 안내 페이지는 `components/GuideTabs.vue` 머리글을 같이 쓴다)
+- `src/views/` — 화면 단위 컴포넌트 (`DashboardView.vue` 메인 대시보드, `GuideView.vue` — POF/COF/DOF 지표·판정기준 안내 `/guide`, `FacilityGuideView.vue` — 설비 안내 `/guide/facilities`. 두 안내 페이지는 `components/GuideTabs.vue` 머리글을 같이 쓰고, 폭 1160·카드·글자 크기 양식도 같게 맞춘다 — 한쪽을 바꾸면 다른 쪽도 확인)
 - `src/api/client.ts` — axios 인스턴스, `VITE_API_BASE_URL` 사용
 - `src/components/detail/` — 설비유형별 상세 본문(`Ef1DetailBody.vue` ~ `Ef7DetailBody.vue`). `EquipmentDetailPanel.vue`는 공통 헤더·점수·차트만 갖고, `type_detail.ef_code`로 본문을 고른다. 본문은 "원본 데이터 전체 보기" 펼침 영역만 맡고(요약 4줄은 2026-10-29 제거 — 패널 왼쪽 칸은 POF·COF·DOF 막대만), `raw-*` 클래스 스타일은 패널이 `:deep()`으로 입힌다.
 
@@ -30,6 +30,7 @@ npm run dev
 - 유형 목록과 감점 항목 라벨은 `/api/equipment-types`(스토어 `equipmentTypes`, `breakdownFor(ef_code)`)에서 온다 — `utils/scoreBreakdown.ts`에 라벨을 하드코딩하지 않는다. 근거 툴팁 문구만 유형별 맵(`EF1_EVIDENCE` ~ `EF7_EVIDENCE`)으로 둔다.
 - 공통 표시(점검필요 순위, 상세 패널 헤더, 설비목록 카드·리스트)는 모든 유형에 있는 값만 쓴다 — 전압 대신 가동년월(`utils/formatDate.ts`의 `formatMonth`, 2026-10-29 Stage 10-0). 유형별 값(예: EF1 1차전압)은 각 `EfNDetailBody.vue`에 둔다.
 - 새 설비유형을 붙일 때: `types/equipment.ts`에 `EfNTypeDetail` 추가(→ `TypeDetail` union), `components/detail/EfNDetailBody.vue`, `scoreBreakdown.ts`의 근거 맵, 패널 헤더 부제(`typeSubtitle`), 가이드의 계산 방법 설명(`utils/typeGuide.ts`의 `TYPE_GUIDES` — 없으면 가이드에 항목 목록만 나옴). 필터·KPI·분포도·가이드 항목 목록은 메타데이터로 자동 반영된다.
+- 설비유형 표시는 "설비명 EF코드" 순서로 통일한다(2026-11-19, 지표 설명 "변압기 EF1" 기준) — 코드를 작게(12px·#8891a0) 따로 그릴 수 있는 곳은 이름 뒤에 작은 글자로(`MultiSelectFilter` 선택지의 `sub`), 기본 선택 상자처럼 글자 하나만 되는 곳은 `utils/formatValue.ts`의 `typeLabel(이름, 코드)`. "EF1 · 변압기"처럼 코드를 앞에 두지 않는다.
 - 화면 라벨은 원본(`ref_data`) 라벨 표현을 따른다 — 원본에 없는 용어(예: 계산식 이름)를 라벨에 덧붙이지 않는다. 계산식 설명은 가이드(`typeGuide.ts`)에 둔다(2026-10-19, GIS 라벨의 "(와이블)" 제거).
 - 점수는 원본 공식대로 음수가 될 수 있다 — 막대·분포도는 표시만 0~100으로 자른다.
 - 점수 지표(POF·COF·DOF, 감점 항목, 종합점수)는 모든 유형에서 소수 첫째 자리로 보여준다(Stage 13-0) — `utils/formatValue.ts`의 `formatScore()`, 원본 데이터 보기의 감점 칸은 `na(…, { digits: 1 })`.
@@ -42,8 +43,16 @@ npm run dev
 - 정보가 없는 유형도 깨지지 않는다(카드 아이콘, 안내 페이지 이름·항목만). 계통도(`FacilityFlowDiagram.vue`)는 7개 유형 고정 배치라 새 유형은 배치를 직접 추가해야 나온다.
 - "이 시스템이 보는 항목"은 `breakdownFor(code).pof` 라벨 — 문구로 하드코딩하지 않는다.
 
+## 점수 시뮬레이터 (Stage 19)
+
+- 메인 화면 분포도 제목 `?` 옆 "시뮬레이터" 버튼(계산기 아이콘, 2026-11-19 `#` 뺌) → `components/ScoreSimulatorDialog.vue`(Teleport 팝업, 시안 A). API `api/simulator.ts`(`/api/simulator/*`, 대시보드와 같은 권한, DB 쓰기 없음), 순수 함수 `utils/simulator.ts`.
+- 입력 칸·허용값·N/A 가능 여부는 서버 양식(`form.columns`)을 그대로 따른다 — 화면에 칸을 하드코딩하지 않는다. 사업장 목록도 서버가 주는 `sites`(그 유형 설비가 있고 사업장별 참고표에도 행이 있는 곳)만 쓴다.
+- 메인 화면 사업장 필터 선택지도 코드에 고정하지 않는다 — 스토어 `factoryCodes`(받아 둔 전체 설비에 있는 사업장)에서 만든다. 다시 불러온 데이터에 없는 사업장은 `load()`가 선택에서 뺀다.
+- 계산은 "계산하기" 버튼으로만(자동 계산 없음). "원래 점수"는 시작값을 같은 기준일(오늘)로 계산한 `baseline`.
+
 ## 로그인·역할 (Stage 16-1)
 
+- 화면 위 맨 오른쪽 로그인 카드는 `components/UserBadge.vue`(메인·관리자 화면 공통, 2026-11-19 시안 D) — 동그라미(이름 첫 글자)·"이름님 / 역할"·로그아웃 아이콘 버튼(aria-label·title "로그아웃"), 역할 글자색은 관리자 청록·등록 사용자 파랑·일반 사용자 회색. 표시 규칙은 `utils/userBadge.ts`의 `badgeView`(`ROLE_LABEL`), 이름이 없는 로컬 비밀번호 로그인은 열쇠 아이콘 + "관리자 / 비밀번호 로그인". 메인 화면은 그 왼쪽에 사업장·설비유형 2단 요약 `components/FilterSummaryBox.vue`(행마다 한 줄, 사업장 4곳·설비유형 3개 넘으면 "외 N", 마우스를 올리면 전체 목록 — `utils/filterSummary.ts`). 로그인 전이고 서버가 SSO 모드가 아니면 `VITE_PREVIEW_USER` 이름으로 일반 사용자 미리보기만 그린다(세션·권한 없음, 로그아웃은 동작 안 함). 서버 인증 방식은 `App.vue`가 `auth.authMode`에 채운다.
 - `stores/auth.ts`가 세션(토큰·역할 `admin`/`user`/`general`·이름)을 들고 **탭 단위 `sessionStorage`**에 보관한다(새로고침 유지, 탭 닫으면 사라짐). getter `isAdmin`(모든 관리자 탭)·`isRegistered`(테이블 조회).
 - SSO 콜백 프래그먼트(`#token=…&role=…&name=…` / `#error=코드&detail=…`)는 `main.ts`가 앱 시작 때 `consumeCallbackHash()`로 한 번 읽고, 라우터 첫 이동이 끝난 뒤 `router.replace`로 주소창에서 지운다(`history.replaceState`로 먼저 지우면 vue-router가 해시를 되살린다) — 화면마다 따로 읽지 않는다. 오류 문구는 `auth.ssoError`.
 - `api/client.ts`의 `installAuthInterceptors()`가 모든 요청에 토큰을 싣고, 보낸 토큰이 401이면 세션을 지운다(→ 로그인 화면).

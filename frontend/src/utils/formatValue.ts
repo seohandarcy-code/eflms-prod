@@ -15,6 +15,12 @@ export function formatScore(value: number): string {
   return value.toFixed(1);
 }
 
+// 설비유형 표시 — 화면 전체에서 "설비명 EF코드" 순서로 통일한다(2026-11-19, 지표 설명 "변압기 EF1" 기준).
+// 코드를 작게 따로 그릴 수 있는 곳은 이름과 코드를 나눠 쓰고, 기본 선택 상자처럼 글자 하나만 되는 곳은 이 함수를 쓴다.
+export function typeLabel(efName: string | null | undefined, efCode: string): string {
+  return efName ? `${efName} ${efCode}` : efCode;
+}
+
 export function na(value: number | string | null | undefined, opts: NaOptions = {}): string {
   if (value === null || value === undefined) return NA_TEXT;
   if (typeof value === "number") {

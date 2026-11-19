@@ -87,6 +87,11 @@ cd backend
 - 참고표가 바뀌면 같은 트랜잭션에서 그 유형 설비 점수를 전부 재계산한다(계산 기준일 유지). 오류가 한 행이라도 있으면 파일 전체 미반영, 종료 코드 1.
 - 빈 표는 원본 수식대로 0으로 계산되고 경고만 나온다(설비 임포트 결과에도 표시). 설비 리셋은 참고표를 지우지 않는다.
 - 테스트에서 DB 없이 계산할 때는 `reference_data.mock_reference(module)`.
+- 사업장별 참고표(Stage 19): 참고표 정의에 `"scope": "factory_code"`(EF7 방전이력). 그 사업장 행이 없으면 시뮬레이터는 계산 거부, 설비 입력·참고표 재계산은 사업장별 경고만(`reference_data.calculable_sites` / `scope_warnings`).
+
+## 점수 시뮬레이터 (Stage 19)
+
+`/api/simulator/{ef}/form|sample|calculate` — `require_viewer`(대시보드와 같은 권한), `app/services/simulator_service.py`, DB 쓰기 없음. 양식은 `data_admin_service.template`, 값 검사는 `import_service`와 같은 함수(형식·허용값·N/A·필수 칸). 사업장은 DB에 그 유형 설비가 있고 사업장별 참고표에 행이 있는 곳만. 계산 기준일은 오늘. 테스트 `tests/test_simulator.py`.
 
 ## 관리자 웹 데이터 입력·내보내기 (Stage 16-2/16-3, 16-6 붙여넣기)
 

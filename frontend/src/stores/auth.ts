@@ -13,6 +13,8 @@ interface State {
   // SSO 콜백이 #error=코드로 돌아왔을 때 — 대시보드 로그인 화면·관리자 화면이 같이 읽는다.
   ssoError: string | null;
   ssoErrorDetail: string | null;
+  // 서버 인증 방식(/api/admin/auth-config의 auth_mode, App.vue가 앱 시작 때 채움) — 로컬 미리보기 판단용. 못 받았으면 null.
+  authMode: string | null;
 }
 
 // 탭 단위 보관(sessionStorage) — 대시보드도 로그인해야 하는 SSO 모드에서 새로고침마다 다시 로그인하지
@@ -62,6 +64,7 @@ export const useAuthStore = defineStore("auth", {
     loading: false,
     ssoError: null,
     ssoErrorDetail: null,
+    authMode: null,
   }),
   getters: {
     isAuthenticated(state): boolean {

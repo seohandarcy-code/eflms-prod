@@ -137,6 +137,9 @@ onMounted(async () => {
   background: #f4f5f7;
   font-family: "IBM Plex Sans", system-ui, sans-serif;
   color: #1a2230;
+  /* 한글은 띄어쓰기에서만 줄바꿈, 띄어쓰기 없는 긴 덩어리만 칸을 넘을 때 끊는다 */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 .body {
   max-width: 1160px;
@@ -155,7 +158,7 @@ onMounted(async () => {
   font-size: 14px;
   line-height: 1.7;
   color: #4a5361;
-  max-width: 880px;
+  text-wrap: pretty;
 }
 .error {
   padding: 12px 16px;

@@ -46,6 +46,8 @@
 - 계산기를 부르는 곳(임포트 `import_service`, 시드 `seed.seed_type`, 예측 그래프 `equipment_service._projection`, 참고표 재계산)은 `app/services/reference_data.calc_options(session, module)`를 펼쳐 넘긴다 — 참고표가 없는 유형은 빈 dict라 EF1~EF6 동작은 그대로다(공통 코드 예외 — 사용자 승인). 참고표가 필요한 유형은 `reference`를 빠뜨리면 조용히 0으로 계산하지 않고 오류를 낸다.
 - 운영(`app/services/reference_service.py`, CLI `app.db.import_reference` / `app.db.reset_reference`): 설비 파일과 같은 규칙으로 넣기(같은 행 갱신·새 행 추가) / `--replace` / `--check` / 리셋. 참고표가 바뀌면 같은 트랜잭션에서 그 유형 설비를 `load_inputs` → `calculate(as_of=저장 기준일)` → `ingest_row`로 다시 계산한다. 빈 표는 원본 수식대로 0이고 경고만 낸다.
 - 시드는 비어 있는 참고표에만 목업을 넣는다(`ensure_mock_reference`). 유형 리셋(`dataset_service.reset_type`)은 `DOMAIN_TABLES`만 지우므로 참고표는 남는다.
+- **사업장별 참고표(Stage 19, 2026-11-18 사용자 결정)**: 참고표 정의에 `"scope": "factory_code"`를 달면 사업장마다 따로 관리하는 표가 된다(지금 EF7 방전이력 — 실제 데이터는 H1만). 원본 합계식은 그 사업장 행이 없으면 조용히 0이 되므로 `reference_data`가 판단한다: 시뮬레이터는 행이 없는 사업장을 선택지에서 빼고 계산을 거부(`calculable_sites`), 설비 입력·참고표 재계산은 막지 않고 사업장별 경고(`scope_warnings` — "참고표 '방전이력'에 H2 사업장 행이 없음 — 설비 N대는 0으로 계산됨"). 관리자가 그 사업장 행을 넣으면 코드 변경 없이 바로 계산 대상이 된다. 다른 유형에 사업장별 표가 생겨도 `scope`만 달면 같은 규칙이 적용된다.
+- **점수 시뮬레이터(Stage 19)**: `/api/simulator/{ef}/form|sample|calculate`(대시보드와 같은 `require_viewer`, DB 쓰기 없음, `app/services/simulator_service.py`). 입력 양식은 데이터 입력 양식(`data_admin_service.template`), 값 검사는 데이터 입력과 같은 함수(`import_service`의 형식 변환·허용값·N/A)라 붙여넣기로 들어갈 값이면 계산된다. 사업장은 DB에 그 유형 설비가 있는 곳만(+ 사업장별 참고표), 계산 기준일은 오늘, 시작값 결과(baseline)도 같은 기준일로 계산해 차이는 바꾼 값 때문만 나온다.
 
 ## 인증
 
