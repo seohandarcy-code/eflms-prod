@@ -5,6 +5,9 @@
 (app/equipment_types/base.py의 EquipmentTypeModule 인터페이스).
 
 원본과 다른 점:
+- **Furan 연평균 = 합계 ÷ 진단 시점 사용년수(2026-11-19, 사용자 결정)**: 원본은 오늘까지의 운전년수로 나눠 측정값이
+  그대로여도 해가 갈수록 판정이 좋아졌다(5개년 예측에서 POF 상승, 설치 18일 이내는 0으로 나눔). 이제 (Furan 진단일 -
+  가동년월)로 나눠 기준일과 무관하다. 진단일 ≤ 가동년월이면 평가 불가(감점 0, 임포트 경고). 새 계산 칸 furan_diag_year.
 - **감점 소수 계산(2026-11-19, 사용자 결정)**: 원본이 감점을 정수로 만들던 floor()/round()/int()를 빼고 소수 그대로
   계산한다(경과연수 감점 = -운전년수 등). 감점 항목은 na.evaluate()가 float·소수 첫째 자리로 통일한다(rounding.py).
 
@@ -128,7 +131,8 @@ INPUT_COLUMNS = [
     {"name": "dielec_str_te_6", "label": "절연내력시험_6", "dtype": "float", "generator": lambda: random.randint(300, 600) / 10},
     {"name": "acid_measure_val", "label": "산가도시험측정값", "dtype": "float", "generator": lambda: random.choice([0.02, 0.03])},
     {"name": "moisture_rslt", "label": "수분시험결과", "dtype": "float", "generator": lambda: random.randint(150, 350) / 10},
-    {"name": "furan_diag_time", "label": "Furan진단일", "dtype": "date", "generator": lambda: date(2020, 6, 1)},
+    # 목업 진단일은 가동년월과 오늘 사이(2026-11-19 — 원본 목업은 2020-06-01 고정이라 가동일보다 빠른 진단일이 생겼다)
+    {"name": "furan_diag_time", "label": "Furan진단일", "dtype": "date", "generator": None},
     {"name": "furan_5H2F", "label": "furan_5h2f", "dtype": "int", "generator": lambda: random.choice([0])},
     {"name": "furan_2FOL", "label": "furan_2fol", "dtype": "float", "generator": lambda: random.choice([0])},
     {"name": "furan_2FAL", "label": "furan_2FAL", "dtype": "int", "generator": lambda: random.randint(0, 20)},
@@ -160,7 +164,10 @@ INPUT_COLUMNS = [
 
 
 def generate_input_row() -> dict:
-    return {col["name"]: col["generator"]() for col in INPUT_COLUMNS}
+    row = {col["name"]: col["generator"]() for col in INPUT_COLUMNS if col["generator"] is not None}
+    start = row["operation_start_time"]
+    row["furan_diag_time"] = start + timedelta(days=random.randint(30, max(30, (date.today() - start).days)))
+    return row
 
 
 # ------------------------------------------------------------------
@@ -264,8 +271,34 @@ def furan_total_cal(row):
     return row["furan_5H2F"] + row["furan_2FOL"] + row["furan_2FAL"] + row["furan_2ACF"] + row["furan_5M2F"]
 
 
+def _furan_diag_days(row) -> int:
+    """Furan 진단일까지의 사용일수 — 가동년월부터 진단일까지(2026-11-19 사용자 결정, 원본은 오늘까지의 운전년수)."""
+    return (row["furan_diag_time"] - row["operation_start_time"]).days
+
+
+def furan_diag_year_cal(row):
+    """Furan 진단 시점 사용년수(표시용, 소수 첫째 자리). 진단일이 가동년월보다 늦지 않으면 평가 불가(null)."""
+    days = _furan_diag_days(row)
+    return round1(days / 365) if days > 0 else None
+
+
 def furan_total_per_year_cal(row):
-    return row["furan_total"] / row["operation_year"]
+    # 합계 ÷ 진단 시점 사용년수(반올림 전 값) — 기준일과 무관하므로 5개년 예측·매일 갱신에도 바뀌지 않는다.
+    # 진단일 ≤ 가동년월이면 평가 불가(null) → 판정 null → 감점 0(na.evaluate)
+    days = _furan_diag_days(row)
+    if days <= 0:
+        return None
+    return row["furan_total"] / (days / 365)
+
+
+def import_warnings(numbered_rows: list[tuple[int, dict]]) -> list[str]:
+    """임포트 경고(선택 훅, import_service가 부른다) — Furan진단일이 가동년월 이전이거나 같아 Furan을 평가하지 않은 행."""
+    bad = [i for i, row in numbered_rows
+           if row.get("furan_diag_time") is not None and row.get("furan_total") is not None and row.get("furan_diag_year") is None]
+    if not bad:
+        return []
+    shown = ", ".join(map(str, bad[:10])) + (f" 외 {len(bad) - 10}건" if len(bad) > 10 else "")
+    return [f"Furan진단일이 가동년월 이전이거나 같은 행 {len(bad)}건({shown}행) — Furan 평가 안 함(감점 0). 진단일을 확인해 주세요."]
 
 
 def furan_desc_cal(row):
@@ -487,6 +520,7 @@ CALCULATED_COLUMNS = [
     {"name": "moisture_desc", "formula": moisture_desc_cal},
     {"name": "moisture_minus", "formula": moisture_minus_cal},
     {"name": "furan_total", "formula": furan_total_cal},
+    {"name": "furan_diag_year", "formula": furan_diag_year_cal},
     {"name": "furan_total_per_year", "formula": furan_total_per_year_cal},
     {"name": "furan_desc", "formula": furan_desc_cal},
     {"name": "furan_minus", "formula": furan_minus_cal},
@@ -675,6 +709,7 @@ async def ingest_scores(row: dict, equipment_id: int, session: AsyncSession) -> 
             moisture_desc=row["moisture_desc"],
             moisture_minus=row["moisture_minus"],
             furan_total=row["furan_total"],
+            furan_diag_year=row["furan_diag_year"],
             furan_total_per_year=row["furan_total_per_year"],
             furan_desc=row["furan_desc"],
             furan_minus=row["furan_minus"],

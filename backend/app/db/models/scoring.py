@@ -48,6 +48,7 @@ class TransformerScoreDetail(Base):
     moisture_desc: Mapped[str | None] = mapped_column(String(20))
     moisture_minus: Mapped[float] = mapped_column(Float)
     furan_total: Mapped[float | None] = mapped_column(Float)
+    furan_diag_year: Mapped[float | None] = mapped_column(Float)  # Furan 진단 시점 사용년수(2026-11-19)
     furan_total_per_year: Mapped[float | None] = mapped_column(Float)
     furan_desc: Mapped[str | None] = mapped_column(String(20))
     furan_minus: Mapped[float] = mapped_column(Float)

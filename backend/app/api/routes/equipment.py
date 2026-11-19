@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_viewer
 from app.db.session import get_session
-from app.schemas.equipment import EquipmentDetail, EquipmentSummary, EquipmentTypeOut, SummaryKPI
+from app.schemas.equipment import EquipmentDetail, EquipmentSummary, EquipmentTypeOut, ScoreHistoryPoint, SummaryKPI
 from app.services import equipment_service
 
 # AUTH_MODE=sso면 로그인한 사람만(역할 무관) 조회할 수 있다 — none/local은 지금처럼 공개(Stage 16-1).
@@ -35,6 +35,15 @@ async def get_equipment(
     if detail is None:
         raise HTTPException(status_code=404, detail="Equipment not found")
     return detail
+
+
+@router.get("/equipment/{equipment_id}/history", response_model=list[ScoreHistoryPoint])
+async def get_equipment_history(equipment_id: int, session: AsyncSession = Depends(get_session)) -> list[ScoreHistoryPoint]:
+    """설비의 점수 이력(점수 기준일 오름차순) — 점수를 계산·갱신할 때마다 그날 점수가 남는다(Stage 21-3)."""
+    history = await equipment_service.get_score_history(session, equipment_id)
+    if history is None:
+        raise HTTPException(status_code=404, detail="Equipment not found")
+    return history
 
 
 @router.get("/summary", response_model=SummaryKPI)

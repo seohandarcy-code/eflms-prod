@@ -20,17 +20,19 @@
 from __future__ import annotations
 
 import math
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import EquipmentExtraAttribute
+from app.db.models import Equipment, EquipmentExtraAttribute
 from app.equipment_types.na import is_na_token
 from app.equipment_types.registry import UnknownEquipmentTypeError, get_module
 from app.services.dataset_service import count_type, reset_type
-from app.services import job_lock
-from app.services.ingest import ingest_row
+from app.services import change_service, job_lock
+from app.services.ingest import ingest_row, save_scores
 from app.services.reference_data import calc_options, empty_reference_warnings, scope_warnings
 
 
@@ -140,6 +142,11 @@ class ImportResult:
     existing_rows: int = 0  # dry_run일 때 현재 그 유형의 설비 수(--replace면 지워질 수)
     na_values: dict[str, int] = field(default_factory=dict)  # 컬럼 → N/A(null로 저장)인 칸 수
     reference_warnings: list[str] = field(default_factory=list)  # 참고표가 있는 유형(EF7~)의 빈 참고표 경고
+    # 값이 하나도 바뀌지 않아 반영하지 않는(않은) 기존 설비 행 — 진단 데이터 반영일도 그대로(Stage 21-4)
+    unchanged_rows: int = 0
+    unchanged_row_numbers: list[int] = field(default_factory=list)
+    change_id: int | None = None  # 기록된 변경 이력 번호(바뀐 행이 없으면 None)
+    warnings: list[str] = field(default_factory=list)  # 유형별 데이터 경고(모듈 import_warnings 훅 — 예: EF1 Furan 진단일)
 
     @property
     def ok(self) -> bool:
@@ -176,8 +183,17 @@ def _parse_lines(text: str) -> tuple[list[str], list[tuple[int, list[str]]]]:
 
 
 async def import_file(
-    path: str, ef_code: str, session: AsyncSession, replace: bool = False, dry_run: bool = False
+    path: str,
+    ef_code: str,
+    session: AsyncSession,
+    replace: bool = False,
+    dry_run: bool = False,
+    *,
+    actor: str = "cli",
+    kind: str = "import",
+    source_name: str | None = None,
 ) -> ImportResult:
+    """kind: import(추가·갱신) / row_edit(관리자 행 편집) — replace=True면 replace. actor·source_name은 변경 이력용(Stage 21-4)."""
     result = ImportResult(file_path=path, ef_code=ef_code, replace=replace, dry_run=dry_run)
 
     try:
@@ -308,7 +324,13 @@ async def import_file(
             )
     if result.row_errors:
         return result
+    hook = getattr(module, "import_warnings", None)
+    if hook is not None:
+        result.warnings = hook([(i, full) for (i, _), full in zip(parsed_rows, full_rows)])
 
+    if not replace:
+        result.unchanged_row_numbers = await _unchanged_rows(session, module, parsed_rows, extras_per_row)
+        result.unchanged_rows = len(result.unchanged_row_numbers)
     if dry_run:
         result.existing_rows = await count_type(session, ef_code)
         return result
@@ -321,16 +343,54 @@ async def import_file(
         result.file_errors.append(str(exc))
         return result
     try:
-        return await _store(session, result, ef_code, replace, full_rows, extras_per_row, path, len(parsed_rows))
+        draft = change_service.ChangeDraft(
+            kind="replace" if replace else kind, ef_code=ef_code, actor=actor, source=source_name or os.path.basename(path)
+        )
+        return await _store(session, result, module, replace, parsed_rows, full_rows, extras_per_row, path, draft)
     finally:
         await job_lock.release(session, lock_token)
 
 
-async def _store(session, result, ef_code, replace, full_rows, extras_per_row, path, parsed_count):
+async def _unchanged_rows(session, module, parsed_rows, extras_per_row) -> list[int]:
+    """기존 설비와 입력값(·미등록 컬럼)이 모두 같은 행 번호 — 반영하지 않는다(Stage 21-4)."""
+    numbers = []
+    for (i, row), extras in zip(parsed_rows, extras_per_row):
+        current = await change_service.find_equipment(session, module.EF_CODE, row["factory_code"], row[module.NAME_FIELD])
+        if current is None:
+            continue
+        before = await change_service.capture_equipment(session, module, current.equipment_id)
+        if before is None or not change_service.inputs_equal(module, before, row):
+            continue
+        if all(before["_extras"].get(k) == v for k, v in extras.items()):
+            numbers.append(i)
+    return numbers
+
+
+async def _store(session, result, module, replace, parsed_rows, full_rows, extras_per_row, path, draft):
+    ef_code = module.EF_CODE
     try:
         if replace:
+            # 교체: 지금 설비 전부를 지우기 전 값으로 남긴다(되돌리기용)
+            ids = (await session.execute(select(Equipment).where(Equipment.ef_code == ef_code))).scalars().all()
+            for eq in ids:
+                before = await change_service.capture_equipment(session, module, eq.equipment_id)
+                draft.add(change_service.equipment_key(eq.factory_code, eq.equipment_name), "delete", before, None)
             result.replaced_rows = await reset_type(session, ef_code)
-        for full_row, extras in zip(full_rows, extras_per_row):
+        skip = set(result.unchanged_row_numbers)
+        for (i, row), full_row, extras in zip(parsed_rows, full_rows, extras_per_row):
+            if i in skip:
+                # 입력값이 같다 — 입력 테이블·진단 데이터 반영일은 그대로 두고 점수만 다시 계산한다
+                # (참고표처럼 설비 밖의 값이 바뀌었을 수 있다, Stage 21-4)
+                current = await change_service.find_equipment(session, ef_code, row["factory_code"], row[module.NAME_FIELD])
+                await save_scores(full_row, current.equipment_id, session)
+                draft.unchanged += 1
+                continue
+            key = change_service.equipment_key(row["factory_code"], row[module.NAME_FIELD])
+            before = None
+            if not replace:
+                current = await change_service.find_equipment(session, ef_code, row["factory_code"], row[module.NAME_FIELD])
+                if current is not None:
+                    before = await change_service.capture_equipment(session, module, current.equipment_id)
             eq_id = await ingest_row(full_row, session)
             for column_name, value in extras.items():
                 session.add(
@@ -342,12 +402,16 @@ async def _store(session, result, ef_code, replace, full_rows, extras_per_row, p
                         source_file=path,
                     )
                 )
+            after = change_service.input_values(module, row) | {"_extras": extras}
+            draft.add(key, "update" if before else "insert", before, after)
+        result.change_id = await change_service.save_draft(session, draft)
         await session.commit()
     except Exception as exc:
         await session.rollback()
         result.replaced_rows = 0
+        result.change_id = None
         result.file_errors.append(f"반영 중 오류로 전체 rollback(0건 반영): {type(exc).__name__}: {exc}")
         return result
 
-    result.imported_rows = parsed_count
+    result.imported_rows = len(parsed_rows) - draft.unchanged
     return result

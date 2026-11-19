@@ -129,7 +129,7 @@ eflms를 사내 DevOps 플랫폼(PDEP, Jenkins → 사내 레지스트리 → He
 
 - **앱**: 이전 이미지 태그로 Deployment 되돌림(PDEP/Helm 롤백). 태그를 SHA로 관리해야 가능
 - **DB**: 롤백 전 `pg_dump` 백업. 새 마이그레이션이 포함된 배포였다면 `alembic downgrade <이전 revision>` 가능 여부를 먼저 판단 — 데이터 손실 가능 마이그레이션은 백업 복원이 우선
-- **데이터 투입 실수**: 해당 유형만 이전 파일로 `--replace` 재투입(유형 간 독립)
+- **데이터 투입 실수**: 먼저 관리자 화면 **"변경 이력" → 되돌리기**(Stage 21-4 — 그 변경 전 값·반영일로 복원, 점수는 오늘 기준 재계산). 이력이 없는 오래된 변경이면 해당 유형만 이전 파일로 `--replace` 재투입(유형 간 독립). 자세한 순서는 7절
 
 ---
 
@@ -251,3 +251,95 @@ spec:
 ```
 
 frontend Deployment/Service는 같은 형태(포트 80, probe `/`)로 둔다. Ingress는 1절 #2 답에 따라 PDEP 표준 Chart 값으로 작성한다.
+
+### (선택) 점수 갱신 CronJob
+
+서버가 시작될 때와 날짜가 바뀐 뒤 스스로 점수를 갱신하므로(Stage 21-1b, `SCORE_REFRESH_AUTO=true` 기본) **필수가 아니다**. 서버 자동 갱신을 끄는 환경(`SCORE_REFRESH_AUTO=false`)이거나, 백엔드와 별도로 갱신 기록을 남기고 싶을 때만 둔다. 서버와 동시에 돌아도 데이터 작업 잠금(`data_job_lock`) 때문에 한쪽만 갱신하고, 이미 오늘 기준이면 다시 계산해도 결과가 같다.
+
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: eflms-score-refresh
+spec:
+  schedule: "30 0 * * *"          # 매일 00:30
+  timeZone: "Asia/Seoul"           # k8s 1.27+. 없으면 UTC 기준 "30 15 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: refresh
+              image: <레지스트리>/eflms-backend:<태그>
+              command: ["python", "-m", "app.db.recalculate", "--ef-code", "all", "--as-of", "today", "--trigger", "schedule"]
+              envFrom:
+                - configMapRef: { name: eflms-backend-config }
+                - secretRef: { name: eflms-backend-secret }
+```
+
+종료 코드: 성공 0, 일부·전부 실패 또는 다른 작업 진행 중·DB 업그레이드 필요 1(실행 기록은 관리자 "데이터 입력" 탭 맨 위 "점수 갱신" 카드).
+
+---
+
+## 7. 데이터 백업·복구 (Stage 21-5, 2026-11-19)
+
+### 7.1 무엇이 어디에 남나
+
+| 무엇 | 어디 | 보관 | 되살리는 방법 |
+|---|---|---|---|
+| 지금 입력값·점수 | 설비유형 테이블, `score_snapshot`, `*_score_detail` | 최신 1행 | — |
+| 점수 이력 | `score_history`(설비 유형·사업장·이름 + 점수 기준일별 1행) | 계속 쌓임(305대 × 365일 ≈ 11만 행/년) | 조회 전용(`/api/equipment/{id}/history`) |
+| 입력 변경 이력 | `data_change` / `data_change_row`(바뀌기 전후 입력값 JSON) | 계속 쌓임 | 관리자 "변경 이력" → 되돌리기 |
+| 점수 갱신 기록 | `score_refresh_run` | 계속 쌓임 | 점수는 `python -m app.db.recalculate`로 언제든 다시 계산 가능 |
+| DB 전체 | PostgreSQL | **운영팀 백업(아래)** | `pg_restore` / `psql` |
+
+이력 테이블은 지우지 않는다(용량이 커지면 별도 계획으로 기간 정리). 21-4 이전의 변경과 개발용 명령(`app.db.seed`/`app.db.reset`)은 기록되지 않는다.
+
+### 7.2 사내 운영팀에 요청할 백업(1절 질문에 추가)
+
+- [ ] PostgreSQL **매일 백업**(`pg_dump -Fc`, 보관 기간 예: 30일) — PDEP 관리형 DB면 제공 기능 확인, 아니면 아래 CronJob 초안
+- [ ] 배포(특히 마이그레이션 포함) 직전 수동 백업 절차
+- [ ] 복원 연습 1회(복원 DB에서 `/healthz`·대시보드·관리자 "변경 이력" 확인)
+
+```yaml
+# (예시) 백업 CronJob — 저장 위치(PVC/오브젝트 스토리지)는 운영팀 표준에 맞춘다
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: eflms-db-backup
+spec:
+  schedule: "0 2 * * *"
+  timeZone: "Asia/Seoul"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: postgres:17
+              command: ["sh", "-c", "pg_dump -Fc \"$DATABASE_DSN\" > /backup/eflms-$(date +%Y%m%d).dump"]
+              envFrom:
+                - secretRef: { name: eflms-backup-secret }   # DATABASE_DSN(postgresql://… — asyncpg 접두어 없이)
+              volumeMounts:
+                - { name: backup, mountPath: /backup }
+          volumes:
+            - name: backup
+              persistentVolumeClaim: { claimName: eflms-backup }
+```
+
+관리자 화면의 "전체 DB .sql 내려받기"(Stage 16-8)는 수동 보관용 보조 수단이다 — 정기 백업을 대신하지 않는다.
+
+### 7.3 문제가 생겼을 때 순서
+
+1. **잘못 넣은 데이터(최근)** — 관리자 **"변경 이력"**에서 해당 변경을 골라 되돌리기. 그 뒤에 같은 데이터를 바꾼 변경이 있으면 최근 것부터. 되돌리면 이전 값·이전 진단 데이터 반영일로 돌아가고 점수는 오늘 기준으로 다시 계산된다. 되돌리기 자체도 기록된다(다시 되돌리지는 않는다 — 필요하면 데이터를 다시 입력).
+2. **점수만 이상(계산 규칙 변경·참고표 실수 뒤)** — 참고표는 1과 같이 되돌리고, 점수는 `python -m app.db.recalculate --ef-code all --as-of today`(또는 관리자 "지금 갱신").
+3. **이력이 없는 오래된 변경·대량 손상** — 해당 유형만 보관한 원본 파일로 `python -m app.db.import_data --file <파일> --ef-code EF<N> --replace`(이것도 변경 이력에 남는다).
+4. **DB 전체 손상·마이그레이션 실패** — 앱을 내리고(replicas 0) 운영팀 백업으로 복원 → 이미지가 기대하는 리비전인지 확인(`alembic current`, 아니면 `alembic upgrade head`) → 앱 기동. 서버가 시작되면 점수 기준일이 오늘보다 이전인 설비를 자동으로 다시 계산한다.
+
+DB 버전이 코드보다 낮으면 서버는 갱신·임포트를 하지 않고 "DB 업그레이드 필요"를 로그·관리자 화면에 띄운다(Stage 21-1b) — 먼저 `alembic upgrade head`.
+

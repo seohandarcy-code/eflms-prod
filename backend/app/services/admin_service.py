@@ -59,6 +59,9 @@ ALLOWED_TABLES: list[str] = [
     "battery_temp_decay_coef",
     "equipment_extra_attribute",
     "score_refresh_run",  # 점수 갱신 실행 기록(Stage 21-1) — 잠금 테이블(data_job_lock)은 내부용이라 제외
+    "score_history",  # 점수 이력(Stage 21-3)
+    "data_change",  # 입력 변경 이력(Stage 21-4)
+    "data_change_row",
 ]
 
 

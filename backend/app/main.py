@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api.routes import admin, admin_data, admin_score_refresh, equipment, health, simulator
+from app.api.routes import admin, admin_changes, admin_data, admin_score_refresh, equipment, health, simulator
 from app.core.config import get_settings
 from app.db import seed
 from app.db.session import async_session_factory
@@ -71,4 +71,5 @@ app.include_router(equipment.router)
 app.include_router(admin.router)
 app.include_router(admin_data.router)
 app.include_router(admin_score_refresh.router)
+app.include_router(admin_changes.router)
 app.include_router(simulator.router)

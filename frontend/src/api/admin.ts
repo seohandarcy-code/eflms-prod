@@ -133,6 +133,9 @@ export interface ImportResultBody {
   file_errors: string[];
   row_errors: ImportRowError[];
   unknown_columns: string[];
+  // 값이 같아 반영하지 않는(않은) 행과 기록된 변경 이력 번호(Stage 21-4)
+  unchanged_rows?: number;
+  change_id?: number | null;
   // 설비
   imported_rows?: number;
   replaced_rows?: number;
@@ -150,7 +153,7 @@ export interface ImportResultBody {
   recalculated?: number;
   warnings?: string[];
   // 검증 통과 시 행별 구분 — 미리보기에서 확정 전에 보여준다
-  row_actions: { row_number: number; action: "추가" | "갱신"; key?: string[] }[];
+  row_actions: { row_number: number; action: "추가" | "갱신" | "변경 없음"; key?: string[] }[]; // 변경 없음 = 값이 같아 반영 안 함(Stage 21-4)
 }
 
 export interface TemplateColumn {
@@ -210,11 +213,18 @@ export async function fetchDataRows(token: string, efCode: string, table: string
 /** 붙여넣은 탭 구분 텍스트를 검증(check=true) 또는 반영(check=false). 행 편집도 고친 행만 같은 형식으로 보낸다. */
 export async function importPastedData(
   token: string,
-  params: { text: string; efCode: string; table: string; replace: boolean; check: boolean }
+  params: { text: string; efCode: string; table: string; replace: boolean; check: boolean; source?: "paste" | "row_edit" }
 ): Promise<ImportResultBody> {
   const { data } = await apiClient.post<ImportResultBody>(
     "/api/admin/data/import",
-    { ef_code: params.efCode, table: params.table, replace: params.replace, check: params.check, text: params.text },
+    {
+      ef_code: params.efCode,
+      table: params.table,
+      replace: params.replace,
+      check: params.check,
+      text: params.text,
+      source: params.source ?? "paste", // 변경 이력 구분(Stage 21-4)
+    },
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return data;
@@ -325,6 +335,59 @@ export async function fetchScoreRefresh(token: string): Promise<ScoreRefreshStat
 
 export async function runScoreRefresh(token: string): Promise<ScoreRefreshResult> {
   const { data } = await apiClient.post<ScoreRefreshResult>("/api/admin/score-refresh", null, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data;
+}
+
+// ------------------------------------------------------------------ 입력 변경 이력·되돌리기(Stage 21-4)
+export interface DataChangeItem {
+  change_id: number;
+  created_at: string;
+  actor: string;
+  kind: "import" | "replace" | "row_edit" | "reference_import" | "reference_reset" | "undo";
+  kind_label: string;
+  ef_code: string;
+  target_table: string;
+  source: string | null;
+  row_count: number;
+  unchanged_count: number;
+  status: "applied" | "undone";
+  undone_at: string | null;
+  undone_by: string | null;
+  undo_of: number | null;
+}
+
+export interface DataChangeRowItem {
+  row_key: string;
+  action: "insert" | "update" | "delete";
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+}
+
+export interface DataChangeDetail extends DataChangeItem {
+  rows: DataChangeRowItem[];
+  undo_check: { possible: boolean; reason: string | null };
+}
+
+export async function fetchChanges(token: string): Promise<DataChangeItem[]> {
+  const { data } = await apiClient.get<DataChangeItem[]>("/api/admin/changes", { headers: { Authorization: `Bearer ${token}` } });
+  return data;
+}
+
+export async function fetchChange(token: string, changeId: number): Promise<DataChangeDetail> {
+  const { data } = await apiClient.get<DataChangeDetail>(`/api/admin/changes/${changeId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data;
+}
+
+export async function undoChange(
+  token: string,
+  changeId: number,
+  check: boolean,
+): Promise<{ change_id: number; check: boolean; possible: boolean; reason?: string | null; undo_change_id?: number }> {
+  const { data } = await apiClient.post(`/api/admin/changes/${changeId}/undo`, { check }, {
     headers: { Authorization: `Bearer ${token}` },
   });
   return data;

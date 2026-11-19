@@ -30,6 +30,7 @@ MAX_TEXT_BYTES = 5 * 1024 * 1024
 NA_TOKEN = "N/A"
 ACTION_INSERT = "추가"
 ACTION_UPDATE = "갱신"
+ACTION_SAME = "변경 없음"  # 값이 지금과 같아 반영하지 않는 행(Stage 21-4)
 TAB = chr(9)
 
 
@@ -121,8 +122,12 @@ async def _row_actions(session: AsyncSession, module, table: str | None, text: s
         actions = []
         for (n, _), row in zip(raw_rows, rows):
             cond = and_(*(getattr(model, k) == row[k] for k in spec["key"]))
-            exists = (await session.execute(select(func.count()).select_from(model).where(cond))).scalar_one() > 0
-            actions.append({"row_number": n, "action": ACTION_UPDATE if exists else ACTION_INSERT, "key": list(map(str, _key_of(spec, row)))})
+            existing = (await session.execute(select(model).where(cond))).scalar_one_or_none()
+            same = existing is not None and all(getattr(existing, k) == v for k, v in row.items())
+            actions.append({
+                "row_number": n, "action": ACTION_UPDATE if existing is not None else ACTION_INSERT,
+                "key": list(map(str, _key_of(spec, row))), "_same": same,
+            })
         return actions
 
     names = [h.strip() for h in header]
@@ -156,6 +161,7 @@ async def import_text(
     table: str | None,
     replace: bool,
     check: bool,
+    row_edit: bool = False,
 ) -> dict[str, Any]:
     """붙여넣은 탭 구분 텍스트를 검증(check=True) 또는 반영한다. table이 있으면 참고표, 없으면 설비 데이터.
 
@@ -170,9 +176,15 @@ async def import_text(
         with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
             f.write(text)
         if table:
-            result = await import_reference_file(tmp_path, ef_code, table, session, replace=replace, dry_run=check)
+            result = await import_reference_file(
+                tmp_path, ef_code, table, session, replace=replace, dry_run=check,
+                actor="admin", source_name="행 편집" if row_edit else "붙여넣기",
+            )
         else:
-            result = await import_file(tmp_path, ef_code, session, replace=replace, dry_run=check)
+            result = await import_file(
+                tmp_path, ef_code, session, replace=replace, dry_run=check,
+                actor="admin", kind="row_edit" if row_edit else "import", source_name="행 편집" if row_edit else "붙여넣기",
+            )
     finally:
         _remove_quietly(tmp_path)
 
@@ -181,6 +193,12 @@ async def import_text(
     body["kind"] = "reference" if table else "equipment"
     body["ok"] = result.ok
     body["row_actions"] = await _row_actions(session, module, table, text, replace) if (result.ok and check) else []
+    # 값이 같은 행은 반영하지 않는다 — 미리보기에서 "변경 없음"으로(Stage 21-4)
+    same = set(getattr(result, "unchanged_row_numbers", []) or [])
+    for action in body["row_actions"]:
+        is_same = action.pop("_same", False)
+        if action["row_number"] in same or is_same:
+            action["action"] = ACTION_SAME
     return body
 
 

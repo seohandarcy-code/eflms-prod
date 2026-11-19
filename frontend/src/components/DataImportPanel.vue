@@ -476,6 +476,7 @@ onMounted(async () => {
                 <td class="col-action">
                   <span v-if="errorRows.has(row.rowNumber)" class="tag tag-error" :title="rowErrorsWithoutCell(row.rowNumber).join('\n')">오류</span>
                   <span v-else-if="actionByRow.get(row.rowNumber) === '갱신'" class="tag tag-update">갱신</span>
+                  <span v-else-if="actionByRow.get(row.rowNumber) === '변경 없음'" class="tag tag-same">변경 없음</span>
                   <span v-else-if="actionByRow.get(row.rowNumber)" class="tag tag-add">추가</span>
                 </td>
                 <td
@@ -513,6 +514,7 @@ onMounted(async () => {
             </span>
             <span v-else>
               추가 <b>{{ actionCounts.add }}{{ unit }}</b> · 갱신 <b>{{ actionCounts.update }}{{ unit }}</b>을 반영합니다.
+              <template v-if="actionCounts.same">(지금과 같은 <b>{{ actionCounts.same }}{{ unit }}</b>은 반영하지 않습니다 — 반영일도 그대로)</template>
             </span>
             <span v-if="checkResult.kind === 'reference'" class="choice-note">반영하면 이 유형 설비 점수를 다시 계산합니다.</span>
           </div>
@@ -967,6 +969,10 @@ select {
 .tag-add {
   color: #0f8a8a;
   background: #e3f4f4;
+}
+.tag-same {
+  background: #f1f2f4;
+  color: #8891a0;
 }
 .tag-update {
   color: #4a5bb5;

@@ -2,6 +2,7 @@
 import UserBadge from "../components/UserBadge.vue";
 import { onMounted, ref } from "vue";
 import AccessUsersPanel from "../components/AccessUsersPanel.vue";
+import ChangeHistoryPanel from "../components/ChangeHistoryPanel.vue";
 import DataImportPanel from "../components/DataImportPanel.vue";
 import SqlQueryPanel from "../components/SqlQueryPanel.vue";
 import { fetchAdminTablePage, fetchAdminTables, fetchAuthConfig, ssoLoginUrl, type AuthConfig, type TablePage } from "../api/admin";
@@ -11,7 +12,7 @@ const auth = useAuthStore();
 
 const authConfig = ref<AuthConfig | null>(null);
 const password = ref("");
-const tab = ref<"tables" | "data" | "access">("tables");
+const tab = ref<"tables" | "data" | "changes" | "access">("tables");
 // SSO 실패 문구(#error=코드)는 앱 시작 때 auth 스토어가 읽어 둔다(main.ts) — auth.ssoError / ssoErrorDetail.
 // detail은 예외 타입/메시지라 토큰·자격증명이 아닌 순수 진단 정보 — 화면에 그대로 보여줘도 안전하다.
 
@@ -124,6 +125,7 @@ onMounted(async () => {
         <div v-if="auth.isAdmin" class="tabs">
           <button type="button" :class="{ active: tab === 'tables' }" @click="tab = 'tables'">테이블 조회</button>
           <button type="button" :class="{ active: tab === 'data' }" @click="tab = 'data'">데이터 입력</button>
+          <button type="button" :class="{ active: tab === 'changes' }" @click="tab = 'changes'">변경 이력</button>
           <button type="button" :class="{ active: tab === 'access' }" @click="tab = 'access'">접근 권한 관리</button>
         </div>
 
@@ -131,6 +133,8 @@ onMounted(async () => {
         <KeepAlive>
           <DataImportPanel v-if="tab === 'data' && auth.isAdmin" />
         </KeepAlive>
+        <!-- 변경 이력·되돌리기(Stage 21-4) — 열 때마다 최신 기록을 다시 읽는다 -->
+        <ChangeHistoryPanel v-if="tab === 'changes' && auth.isAdmin" />
         <AccessUsersPanel v-if="tab === 'access' && auth.isAdmin" />
         <!-- 관리자: SQL 조회(Stage 16-5). 등록 사용자: 테이블을 눌러 보는 조회만(아래) -->
         <SqlQueryPanel v-else-if="tab === 'tables' && auth.isAdmin" :tables="tables" />

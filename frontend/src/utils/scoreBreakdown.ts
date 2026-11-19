@@ -43,7 +43,10 @@ const EF1_EVIDENCE: Record<string, (d: Ef1TypeDetail) => string> = {
   dielec_str_te_minus: (d) => `절연내력 평균 ${na(d.score_detail.dielec_str_te_avg, { unit: "kV" })} · 판정 ${na(d.score_detail.dielec_str_te_diag)}`,
   acid_measure_minus: (d) => `산가도 판정 ${na(d.score_detail.acid_measure_desc)}`,
   moisture_minus: (d) => `수분 판정 ${na(d.score_detail.moisture_desc)}`,
-  furan_minus: (d) => `Furan 총량 ${na(d.score_detail.furan_total)}(연 ${na(d.score_detail.furan_total_per_year, { digits: 1 })}) · 판정 ${na(d.score_detail.furan_desc)}`,
+  furan_minus: (d) =>
+    d.score_detail.furan_diag_year === null && d.score_detail.furan_total !== null
+      ? `Furan 총량 ${na(d.score_detail.furan_total)} · 진단일이 가동년월 이전이거나 같아 평가 안 함`
+      : `Furan 총량 ${na(d.score_detail.furan_total)} · 진단 시 사용 ${na(d.score_detail.furan_diag_year, { digits: 1, unit: "년" })}(연 ${na(d.score_detail.furan_total_per_year, { digits: 1 })}) · 판정 ${na(d.score_detail.furan_desc)}`,
   part_discharge_minus: (d) => `부분방전 판정 ${na(d.inspection.part_discharge_diag)}`,
   oltc_96t_minus: (d) => `OLTC 96T 판정 ${na(d.inspection.oltc_96t_diag)}`,
   oltc_minus: (d) => `OLTC 동작 판정 ${na(d.score_detail.oltc_diag)} (${na(d.inspection.oltc_type)})`,

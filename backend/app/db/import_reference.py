@@ -53,6 +53,10 @@ async def run(path: str, ef_code: str, table: str, replace: bool, check: bool) -
         if result.replace:
             print(f"  --replace: 기존 {result.deleted_rows}행을 지우고 교체함")
         print(f"  {result.ef_code} 설비 {result.recalculated}건 점수 재계산")
+        if result.unchanged_rows:
+            print(f"  지금과 값이 같은 {result.unchanged_rows}행은 건드리지 않음")
+        if result.change_id:
+            print(f"  변경 이력 #{result.change_id} — 관리자 화면 '변경 이력'에서 되돌릴 수 있음")
     else:
         print("[실패] 점검 실패" if result.dry_run else "[실패] 참고표 임포트를 중단함(0건 반영)")
         for fe in result.file_errors:

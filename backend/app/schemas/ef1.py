@@ -114,6 +114,7 @@ class TransformerScoreDetailOut(BaseModel):
     moisture_desc: str | None
     moisture_minus: float
     furan_total: float | None
+    furan_diag_year: float | None = None  # Furan 진단 시점 사용년수 — 진단일 ≤ 가동년월이면 null(평가 불가)
     furan_total_per_year: float | None
     furan_desc: str | None
     furan_minus: float

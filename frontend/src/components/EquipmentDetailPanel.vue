@@ -7,6 +7,7 @@ import { AXIS_NAME, formatScore, na } from "../utils/formatValue";
 import { statusBg, statusColor, statusLabel } from "../utils/statusStyle";
 import PofDistributionChart from "./PofDistributionChart.vue";
 import ScoreProjectionChart from "./ScoreProjectionChart.vue";
+import { PROJECTION_NOTE } from "../utils/projection";
 import Ef1DetailBody from "./detail/Ef1DetailBody.vue";
 import Ef2DetailBody from "./detail/Ef2DetailBody.vue";
 import Ef3DetailBody from "./detail/Ef3DetailBody.vue";
@@ -85,7 +86,7 @@ const sameTypeList = computed(() => store.equipmentList.filter((item) => item.ef
           <span class="total-score-badge">종합점수: {{ detail.score.total_score.toFixed(1) }}</span>
         </div>
         <div class="chart-title chart-title-1">POF({{ AXIS_NAME.pof }}) 분포 <span class="muted">· 같은 설비유형({{ detail.ef_name }}) 중 이 설비 구간 강조</span></div>
-        <div class="chart-title chart-title-2">5개년 POF({{ AXIS_NAME.pof }}) 예측 <span class="muted">· 연 -1점 단순 가정(실제 예측 아님)</span></div>
+        <div class="chart-title chart-title-2" :title="PROJECTION_NOTE">5개년 POF({{ AXIS_NAME.pof }}) 예측 <span class="muted">· 현재 진단값 유지, 경과연수·노화 반영 ⓘ</span></div>
 
         <div class="left-col">
           <div class="score-bars">
@@ -105,7 +106,7 @@ const sameTypeList = computed(() => store.equipmentList.filter((item) => item.ef
           <PofDistributionChart :equipment-list="sameTypeList" :selected-pof="detail.score.pof" :highlight-color="color" />
         </div>
         <div class="chart-cell chart-cell-2">
-          <ScoreProjectionChart :current-score="detail.score.pof" :color="color" />
+          <ScoreProjectionChart :points="detail.projection" :color="color" />
         </div>
       </div>
 

@@ -11,9 +11,10 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.db.models import Equipment, ScoreRefreshRun, ScoreSnapshot
+from app.db.models import Equipment, ScoreHistory, ScoreRefreshRun, ScoreSnapshot
 from app.services.job_lock import factory_for
 from app.equipment_types.base import EquipmentTypeModule
+from app.equipment_types.rounding import round1
 from app.equipment_types.registry import UnknownEquipmentTypeError, all_modules, get_module
 from app.services.reference_data import calc_options
 from app.schemas.equipment import (
@@ -22,6 +23,8 @@ from app.schemas.equipment import (
     EquipmentStatus,
     EquipmentSummary,
     EquipmentTypeOut,
+    ProjectionChange,
+    ScoreHistoryPoint,
     ProjectionPoint,
     ScoreSnapshotOut,
     SummaryKPI,
@@ -92,18 +95,31 @@ async def list_equipment(
     return summaries
 
 
+# BREAKDOWN 필드 이름이 계산 결과 이름과 다른 경우(EF1 — DB 컬럼은 소문자·숫자 시작 불가)
+_CALC_NAME = {"oltc_96t_minus": "oltc_96T_minus", "first_voltage_minus": "1st_voltage_minus"}
+
+
 async def _projection(session: AsyncSession, module: EquipmentTypeModule, equipment_id: int) -> list[ProjectionPoint]:
-    """저장된 입력으로 기준일만 N년씩 늦춰 같은 공식으로 재계산한다 — 0년차는 저장된 점수와 같다."""
+    """저장된 입력으로 기준일만 N년씩 늦춰 같은 공식으로 재계산한다 — 0년차는 저장된 점수와 같다.
+    해마다 판정과, 직전 해보다 값이 바뀐 POF 감점 항목(pof_changes)을 함께 준다(Stage 21-2)."""
     loaded = await module.load_inputs(session, equipment_id)
     if loaded is None:
         return []
     input_row, base_date = loaded
     options = await calc_options(session, module)  # 참고표가 있는 유형(EF7~)만 — Stage 15-0
-    points = []
+    items = [(i["field"], _CALC_NAME.get(i["field"], i["field"]), i["label"]) for i in module.BREAKDOWN["pof"]]
+    points: list[ProjectionPoint] = []
+    previous: dict | None = None
     for years in range(PROJECTION_YEARS + 1):
         # 공식이 경과일수/365로 연수를 계산하므로 365일 단위로 늘려야 정확히 +N년이 된다.
         as_of = base_date + timedelta(days=365 * years)
         calc = module.calculate(input_row, as_of=as_of, **options)
+        changes = []
+        if previous is not None:
+            for field, name, label in items:
+                now, before = calc.get(name), previous.get(name)
+                if isinstance(now, (int, float)) and isinstance(before, (int, float)) and now != before:
+                    changes.append(ProjectionChange(field=field, label=label, value=now, delta=round1(now - before)))
         points.append(
             ProjectionPoint(
                 years_ahead=years,
@@ -112,8 +128,11 @@ async def _projection(session: AsyncSession, module: EquipmentTypeModule, equipm
                 cof=calc["cof"],
                 dof=calc["dof"],
                 total_score=calc["total_score"],
+                status=classify_status(calc["pof"], calc["cof"], calc["dof"]),
+                pof_changes=changes,
             )
         )
+        previous = calc
     return points
 
 
@@ -227,4 +246,27 @@ async def list_equipment_types(session: AsyncSession) -> list[EquipmentTypeOut]:
             breakdown={axis: [BreakdownItem(**item) for item in items] for axis, items in module.BREAKDOWN.items()},
         )
         for module in all_modules()
+    ]
+
+
+async def get_score_history(session: AsyncSession, equipment_id: int, limit: int = 3650) -> list[ScoreHistoryPoint] | None:
+    """설비의 점수 이력(점수 기준일 오름차순, Stage 21-3). 설비가 없으면 None.
+    이력은 유형·사업장·설비명으로 묶여 있어 교체 임포트로 equipment_id가 바뀌어도 이어진다."""
+    equipment = await session.get(Equipment, equipment_id)
+    if equipment is None:
+        return None
+    stmt = (
+        select(ScoreHistory)
+        .where(
+            ScoreHistory.ef_code == equipment.ef_code,
+            ScoreHistory.factory_code == equipment.factory_code,
+            ScoreHistory.equipment_name == equipment.equipment_name,
+        )
+        .order_by(ScoreHistory.as_of.desc())
+        .limit(limit)
+    )
+    rows = (await session.execute(stmt)).scalars().all()
+    return [
+        ScoreHistoryPoint(as_of=r.as_of, pof=r.pof, cof=r.cof, dof=r.dof, total_score=r.total_score, status=r.status)
+        for r in reversed(rows)
     ]

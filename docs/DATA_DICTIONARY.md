@@ -496,6 +496,7 @@ POF·COF·DOF가 소수 첫째 자리로 정해졌으므로, 감점도 **소수�
 | 유형 | 감점 | 원본 | 지금 |
 |---|---|---|---|
 | 전 유형 | 경과연수 `age_minus` | `-floor(운전년수)` | `-운전년수` (12.7년 → -12.7) |
+| EF1 변압기 | Furan 연평균 `furan_total_per_year` | 합계 ÷ 오늘까지의 운전년수 | 합계 ÷ **Furan 진단 시점 사용년수**(아래 절) |
 | EF2 GIS | 차단기·절연 상태 `cb_stat_minus`·`insul_stat_minus` | `round(…)` | 소수 그대로 |
 | EF3 케이블 | 고장률 `failure_rate_minus`, 용량 `risk_mva_minus` | `round(…)` | 소수 그대로 |
 | EF4 수배전반 | 차단기 상태 `cb_stat_minus`, 피해규모 `scale_dam_chk_minus` | `round(…)`(.5는 짝수 쪽) | 소수 그대로 |
@@ -513,7 +514,37 @@ POF·COF·DOF가 소수 첫째 자리로 정해졌으므로, 감점도 **소수�
 | `score_refresh_run` | `run_id`(PK), `started_at`, `finished_at`, `status`(running/success/partial/failed), `trigger`(schedule/cli/admin), `requested_by`, `as_of`(null = 저장된 기준일 재계산), `equipment_count`, `summary`(유형별 `[{ef_code, count, error}]` JSON) | 점수 갱신 1회 = 1행. 관리자 "점수 갱신" 카드·테이블 조회(`ALLOWED_TABLES`)에서 본다 |
 | `data_job_lock` | `name`(PK, 지금은 `data` 하나), `holder`, `token`, `acquired_at`, `expires_at`(30분) | 점수 갱신·실제 반영 임포트·참고표 변경이 겹치지 않게. 비정상 종료로 남으면 만료 후 다음 작업이 지운다. 내부용이라 테이블 조회에는 없음 |
 
-날짜의 뜻: 입력 테이블의 `measured_at`/`updated_at`(및 EF1 `diag_time` 등) = **진단 데이터 반영일**(임포트·행 편집 때만 바뀜, 화면 "최근 진단일"·"진단 데이터 반영"), 계산 결과 테이블(`*_score_detail`)의 `today` = **점수 기준일**(점수 갱신마다 바뀜, 화면 "점수 기준일"). `score_snapshot.computed_at`은 행을 처음 만든 시각이라 화면에서 쓰지 않는다. 날짜에 따라 바뀌는 감점은 POF뿐이다(운전년수 → 경과연수, EF1 Furan 연평균, EF2·EF4·EF5·EF6 와이블 고장확률, EF7 SOH·BMS).
+날짜의 뜻: 입력 테이블의 `measured_at`/`updated_at`(및 EF1 `diag_time` 등) = **진단 데이터 반영일**(임포트·행 편집 때만 바뀜, 화면 "최근 진단일"·"진단 데이터 반영"), 계산 결과 테이블(`*_score_detail`)의 `today` = **점수 기준일**(점수 갱신마다 바뀜, 화면 "점수 기준일"). `score_snapshot.computed_at`은 행을 처음 만든 시각이라 화면에서 쓰지 않는다. 날짜에 따라 바뀌는 감점은 POF뿐이다(운전년수 → 경과연수, EF2·EF4·EF5·EF6 와이블 고장확률, EF7 SOH·BMS). EF1 Furan 연평균은 2026-11-19부터 진단 시점 사용년수로 나눠 날짜와 무관하다(아래 "EF1 Furan 연평균").
+
+## 점수 이력·입력 변경 이력 — Stage 21-3/21-4(2026-11-19, 마이그레이션 `c8e1f5a3b7d2`·`d4b9a2c6e8f1`)
+
+설비는 `equipment_id`가 아니라 **(`ef_code`, `factory_code`, `equipment_name`)**으로 묶는다 — 교체 임포트는 설비를 지우고 새 id로 다시 만들어서, id로 묶으면 교체할 때마다 이력이 끊긴다. 이력 테이블에는 FK가 없다(설비가 지워져도 이력은 남음).
+
+| 테이블 | 컬럼 | 설명 |
+|---|---|---|
+| `score_history` | `id`, `ef_code`, `factory_code`, `equipment_name`, `equipment_id`(기록 당시, 참고용), `as_of`(점수 기준일), `pof`, `cof`, `dof`, `total_score`, `status`(normal/review/replace), `recorded_at`(한국 시간) — 유니크(유형·사업장·이름·as_of) | 점수를 쓸 때마다(임포트·행 편집·점수 갱신·되돌리기) 그날 점수 1행, 같은 날 다시 계산하면 덮어씀(`ingest._record_history`). 마이그레이션이 그때 저장된 점수를 첫 이력으로 채운다. API `GET /api/equipment/{id}/history` |
+| `data_change` | `change_id`, `created_at`(한국 시간), `actor`(admin/cli), `kind`(import·replace·row_edit·reference_import·reference_reset·undo), `ef_code`, `target_table`("" = 설비, 아니면 참고표 이름·`all`), `source`(파일 이름·붙여넣기·행 편집·"#N 되돌리기"), `row_count`, `unchanged_count`, `status`(applied/undone), `undone_at`, `undone_by`, `undo_of` | 반영 한 번 = 1행. 바뀐 행이 없으면 기록하지 않는다 |
+| `data_change_row` | `id`, `change_id`(FK), `row_key`(설비 `사업장\|설비명`, 참고표 `표이름\|키값…`), `action`(insert/update/delete), `before`/`after`(JSON — 입력 컬럼, 설비 `before`는 `_as_of`(점수 기준일)·`_dates`(입력 테이블별 반영일 칸 `measured_at`/`updated_at` — 매일 점수 갱신으로 점수 기준일과 달라져서 따로 남김)·`_extras`(미등록 컬럼) 포함) | 되돌리기에 쓴다(`app/services/change_service.py`) |
+
+**값이 같은 행은 반영하지 않는다(Stage 21-4)**: 추가·갱신 임포트에서 입력값(·미등록 컬럼)이 지금과 모두 같은 설비 행은 입력 테이블을 다시 쓰지 않아 **진단 데이터 반영일이 그대로**다(점수만 다시 계산 — 참고표가 바뀌었을 수 있어서). 참고표도 값이 같은 행은 건드리지 않는다. 미리보기에는 "변경 없음". 교체(`--replace`)는 예전처럼 전부 지우고 넣는다.
+
+**되돌리기**: 추가된 설비·행은 지우고, 갱신·삭제된 것은 이전 값으로 — 설비는 입력을 되살리고 입력 테이블 반영일 칸을 `_dates` 값으로 돌린 뒤(진단 데이터 반영일 복원) 점수를 오늘 기준으로 다시 계산. 그 뒤 같은 설비·행(교체면 그 유형 전체)을 바꾼 변경이 살아 있으면 막는다(되돌리기 기록은 막지 않음). 되돌리기도 `kind=undo`로 기록되고 원래 변경은 `undone`, 되돌리기를 다시 되돌리지는 않는다.
+
+## EF1 Furan 연평균 — 진단 시점 사용년수 (2026-11-19, 사용자 결정, 마이그레이션 `e7f3c1a9d5b2`)
+
+```
+furan_total          = 5H2F + 2FOL + 2FAL + 2ACF + 5M2F            (Furan 진단 결과)
+furan_diag_year      = (Furan 진단일 − 가동년월) 일수 ÷ 365          (표시용 소수 첫째 자리, 새 계산 칸)
+furan_total_per_year = furan_total ÷ (진단일 − 가동년월 일수 ÷ 365)  (반올림 전 사용년수로 나눔)
+furan_desc           = 연평균 > 5 → 이상, 아니면 정상                (원본과 같음)
+furan_minus          = 이상 → -24, 정상 → 0                          (원본과 같음)
+```
+
+- 왜: Furan 합계는 진단일까지 쌓인 양이라 그때까지의 사용년수로 나눠야 연평균의 뜻이 맞다. 원본은 **오늘까지의 운전년수**로 나눠 측정값이 그대로여도 해가 갈수록 판정이 좋아졌다(5개년 예측에서 -24가 풀려 POF 상승, 매일 점수 갱신에서도 어느 날 갑자기 정상) — 그리고 설치 후 18일 이내(운전년수 0.0)는 0으로 나눠 계산 오류였다. 이제 Furan은 계산 기준일과 무관하고 새 진단값을 넣을 때만 바뀐다.
+- **평가 불가**: 진단일이 가동년월보다 늦지 않으면(같거나 이전) `furan_diag_year`·연평균·판정 null, 감점 0(N/A 규칙과 같음). 임포트는 거부하지 않고 경고("Furan진단일이 가동년월 이전이거나 같은 행 N건 — Furan 평가 안 함", 모듈 훅 `import_warnings` → 결과 `warnings`). Furan 진단일이 N/A여도 평가 안 함(감점 0).
+- 목업: 원본 생성기는 Furan 진단일 2020-06-01 고정이라 가동년월(2015~2024)보다 빠른 행이 생겼다 → 시스템 목업은 가동년월 30일 뒤 ~ 오늘 사이. 기존 개발 DB의 EF1 목업은 진단일 2020-06-01이라 다시 만들기 전까지 상당수(복사본 125대 중 69대)가 평가 불가로 보인다 — `python -m app.db.seed --ef-code EF1 --rows <N> --reset`(EF1만 지우고 다시 만듦).
+- 설치 초기(진단 시점 사용년수가 짧을 때) 연평균이 크게 나오는 성질은 원본 그대로 둔다(2026-11-19 결정).
+- 원본 대조 수정본 `ref_data_revised/schema_eflms.py`에도 같은 공식(평가 불가 처리 포함).
 
 ## 미확정/자동 캡처 컬럼
 

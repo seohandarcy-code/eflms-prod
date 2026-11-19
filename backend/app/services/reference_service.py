@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 
 from sqlalchemy import and_, delete, select
@@ -21,7 +22,7 @@ from app.db.models import Equipment
 from app.equipment_types.na import is_na_token
 from app.equipment_types.registry import UnknownEquipmentTypeError, get_module
 from app.services.import_service import RowError, _cast_value, _check_allowed, _parse_lines, _read_text
-from app.services import job_lock
+from app.services import change_service, job_lock
 from app.services.ingest import save_scores
 from app.services.reference_data import calc_options, count_rows, empty_reference_warnings, reference_specs, scope_warnings
 
@@ -40,6 +41,8 @@ class ReferenceImportResult:
     table_rows_before: int = 0
     table_rows_after: int = 0
     recalculated: int = 0  # 다시 계산한 설비 수
+    unchanged_rows: int = 0  # 값이 같아 반영하지 않은 행(Stage 21-4)
+    change_id: int | None = None  # 기록된 변경 이력 번호
     file_errors: list[str] = field(default_factory=list)
     row_errors: list[RowError] = field(default_factory=list)
     unknown_columns: list[str] = field(default_factory=list)
@@ -55,6 +58,7 @@ class ReferenceResetResult:
     ef_code: str
     deleted: dict[str, int] = field(default_factory=dict)  # 표 이름 → 지운 행 수
     recalculated: int = 0
+    change_id: int | None = None  # 기록된 변경 이력 번호(Stage 21-4)
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
@@ -183,7 +187,15 @@ def _parse_file(path: str, spec: dict, result: ReferenceImportResult) -> list[di
 
 
 async def import_reference_file(
-    path: str, ef_code: str, table: str, session: AsyncSession, replace: bool = False, dry_run: bool = False
+    path: str,
+    ef_code: str,
+    table: str,
+    session: AsyncSession,
+    replace: bool = False,
+    dry_run: bool = False,
+    *,
+    actor: str = "cli",
+    source_name: str | None = None,
 ) -> ReferenceImportResult:
     result = ReferenceImportResult(file_path=path, ef_code=ef_code, table=table, replace=replace, dry_run=dry_run)
     try:
@@ -210,15 +222,30 @@ async def import_reference_file(
         result.file_errors.append(str(exc))
         return result
     try:
-        await _store_reference(session, result, module, spec, model, rows, replace)
+        draft = change_service.ChangeDraft(
+            kind="reference_import", ef_code=ef_code, actor=actor, target_table=table,
+            source=source_name or os.path.basename(path),
+        )
+        await _store_reference(session, result, module, spec, model, rows, replace, draft, table)
     finally:
         await job_lock.release(session, lock_token)
     return result
 
 
-async def _store_reference(session, result, module, spec, model, rows, replace) -> None:
+def _row_values(spec, obj) -> dict:
+    return {c["name"]: getattr(obj, c["name"]) for c in spec["columns"]}
+
+
+def _ref_key(table: str, spec, row: dict) -> str:
+    return table + "|" + "|".join(str(change_service._jsonable(row[k])) for k in spec["key"])
+
+
+async def _store_reference(session, result, module, spec, model, rows, replace, draft, table) -> None:
     try:
         if replace:
+            for obj in (await session.execute(select(model))).scalars():
+                before = _row_values(spec, obj)
+                draft.add(_ref_key(table, spec, before), "delete", before, None)
             result.deleted_rows = (await session.execute(delete(model))).rowcount or 0
         for row in rows:
             existing = None
@@ -228,10 +255,18 @@ async def _store_reference(session, result, module, spec, model, rows, replace) 
             if existing is None:
                 session.add(model(**row))
                 result.inserted_rows += 1
+                draft.add(_ref_key(table, spec, row), "insert", None, row)
             else:
+                before = _row_values(spec, existing)
+                if all(before.get(k) == v for k, v in row.items()):
+                    result.unchanged_rows += 1  # 값이 같은 행은 건드리지 않는다(Stage 21-4)
+                    draft.unchanged += 1
+                    continue
                 for name, value in row.items():
                     setattr(existing, name, value)
                 result.updated_rows += 1
+                draft.add(_ref_key(table, spec, row), "update", before, row)
+        result.change_id = await change_service.save_draft(session, draft)
         result.recalculated = await recalculate_type(session, module)
         result.table_rows_after = await count_rows(session, model)
         result.warnings = await _warnings(session, module)
@@ -239,10 +274,11 @@ async def _store_reference(session, result, module, spec, model, rows, replace) 
     except Exception as exc:
         await session.rollback()
         result.inserted_rows = result.updated_rows = result.deleted_rows = result.recalculated = 0
+        result.change_id = None
         result.file_errors.append(f"반영 중 오류로 전체 rollback(0건 반영): {type(exc).__name__}: {exc}")
 
 
-async def reset_reference(session: AsyncSession, ef_code: str, table: str) -> ReferenceResetResult:
+async def reset_reference(session: AsyncSession, ef_code: str, table: str, *, actor: str = "cli") -> ReferenceResetResult:
     """참고표를 비우고(table='all'이면 전부) 그 유형 설비를 다시 계산한다. 한 트랜잭션."""
     result = ReferenceResetResult(ef_code=ef_code)
     try:
@@ -256,20 +292,25 @@ async def reset_reference(session: AsyncSession, ef_code: str, table: str) -> Re
         result.errors.append(str(exc))
         return result
     try:
-        await _reset_tables(session, result, module, specs)
+        draft = change_service.ChangeDraft(kind="reference_reset", ef_code=ef_code, actor=actor, target_table=table)
+        await _reset_tables(session, result, module, specs, draft)
     finally:
         await job_lock.release(session, lock_token)
     return result
 
 
-async def _reset_tables(session, result, module, specs) -> None:
+async def _reset_tables(session, result, module, specs, draft) -> None:
     try:
         for name, spec in specs.items():
+            for obj in (await session.execute(select(spec["model"]))).scalars():
+                before = _row_values(spec, obj)
+                draft.add(_ref_key(name, spec, before), "delete", before, None)
             result.deleted[name] = (await session.execute(delete(spec["model"]))).rowcount or 0
+        result.change_id = await change_service.save_draft(session, draft)
         result.recalculated = await recalculate_type(session, module)
         result.warnings = await _warnings(session, module)
         await session.commit()
     except Exception as exc:
         await session.rollback()
-        result.deleted, result.recalculated = {}, 0
+        result.deleted, result.recalculated, result.change_id = {}, 0, None
         result.errors.append(f"리셋 중 오류로 전체 rollback: {type(exc).__name__}: {exc}")

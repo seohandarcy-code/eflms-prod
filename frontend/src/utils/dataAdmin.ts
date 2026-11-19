@@ -41,12 +41,14 @@ export function naSummary(result: ImportResultBody): string {
 }
 
 /** 검증 결과의 행별 추가/갱신 개수. */
-export function actionCountsOf(result: ImportResultBody | null): { add: number; update: number } {
+export function actionCountsOf(result: ImportResultBody | null): { add: number; update: number; same: number } {
   let add = 0;
   let update = 0;
+  let same = 0; // 값이 지금과 같아 반영하지 않는 행(Stage 21-4)
   for (const a of result?.row_actions ?? []) {
     if (a.action === "갱신") update++;
+    else if (a.action === "변경 없음") same++;
     else add++;
   }
-  return { add, update };
+  return { add, update, same };
 }

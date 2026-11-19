@@ -197,6 +197,7 @@ async function send(check: boolean) {
       table: props.table,
       replace: false,
       check,
+      source: "row_edit",
     });
     if (check || !result.ok) {
       // 검증 결과(또는 확정 때 다시 검증해서 실패한 경우 — 그 사이 DB가 바뀐 경우 등)
@@ -270,6 +271,7 @@ function rowLabel(row: EditorRow): string {
 function rowState(row: EditorRow): { text: string; cls: string } | null {
   if (errorRowIds.value.has(row.id)) return { text: "오류", cls: "tag-error" };
   const action = actionById.value.get(row.id);
+  if (action === "변경 없음") return { text: "변경 없음", cls: "tag-same" };
   if (action) return action === "갱신" ? { text: "갱신", cls: "tag-update" } : { text: "추가", cls: "tag-add" };
   if (isNewRow(row)) return { text: "새 행", cls: "tag-add" };
   if (isRowChanged(row)) return { text: "수정", cls: "tag-update" };
@@ -447,6 +449,7 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", onBeforeUnload)
       <div v-if="checkResult.ok" class="confirm-box">
         <div>
           추가 <b>{{ actionCounts.add }}{{ table ? "행" : "건" }}</b> · 갱신 <b>{{ actionCounts.update }}{{ table ? "행" : "건" }}</b>을 반영합니다.
+          <template v-if="actionCounts.same">(지금과 같은 <b>{{ actionCounts.same }}{{ table ? "행" : "건" }}</b>은 반영하지 않습니다)</template>
           <span v-if="checkResult.kind === 'reference'" class="re-note">반영하면 이 유형 설비 점수를 다시 계산합니다.</span>
         </div>
         <div class="apply-row">
@@ -730,6 +733,10 @@ tr.is-error td.c-state {
   border-radius: 4px;
   font-size: 11px;
   font-weight: 700;
+}
+.tag-same {
+  background: #f1f2f4;
+  color: #8891a0;
 }
 .tag-add {
   color: #0f8a8a;

@@ -51,6 +51,7 @@ defineProps<{ typeDetail: Ef1TypeDetail }>();
                 <div class="raw-field"><span>2ACF</span><b>{{ na(typeDetail.furan.furan_2acf) }}</b></div>
                 <div class="raw-field"><span>5M2F</span><b>{{ na(typeDetail.furan.furan_5m2f) }}</b></div>
                 <div class="raw-field"><span>합계</span><b>{{ na(typeDetail.score_detail.furan_total) }}</b></div>
+                <div class="raw-field"><span>진단 시점 사용년수</span><b>{{ na(typeDetail.score_detail.furan_diag_year, { digits: 1, unit: "년" }) }}</b></div>
                 <div class="raw-field"><span>연간환산</span><b>{{ na(typeDetail.score_detail.furan_total_per_year, { digits: 2 }) }}</b></div>
                 <div class="raw-field"><span>판정</span><b>{{ na(typeDetail.score_detail.furan_desc) }}</b></div>
                 <div class="raw-field"><span>감점</span><b class="neg">{{ na(typeDetail.score_detail.furan_minus, { digits: 1 }) }}</b></div>

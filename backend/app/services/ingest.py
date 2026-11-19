@@ -12,7 +12,8 @@ row["EF_code"]로 찾은 설비유형 모듈의 ingest_domain()에 맡긴다(Sta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Equipment, EquipmentType, ScoreSnapshot
+from app.core.clock import now_kst_naive, today_kst
+from app.db.models import Equipment, EquipmentType, ScoreHistory, ScoreSnapshot
 from app.equipment_types.base import EquipmentTypeModule
 from app.equipment_types.registry import get_module
 
@@ -75,6 +76,7 @@ async def save_scores(row: dict, equipment_id: int, session: AsyncSession) -> No
 
 
 async def _merge_snapshot(row: dict, equipment_id: int, session: AsyncSession) -> None:
+    await _record_history(row, equipment_id, session)
     await session.merge(
         ScoreSnapshot(
             equipment_id=equipment_id,
@@ -87,3 +89,27 @@ async def _merge_snapshot(row: dict, equipment_id: int, session: AsyncSession) -
             total_score=row["total_score"],
         )
     )
+
+
+async def _record_history(row: dict, equipment_id: int, session: AsyncSession) -> None:
+    """점수 이력(Stage 21-3) — 설비(유형·사업장·이름)·점수 기준일마다 한 행, 같은 날 다시 계산하면 마지막 값으로."""
+    from app.services.equipment_service import classify_status  # 순환 import 방지
+
+    module = get_module(row["EF_code"])
+    key = dict(ef_code=module.EF_CODE, factory_code=row["factory_code"], equipment_name=row[module.NAME_FIELD], as_of=row.get("today") or today_kst())
+    values = dict(
+        equipment_id=equipment_id,
+        pof=row["pof"],
+        cof=row["cof"],
+        dof=row["dof"],
+        total_score=row["total_score"],
+        status=classify_status(row["pof"], row["cof"], row["dof"]),
+        recorded_at=now_kst_naive(),
+    )
+    stmt = select(ScoreHistory).where(*(getattr(ScoreHistory, k) == v for k, v in key.items()))
+    existing = (await session.execute(stmt)).scalar_one_or_none()
+    if existing is None:
+        session.add(ScoreHistory(**key, **values))
+    else:
+        for name, value in values.items():
+            setattr(existing, name, value)

@@ -56,6 +56,7 @@ export interface ScoreDetail {
   moisture_desc: string | null;
   moisture_minus: number;
   furan_total: number | null;
+  furan_diag_year: number | null; // Furan 진단 시점 사용년수(진단일 - 가동년월) — null이면 평가 불가
   furan_total_per_year: number | null;
   furan_desc: string | null;
   furan_minus: number;
@@ -671,6 +672,14 @@ export interface Ef7TypeDetail {
 
 export type TypeDetail = Ef1TypeDetail | Ef2TypeDetail | Ef3TypeDetail | Ef4TypeDetail | Ef5TypeDetail | Ef6TypeDetail | Ef7TypeDetail;
 
+// 예측 한 해에서 값이 바뀐 POF 감점 항목(직전 해 대비) — Stage 21-2
+export interface ProjectionChange {
+  field: string;
+  label: string;
+  value: number;
+  delta: number;
+}
+
 export interface ProjectionPoint {
   years_ahead: number;
   as_of: string;
@@ -678,6 +687,8 @@ export interface ProjectionPoint {
   cof: number;
   dof: number;
   total_score: number;
+  status: EquipmentStatus;
+  pof_changes: ProjectionChange[];
 }
 
 export interface EquipmentDetail {

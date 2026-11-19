@@ -52,6 +52,8 @@ async def run(path: str, ef_code: str, replace: bool, check: bool = False) -> bo
 
     if result.ok and result.dry_run:
         print(f"[점검 통과] {result.total_rows}건 검증·계산 성공 - DB에는 반영하지 않음(--check)")
+        if result.unchanged_rows:
+            print(f"  그중 {result.unchanged_rows}건은 지금과 값이 같아 반영하지 않을 예정")
         if result.replace:
             print(f"  --check 없이 실행하면 기존 {result.ef_code} 설비 {result.existing_rows}건을 지우고 교체함(다른 유형은 그대로)")
         else:
@@ -60,6 +62,10 @@ async def run(path: str, ef_code: str, replace: bool, check: bool = False) -> bo
             print(f"  미등록 컬럼 {len(result.unknown_columns)}개(equipment_extra_attribute에 보관 예정): {', '.join(result.unknown_columns)}")
     elif result.ok:
         print(f"[완료] {result.imported_rows}/{result.total_rows}건 임포트 성공")
+        if result.unchanged_rows:
+            print(f"  지금과 값이 같은 {result.unchanged_rows}건은 반영하지 않음(진단 데이터 반영일 그대로, 점수만 다시 계산)")
+        if result.change_id:
+            print(f"  변경 이력 #{result.change_id} — 관리자 화면 '변경 이력'에서 되돌릴 수 있음")
         if result.replace:
             print(f"  --replace: 기존 {result.ef_code} 설비 {result.replaced_rows}건을 지우고 교체함(다른 유형은 그대로)")
         if result.unknown_columns:
@@ -72,7 +78,7 @@ async def run(path: str, ef_code: str, replace: bool, check: bool = False) -> bo
             print(f"  - {e.row_number}행 {e.column}: '{e.raw_value}' ({e.reason})")
     if result.ignored_columns:
         print(f"  사용 안 하는 컬럼(무시, 저장 안 함): {', '.join(result.ignored_columns)}")
-    for warning in result.reference_warnings:
+    for warning in [*result.reference_warnings, *result.warnings]:
         print(f"  [경고] {warning}")
     if result.ok and result.na_values:
         detail = ", ".join(f"{name} {count}건" for name, count in result.na_values.items())

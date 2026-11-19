@@ -12,6 +12,9 @@
   반올림한다 — 엑셀 ROUND(값, 1)처럼 5에서 올린다(-0.25 → -0.3, 파이썬 round()는 쓰지 않음).
   항목마다 반올림한 뒤 합치므로 항목 감점을 더하면 축 감점과 정확히 맞는다(맨 아래 _apply_system_rounding).
 - 운전년수(operation_year)도 같은 방식으로 소수 첫째 자리.
+- EF1 Furan(2026-11-19): 연평균 = 합계 ÷ Furan 진단 시점 사용년수(진단일 - 가동년월, 새 계산 칸 furan_diag_year).
+  원본은 오늘까지의 운전년수로 나눠 해가 갈수록 판정이 좋아졌다. 진단일 ≤ 가동년월이면 평가 불가(감점 0).
+  (목업 생성기의 Furan 진단일 2020-06-01 고정은 원본 그대로 — 시스템 목업은 가동년월과 오늘 사이)
 
 코드가 아니라 시스템이 데이터를 다루는 방식이라 여기에는 반영하지 않은 것(참고)
 - 값 없음(N/A): 입력파일의 N/A는 null로 저장되고, null을 읽는 감점은 0, 그 밖의 파생값은 null이 된다.
@@ -613,17 +616,28 @@ def furan_total_cal(row):
         + row["furan_2ACF"] + row["furan_5M2F"]
     )
 
+# 시스템: Furan 연평균은 합계 ÷ "Furan 진단 시점 사용년수"(진단일 - 가동년월)로 나눈다(2026-11-19 사용자 결정 —
+# 원본은 오늘까지의 운전년수로 나눠 측정값이 그대로여도 해가 갈수록 판정이 좋아졌다). 진단일이 가동년월보다
+# 늦지 않으면 평가 불가 — 연평균·판정 None, 감점 0(시스템의 N/A 규칙과 같음).
+def furan_diag_year_cal(row):
+    days = (row["furan_diag_time"] - row["operation_start_time"]).days
+    return round1(days / 365) if days > 0 else None
+
+
 def furan_total_per_year_cal(row):
-    return (
-        row["furan_total"] / row["operation_year"]
-    )
+    days = (row["furan_diag_time"] - row["operation_start_time"]).days
+    if days <= 0:
+        return None
+    return row["furan_total"] / (days / 365)  # 반올림 전 사용년수로 나눈다
 
 def furan_desc_cal(row):
     s = row["furan_total_per_year"]
+    if s is None: return None  # 시스템: 평가 불가(진단일 ≤ 가동년월)
     if s > 5: return "이상"
     return "정상"
 
 def furan_minus_cal(row):
+    if row["furan_desc"] is None: return 0  # 시스템: 평가 불가면 감점 0
     if row["furan_desc"] == '정상': return 0
     return -24
 
@@ -926,6 +940,13 @@ CALCULATED_COLUMNS = [
         # 엑셀 수식 예시: =IF(진행률=100,"완료",IF(상태="보류","보류","진행중"))
         # progress_rate(위에서 계산됨)를 참조하는 예시
         "formula": furan_total_cal,
+    },
+    {
+        "name": "furan_diag_year",
+        "label": "Furan 진단 시점 사용년수",
+        "dtype": "float",
+        # 시스템: 새 계산 칸 — (Furan 진단일 - 가동년월) ÷ 365, 소수 첫째 자리
+        "formula": furan_diag_year_cal,
     },
     {
         "name": "furan_total_per_year",

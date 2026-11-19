@@ -95,9 +95,9 @@ async def test_check_then_apply_equipment_file(client, admin_headers):
     assert body["row_actions"] == []  # 미리보기는 검증 때만
     assert len((await client.get("/api/equipment", params={"ef_code": "EF2"})).json()) == total
 
-    # 같은 내용을 다시 검증하면 전부 갱신, 교체로 검증하면 전부 추가
+    # 같은 내용을 다시 검증하면 전부 "변경 없음"(값이 같아 반영 안 함, Stage 21-4), 교체로 검증하면 전부 추가
     body = (await _upload(client, headers, content, "EF2")).json()
-    assert {a["action"] for a in body["row_actions"]} == {"갱신"}
+    assert {a["action"] for a in body["row_actions"]} == {"변경 없음"} and body["unchanged_rows"] == total
     body = (await _upload(client, headers, content, "EF2", replace=True)).json()
     assert {a["action"] for a in body["row_actions"]} == {"추가"}
 
@@ -144,7 +144,7 @@ async def test_reference_upload_recalculates_battery_scores(client, admin_header
     content = (SAMPLES / "ef7" / "reference_temp_decay_coef.dat").read_bytes()
     body = (await _upload(client, headers, content, "EF7", table="temp_decay_coef")).json()
     assert body["ok"] and body["kind"] == "reference" and body["dry_run"] and body["table_rows_before"] == 20
-    assert {a["action"] for a in body["row_actions"]} == {"갱신"}  # 목업 1~20년과 같은 year
+    assert {a["action"] for a in body["row_actions"]} == {"변경 없음"}  # 목업 1~20년과 같은 값(Stage 21-4)
     body = (await _upload(client, headers, "year\tgamma_y\n1\t3.0\n21\t0.5\n", "EF7", table="temp_decay_coef")).json()
     assert [(a["action"], a["key"]) for a in body["row_actions"]] == [("갱신", ["1"]), ("추가", ["21"])]
 

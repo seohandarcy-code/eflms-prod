@@ -35,6 +35,7 @@ class DataImportRequest(BaseModel):
     replace: bool = False
     check: bool = True  # 기본은 검증만 — 반영하려면 화면이 check=false로 한 번 더 보낸다
     text: str  # 엑셀에서 복사한 탭 구분 내용(첫 줄 헤더)
+    source: str = "paste"  # paste(붙여넣기) / row_edit(행 편집) — 변경 이력 구분(Stage 21-4)
 
 
 @router.get("/template")
@@ -67,6 +68,7 @@ async def import_data(body: DataImportRequest, session: AsyncSession = Depends(g
             table=body.table.strip() or None,
             replace=body.replace,
             check=body.check,
+            row_edit=body.source == "row_edit",
         )
     except DataAdminError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

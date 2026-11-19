@@ -33,6 +33,7 @@ function makeScoreDetail(overrides: Partial<ScoreDetail> = {}): ScoreDetail {
     moisture_desc: "정상",
     moisture_minus: 0,
     furan_total: 0,
+    furan_diag_year: 5,
     furan_total_per_year: 0,
     furan_desc: "정상",
     furan_minus: 0,

@@ -64,6 +64,8 @@
 
 ## 데이터 적재 파이프라인 (시드 · 임포트 공용)
 
+> **이력·되돌리기(Stage 21-3/21-4, 2026-11-19)** — 점수를 쓸 때마다 `score_history`(설비 유형·사업장·이름 + 점수 기준일별 1행), 실제 반영(임포트·교체·행 편집·참고표 넣기/리셋)마다 `data_change`/`data_change_row`(바뀌기 전후 입력값). 기록·되돌리기는 `app/services/change_service.py`, 부르는 곳은 `import_service._store`·`reference_service`(같은 트랜잭션). 값이 같은 설비 행은 입력을 다시 쓰지 않아 진단 데이터 반영일이 그대로다. 관리자 API `/api/admin/changes`(목록·상세·되돌리기, 데이터 작업 잠금). 5개년 예측(Stage 21-2)은 `equipment_service._projection`이 해마다 판정·바뀐 POF 감점 항목을 함께 준다.
+
 > **점수 갱신(Stage 21-1, 2026-11-19)** — 저장된 입력으로 기준일만 바꿔 다시 계산하고 **점수 테이블만** 다시 쓰는 경로가 따로 있다: `ingest.save_scores(row, equipment_id)` = 모듈 `ingest_scores()`(계산 결과 테이블) + `score_snapshot`. 입력 테이블의 `measured_at`/`updated_at` = **진단 데이터 반영일**(임포트·행 편집 때만 바뀜), 계산 결과 테이블의 `today` = **점수 기준일**(갱신마다 바뀜). 서비스 `app/services/score_refresh_service.py`(유형마다 한 트랜잭션, 실패한 유형만 이전 점수 유지, 실행 기록 `score_refresh_run`), **서버 자동 갱신**(Stage 21-1b, `app/services/score_scheduler.py`): lifespan이 백그라운드 작업을 띄워 시작 직후와 날짜가 바뀐 뒤 점수 기준일이 오늘보다 이전이면 갱신(이미 오늘이면 아무것도 안 함, DB가 최신이 아니면 `schema_check`로 막고 로그 안내, 실패 시 1시간 뒤 재시도, `SCORE_REFRESH_AUTO`). 수동은 명령 `python -m app.db.recalculate --as-of today`와 관리자 `POST /api/admin/score-refresh`. 점수 갱신·실제 반영 임포트·참고표 넣기/리셋은 데이터 작업 잠금(`data_job_lock`, `app/services/job_lock.py`, 30분 만료)을 잡고 돌아 서로 겹치지 않는다(검증만은 잠그지 않음). 기본 계산 기준일은 한국 시간 오늘(`app/core/clock.today_kst`, 컨테이너 UTC 대비).
 
 ```
