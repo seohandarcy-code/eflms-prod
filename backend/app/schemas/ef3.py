@@ -11,22 +11,37 @@ class CableSpecOut(BaseModel):
     cable_sq: int | None
     cable_per_phase: int | None
     cable_mva: int | None
-    cable_length: int | None
+    tl_apply: str | None
+    tl_num: int | None
     laying_type: str | None
+    laying_type2: str | None
     mid_joint: int | None
     end_joint: str | None
+    end_joint2: str | None
 
 
 class CableConditionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     measured_at: date
+    recent_diag_date: date | None
     max_load: int | None
     max_temp: float | None
+    max_temp_diag: str | None
     diff_temp: float | None
-    failure_rate: float | None
+    diff_temp_diag: str | None
+    pd_signal_3Mhz: int | None
+    pd_signal_6Mhz: int | None
+    pd_signal_10Mhz: int | None
+    pd_diag_rslt: str | None
     pd_num: int | None
+    sys_cycle_theo_curr: float | None
     sys_cycle_curr: float | None
+    sys_cycle_curr_diag: str | None
     svl_leak_curr: float | None
+    svl_leak_curr_diag: str | None
+    basic_leak_curr: float | None
+    third_har_leak_curr: float | None  # 입력 이름 3rd_har_leak_curr
+    la_leak_curr_diag: str | None
     joint_ex_damage: str | None
     cable_move: float | None
 
@@ -35,13 +50,14 @@ class CableConsequenceAttributeOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     updated_at: date
     emerge_resp: str | None
+    rep_cost: str | None
     rep_time: str | None
 
 
 class CableDesignAttributeOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     updated_at: date
-    reliability: int | None
+    reliability: str | None
     temp_diag: str | None
     pd_diag: str | None
     live_line_diag: str | None
@@ -60,19 +76,21 @@ class CableScoreDetailOut(BaseModel):
     load_minus: float
     temp_minus: float
     diff_temp_minus: float
+    failure_rate: float | None
     failure_rate_minus: float
     pd_minus: float
     sys_cycle_curr_minus: float
     svl_leak_curr_minus: float
+    la_leak_curr_minus: float
     joint_ex_damage_minus: float
     cable_move_minus: float
     risk_mva: int | None
     risk_mva_minus: float
+    tl_minus: float
     laying_type_minus: float
     mid_joint_minus: float
     end_joint_minus: float
     emerge_resp_minus: float
-    rep_cost: float | None
     rep_cost_minus: float
     rep_time_minus: float
     reliability_minus: float

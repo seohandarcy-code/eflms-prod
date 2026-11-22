@@ -293,3 +293,27 @@ def test_history_migrations_round_trip_and_backfill(tmp_path, monkeypatch):
         command.upgrade(cfg, "head")
     finally:
         get_settings.cache_clear()
+
+
+# ------------------------------------------------------------------ 입력 항목이 바뀐 뒤의 옛 기록 (Stage 22)
+async def test_undo_blocked_for_records_made_before_input_columns_changed(session_factory):
+    """EF3 개정(Stage 22) 전 기록은 없어진 칸(cable_length 등)이 있어 되돌리면 점수가 조용히 틀어진다 → 막는다."""
+    from app.db.models import DataChange, DataChangeRow
+    from app.equipment_types import ef3_cable
+
+    current = change_service.input_values(ef3_cable, ef3_cable.generate_input_row())
+    old = {k: v for k, v in current.items() if k not in ("tl_num", "rep_cost")} | {"cable_length": 1200}
+    async with session_factory() as session:
+        for name, after in (("old", old), ("new", current)):
+            change = DataChange(created_at=today_kst(), actor="admin", kind="import", ef_code="EF3", target_table="",
+                                row_count=1, unchanged_count=0, status="applied", source=name)
+            session.add(change)
+            await session.flush()
+            session.add(DataChangeRow(change_id=change.change_id, row_key=f"H1|{name}", action="insert",
+                                      before=None, after=change_service._dump(after | {"_extras": {}})))
+            await session.flush()
+            check = await change_service.undo_blockers(session, change)
+            if name == "old":
+                assert not check["possible"] and "입력 항목 구성이 바뀌기 전" in check["reason"]
+            else:
+                assert check["possible"], check

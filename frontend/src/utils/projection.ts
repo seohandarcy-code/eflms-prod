@@ -34,4 +34,4 @@ export function risingReason(view: ProjectionView): string | null {
 
 export const PROJECTION_NOTE =
   "현재 진단·점검값이 그대로라고 가정하고, 날짜에 따라 바뀌는 감점(경과연수·부품 노화 등)만 반영한 예측입니다. " +
-  "교체 주기를 가정한 항목(UPS·VDP 차단기 7.5년)이 있으면 POF가 오르는 해가 있을 수 있습니다. 변압기 Furan은 진단 당시 기준이라 예측에서 바뀌지 않습니다.";
+  "교체 주기를 가정한 항목(UPS·VDP 차단기 7.5년)이 있으면 POF가 오르는 해가 있을 수 있습니다. 변압기 Furan은 진단 당시 기준이라 예측에서 바뀌지 않고, 케이블 온도기반손상률은 사용년수에 비례해 해마다 커집니다.";

@@ -140,14 +140,21 @@ describe("getEvidence", () => {
     const detail = {
       type_detail: {
         ef_code: "EF3",
-        spec: { cable_mva: 414, cable_length: 7408, end_joint: "DEBG, EBA" },
-        condition: { max_load: 380 },
-        score_detail: { load_percent: 91.78743961352657, rep_cost: 100.008 },
+        spec: { cable_mva: 414, end_joint: "단독EBA", end_joint2: "WEBG", tl_apply: "공동", tl_num: 2 },
+        condition: { max_load: 380, max_temp: 25.3, diff_temp: 2.1, pd_diag_rslt: "요주의", la_leak_curr_diag: null },
+        consequence: { rep_cost: "A" },
+        design: { reliability: "N+1" },
+        score_detail: { load_percent: 91.78743961352657, failure_rate: 0.0035262, operation_year: 15.2 },
       },
     } as unknown as EquipmentDetail;
     expect(getEvidence("load_minus", detail)).toBe("부하율 91.8% (최대부하 380 / 용량 414)");
-    expect(getEvidence("end_joint_minus", detail)).toBe("종단접속함 DEBG, EBA");
-    expect(getEvidence("rep_cost_minus", detail)).toBe("사고복구교체비용 100.0 (길이 7,408)");
+    expect(getEvidence("end_joint_minus", detail)).toBe("종단접속함 단독EBA / WEBG 중 나쁜 값");
+    expect(getEvidence("rep_cost_minus", detail)).toBe("사고복구비용 등급 A");
+    expect(getEvidence("tl_minus", detail)).toBe("타T/L 공동포설 2회선 (공동)");
+    expect(getEvidence("pd_minus", detail)).toBe("PD진단결과 요주의");
+    expect(getEvidence("la_leak_curr_minus", detail)).toBe("피뢰기누설전류 진단결과 N/A");
+    expect(getEvidence("reliability_minus", detail)).toBe("공급신뢰도 N+1");
+    expect(getEvidence("failure_rate_minus", detail)).toBe("온도기반손상률 0.00353 (최고온도 25.3℃ · 상간온도차 2.1℃ · 사용 15.2년)");
   });
 
   it("describes EF4 switchgear deductions from the switchgear detail", () => {

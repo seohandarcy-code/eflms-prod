@@ -228,12 +228,35 @@ class UndoError(ValueError):
     pass
 
 
+async def _recorded_before_schema_change(session: AsyncSession, change: DataChange) -> bool:
+    """설비 변경 기록의 입력 컬럼 이름이 지금 유형의 입력 컬럼과 다른지 — 입력 항목이 바뀐 뒤(예: Stage 22 EF3 개정)
+    옛 기록을 되돌리면 없어진 칸은 버려지고 새 칸은 비어 점수가 조용히 틀어지므로 막는다."""
+    try:
+        module = get_module(change.ef_code)
+    except Exception:  # 등록이 빠진 유형 — 되돌릴 계산기가 없다
+        return True
+    current = {c["name"] for c in module.INPUT_COLUMNS}
+    rows = (await session.execute(
+        select(DataChangeRow.before, DataChangeRow.after).where(DataChangeRow.change_id == change.change_id)
+    )).all()
+    for before, after in rows:
+        for text in (before, after):
+            if text and {k for k in json.loads(text) if not k.startswith("_")} != current:
+                return True
+    return False
+
+
 async def undo_blockers(session: AsyncSession, change: DataChange) -> dict:
     """되돌릴 수 있는지와, 못 하면 이유."""
     if change.kind == "undo":
         return {"possible": False, "reason": "되돌리기 기록은 다시 되돌릴 수 없습니다 — 필요하면 데이터를 다시 입력해 주세요."}
     if change.status != "applied":
         return {"possible": False, "reason": "이미 되돌린 변경입니다."}
+    if not change.target_table and await _recorded_before_schema_change(session, change):
+        return {
+            "possible": False,
+            "reason": "입력 항목 구성이 바뀌기 전의 기록이라 되돌릴 수 없습니다 — 필요하면 지금 양식으로 데이터를 다시 입력해 주세요.",
+        }
     keys = set((await session.execute(select(DataChangeRow.row_key).where(DataChangeRow.change_id == change.change_id))).scalars())
     later = (await session.execute(
         select(DataChange).where(

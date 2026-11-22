@@ -1,11 +1,13 @@
-"""Stage 9 — EF3(초고압케이블) 계산기·적재·임포트 검증.
+"""Stage 9 / Stage 22 — EF3(초고압케이블) 계산기·적재·임포트 검증.
 
-- 원본(ref_data/schema_eflms_cable.py)과 같은 입력 → 모든 계산 컬럼이 같은지(원본 공식 그대로)
-- 감점 분기별 정답값(mock 범위에선 안 나오는 분기 포함)
-- mock 생성값이 임포트 허용값을 통과하는지, 허용값 밖은 거부되는지
+- 기준 파일(ref_data_revised/schema_eflms_cable.py — 2026-11-20 사용자 횡전개 수정본)과 같은 입력 → 모든 계산 컬럼이 같은지
+  (ref_data/ 원본 EF3는 옛 양식이라 더는 대조하지 않는다)
+- 감점 분기별 정답값(mock 범위에선 안 나오는 분기 포함), 온도기반손상률 공식, 1·2 중 나쁜 값 규칙(N/A는 공통 규칙)
+- mock 생성값이 임포트 허용값을 통과하는지, 허용값 밖은 거부되는지, 3rd_har_leak_curr ↔ DB third_har_leak_curr
 - EF1·EF2와 공존(EF3만 교체해도 다른 유형 불변), 마이그레이션 왕복
 """
 import importlib.util
+import math
 import random
 import sqlite3
 import sys
@@ -31,25 +33,17 @@ from app.services.dataset_service import count_type
 from app.services.import_service import _check_allowed, import_file
 from app.services.ingest import ingest_row
 
-from tests.reference_rules import expected_from_reference
-
-# 감점을 정수로 만들던 원본 round()를 뺀 공식(2026-11-19)
-CHANGES = {
-    "failure_rate_minus": lambda r: r["failure_rate"] * (-1000),
-    "risk_mva_minus": lambda r: r["cable_mva"] * 0.01 * (-1),
-}
-
-REF_PATH = BACKEND_DIR.parent / "ref_data" / "schema_eflms_cable.py"
+REF_PATH = BACKEND_DIR.parent / "ref_data_revised" / "schema_eflms_cable.py"
 CALC_NAMES = [c["name"] for c in ef3_cable.CALCULATED_COLUMNS]
 
 
 @pytest.fixture(scope="module")
 def ref():
-    """원본 계산 툴을 import만 한다 — ref_data/는 읽기 전용이라 __pycache__도 만들지 않는다."""
+    """기준 파일을 import만 한다 — __pycache__도 만들지 않는다."""
     prev = sys.dont_write_bytecode
     sys.dont_write_bytecode = True
     try:
-        spec = importlib.util.spec_from_file_location("ref_schema_eflms_cable", REF_PATH)
+        spec = importlib.util.spec_from_file_location("revised_schema_eflms_cable", REF_PATH)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
     finally:
@@ -59,16 +53,20 @@ def ref():
 
 def _base_row(**overrides):
     """감점이 최소인 기준 입력(오늘 가동, 전부 최상) + 덮어쓸 값.
-    원본상 감점 0이 될 수 없는 항목: 사고영향성(용량×-0.01), 사고복구비용(최소 -2)."""
+    감점 0이 될 수 없는 항목: 사고영향성(용량×-0.01)뿐 — 용량 100이면 -1."""
     row = {
         "factory_code": "H1", "EF_code": "EF3", "tl_name": "tl1", "voltage": 154000,
-        "cable_sq": 1600, "cable_per_phase": 2, "cable_mva": 100,
-        "operation_start_time": date.today(), "max_load": 0, "max_temp": 20.0, "diff_temp": 0.0,
-        "failure_rate": 0.0, "pd_num": 0, "sys_cycle_curr": 0.0, "svl_leak_curr": 0.0,
-        "joint_ex_damage": "양호", "cable_move": 0.0, "cable_length": 100, "laying_type": "전력구",
-        "mid_joint": 0, "end_joint": "DEBG", "emerge_resp": "1초내", "rep_time": "3개월이하",
-        "reliability": 4, "temp_diag": "O", "pd_diag": "O", "live_line_diag": "O", "cable_move_diag": "O",
-        "offline_diag": "1년이내", "longlife_insul": "O",
+        "cable_sq": 1600, "cable_per_phase": 2, "cable_mva": 100, "recent_diag_date": date(2026, 1, 1),
+        "operation_start_time": date.today(), "max_load": 0, "max_temp": 20.0, "max_temp_diag": "양호",
+        "diff_temp": 0.0, "diff_temp_diag": "양호", "pd_signal_3Mhz": 10, "pd_signal_6Mhz": 40, "pd_signal_10Mhz": 50,
+        "pd_diag_rslt": "양호", "pd_num": 0, "sys_cycle_theo_curr": 10.0, "sys_cycle_curr": 10.0,
+        "sys_cycle_curr_diag": "양호", "svl_leak_curr": 0.0, "svl_leak_curr_diag": "정상",
+        "basic_leak_curr": 0.5, "3rd_har_leak_curr": 0.01, "la_leak_curr_diag": "정상",
+        "joint_ex_damage": "양호", "cable_move": 0.0, "tl_apply": "단독", "tl_num": 0,
+        "laying_type": "전력구", "laying_type2": "전력구", "mid_joint": 0, "end_joint": "DEBG", "end_joint2": "DEBG",
+        "emerge_resp": "G", "rep_cost": "E", "rep_time": "D", "reliability": "N+N",
+        "temp_diag": "O", "pd_diag": "O", "live_line_diag": "O", "cable_move_diag": "O",
+        "offline_diag": "O", "longlife_insul": "O",
     }
     row.update(overrides)
     return row
@@ -76,40 +74,40 @@ def _base_row(**overrides):
 
 # (덮어쓸 입력, 확인할 계산 컬럼, 기대값) — mock 범위에서 한 번도 안 나오는 분기(*)도 전부 포함
 BRANCHES = [
-    ({"max_load": 80}, "load_minus", 0), ({"max_load": 81}, "load_minus", -5),  # * (용량 100 → 부하율 = 부하)
-    ({"max_load": 91}, "load_minus", -10), ({"max_load": 101}, "load_minus", -20),  # *
+    ({"max_load": 80}, "load_minus", 0), ({"max_load": 81}, "load_minus", -12),  # * (용량 100 → 부하율 = 부하)
+    ({"max_load": 91}, "load_minus", -24), ({"max_load": 101}, "load_minus", -36),  # *
     ({"max_temp": 70.0}, "temp_minus", 0), ({"max_temp": 70.1}, "temp_minus", -5),  # *
     ({"max_temp": 80.1}, "temp_minus", -10), ({"max_temp": 90.1}, "temp_minus", -20),  # *
     ({"diff_temp": 5.0}, "diff_temp_minus", 0), ({"diff_temp": 5.1}, "diff_temp_minus", -5),  # *
     ({"diff_temp": 10.1}, "diff_temp_minus", -10),  # *
-    ({"failure_rate": 0.0006}, "failure_rate_minus", -0.6), ({"failure_rate": 0.007}, "failure_rate_minus", -7),
-    ({"pd_num": 1}, "pd_minus", -10), ({"pd_num": 3}, "pd_minus", -20),
-    ({"sys_cycle_curr": 50.0}, "sys_cycle_curr_minus", 0), ({"sys_cycle_curr": 50.1}, "sys_cycle_curr_minus", -5),  # *
-    ({"sys_cycle_curr": 100.1}, "sys_cycle_curr_minus", -10),  # *
-    ({"svl_leak_curr": 0.5}, "svl_leak_curr_minus", 0), ({"svl_leak_curr": 0.51}, "svl_leak_curr_minus", -5),  # *
-    ({"svl_leak_curr": 1.01}, "svl_leak_curr_minus", -10),  # *
-    ({"joint_ex_damage": "이상"}, "joint_ex_damage_minus", -5),
-    ({"cable_move": 1.0}, "cable_move_minus", 0), ({"cable_move": 1.1}, "cable_move_minus", -5),
-    ({"cable_move": 3.1}, "cable_move_minus", -10), ({"cable_move": 5.1}, "cable_move_minus", -15),
-    ({"cable_move": 10.1}, "cable_move_minus", -20),  # *
+    ({"pd_diag_rslt": "요주의"}, "pd_minus", -4), ({"pd_diag_rslt": "이상"}, "pd_minus", -8),
+    ({"sys_cycle_curr_diag": "요주의"}, "sys_cycle_curr_minus", -4), ({"sys_cycle_curr_diag": "이상"}, "sys_cycle_curr_minus", -8),
+    ({"svl_leak_curr_diag": "요주의"}, "svl_leak_curr_minus", -4), ({"svl_leak_curr_diag": "이상"}, "svl_leak_curr_minus", -8),
+    ({"la_leak_curr_diag": "요주의"}, "la_leak_curr_minus", -4), ({"la_leak_curr_diag": "이상"}, "la_leak_curr_minus", -8),
+    ({"joint_ex_damage": "이상"}, "joint_ex_damage_minus", -1),
+    ({"cable_move": 1.0}, "cable_move_minus", 0), ({"cable_move": 1.1}, "cable_move_minus", -3),
+    ({"cable_move": 3.1}, "cable_move_minus", -5), ({"cable_move": 5.1}, "cable_move_minus", -8),
     ({"cable_mva": 414}, "risk_mva_minus", -4.1), ({"cable_mva": 984}, "risk_mva_minus", -9.8),
-    ({"laying_type": "철탑"}, "laying_type_minus", -30),  # *
-    ({"laying_type": "공동구"}, "laying_type_minus", -20), ({"laying_type": "관로구"}, "laying_type_minus", -10),
+    ({"tl_num": 2}, "tl_minus", -10),  # *
+    ({"laying_type": "철탑"}, "laying_type_minus", -24), ({"laying_type2": "공동구"}, "laying_type_minus", -16),  # *
+    ({"laying_type": "관로구", "laying_type2": "공동구"}, "laying_type_minus", -16),  # 둘 중 나쁜 값 *
     ({"mid_joint": 7}, "mid_joint_minus", -7),
-    ({"end_joint": "WEBG"}, "end_joint_minus", -30), ({"end_joint": "DEBG, EBA"}, "end_joint_minus", -5),
-    ({"emerge_resp": "24시간이하"}, "emerge_resp_minus", -10), ({"emerge_resp": "12시간이하"}, "emerge_resp_minus", -5),  # *
-    ({"emerge_resp": "1시간이하"}, "emerge_resp_minus", -3),  # *
-    ({"cable_length": 370}, "rep_cost_minus", -2), ({"cable_length": 371}, "rep_cost_minus", -4),  # 비용 = 길이×0.0135
-    ({"cable_length": 741}, "rep_cost_minus", -6), ({"cable_length": 1482}, "rep_cost_minus", -8),
-    ({"cable_length": 3704}, "rep_cost_minus", -10), ({"cable_length": 7408}, "rep_cost_minus", -12),
-    ({"rep_time": "3개월초과"}, "rep_time_minus", -10),  # *
-    ({"reliability": 3}, "reliability_minus", 0), ({"reliability": 2}, "reliability_minus", -20),
-    ({"reliability": 1}, "reliability_minus", -20),  # *
+    ({"end_joint": "WEBG"}, "end_joint_minus", -24), ({"end_joint2": "철탑EBA"}, "end_joint_minus", -12),  # *
+    ({"end_joint": "단독EBA", "end_joint2": "WEBG"}, "end_joint_minus", -24),
+    ({"emerge_resp": "A"}, "emerge_resp_minus", -6), ({"emerge_resp": "D"}, "emerge_resp_minus", -3),  # *
+    ({"emerge_resp": "F"}, "emerge_resp_minus", -1),  # *
+    ({"rep_cost": "A"}, "rep_cost_minus", -8), ({"rep_cost": "C"}, "rep_cost_minus", -4),
+    ({"rep_cost": "D"}, "rep_cost_minus", -2),  # *
+    ({"rep_time": "A"}, "rep_time_minus", -6), ({"rep_time": "B"}, "rep_time_minus", -4),  # *
+    ({"rep_time": "C"}, "rep_time_minus", -2),
+    ({"reliability": "N+0"}, "reliability_minus", -24), ({"reliability": "N+1"}, "reliability_minus", -12),  # *
     ({"temp_diag": "X"}, "temp_diag_minus", -10), ({"pd_diag": "X"}, "pd_diag_minus", -10),  # *
     ({"live_line_diag": "X"}, "live_line_diag_minus", -10), ({"cable_move_diag": "X"}, "cable_move_diag_minus", -10),
-    ({"offline_diag": "미실시"}, "offline_diag_minus", -20), ({"offline_diag": "3년이내"}, "offline_diag_minus", -10),  # *
+    ({"offline_diag": "X"}, "offline_diag_minus", -10),  # *
     ({"longlife_insul": "X"}, "longlife_insul_minus", -10),
-    ({"operation_start_time": date.today() - timedelta(days=int(12.5 * 365))}, "age_minus", -12.5),  # 소수 그대로(2026-11-19, 원본은 floor → -12)
+    ({"operation_start_time": date.today() - timedelta(days=int(12.5 * 365))}, "age_minus", -12.5),  # 소수 그대로
+    # 계산에 안 쓰는 입력은 점수에 영향이 없다
+    ({"pd_num": 3, "max_temp_diag": "이상", "diff_temp_diag": "이상"}, "pof_minus", 0),
 ]
 
 
@@ -118,33 +116,58 @@ def test_deduction_branches(overrides, column, expected):
     assert ef3_cable.calculate(_base_row(**overrides))[column] == expected
 
 
+def test_failure_rate_formula_grows_with_age():
+    """온도기반손상률 = (운전년수/40)·(1+0.005·상간온도차²)/exp((1.2/0.00008617)·(1/(최고온도+298.15) − 1/363.15))."""
+    start = date(2010, 1, 1)
+    row = _base_row(operation_start_time=start, max_temp=25.0, diff_temp=2.0)
+    calc = ef3_cable.calculate(row, as_of=date(2030, 1, 1))
+    years = calc["operation_year"]
+    accel = math.exp((1.2 / 0.00008617) * (1 / (25.0 + 298.15) - 1 / 363.15))
+    expected = (years / 40) * ((1 + 0.005 * 4) / accel)
+    assert calc["failure_rate"] == pytest.approx(expected)
+    assert calc["failure_rate_minus"] == round(-expected * 1000, 1)
+    # 운전년수에 비례 — 기준일이 늦을수록 감점이 커진다(5개년 예측·매일 갱신)
+    later = ef3_cable.calculate(row, as_of=date(2035, 1, 1))
+    assert later["failure_rate_minus"] < calc["failure_rate_minus"]
+    # 가동 당일은 0
+    assert ef3_cable.calculate(_base_row())["failure_rate_minus"] == 0
+
+
+def test_laying_and_end_joint_na_follows_common_rule():
+    """1·2 중 어느 한쪽이라도 N/A면 공통 N/A 규칙대로 그 감점은 0(na.py)."""
+    assert ef3_cable.calculate(_base_row(laying_type="철탑", laying_type2=None))["laying_type_minus"] == 0
+    assert ef3_cable.calculate(_base_row(end_joint=None, end_joint2="WEBG"))["end_joint_minus"] == 0
+
+
 def test_base_row_totals_and_age_in_pof():
     base = ef3_cable.calculate(_base_row())
     assert base["pof"] == 100
-    assert base["cof"] == 100 - 1 - 2  # 사고영향성 round(-1.0), 사고복구비용 최소 -2
+    assert base["cof"] == 100 - 1  # 사고영향성 용량 100 × -0.01
     assert base["dof"] == 100
-    # 경과연수는 원본대로 PoF에 바로 합산된다(EF1과 같고, GIS 원본과는 다름)
     aged = ef3_cable.calculate(_base_row(operation_start_time=date.today() - timedelta(days=20 * 365)))
-    assert aged["age_minus"] == -20 and aged["pof"] == 80
-    assert aged["total_score"] == pytest.approx(0.5 * 80 + 0.3 * 97 + 0.2 * 100)
+    assert aged["age_minus"] == -20
+    assert aged["pof"] == round(80 + aged["failure_rate_minus"], 1)  # 경과연수 + 온도기반손상률(운전년수 비례)
 
 
 def test_worst_case_scores_can_go_negative_and_are_kept():
-    worst = _base_row(
-        max_load=200, max_temp=95.0, diff_temp=11.0, failure_rate=0.01, pd_num=3, sys_cycle_curr=101.0,
-        svl_leak_curr=1.1, joint_ex_damage="이상", cable_move=11.0,
+    worst = ef3_cable.calculate(_base_row(
+        max_load=200, max_temp=95.0, diff_temp=11.0, pd_diag_rslt="이상", sys_cycle_curr_diag="이상",
+        svl_leak_curr_diag="이상", la_leak_curr_diag="이상", joint_ex_damage="이상", cable_move=6.0,
         operation_start_time=date.today() - timedelta(days=30 * 365),
-    )
-    assert ef3_cable.calculate(worst)["pof"] == 100 - (30 + 20 + 20 + 10 + 10 + 20 + 10 + 10 + 5 + 20)  # 원본대로 음수 저장
+    ))
+    assert worst["pof"] < 0  # 원본대로 음수 저장
+    assert worst["pof_minus"] == round(-(30 + 36 + 20 + 10 + 8 * 4 + 1 + 8) + worst["failure_rate_minus"], 1)
 
 
 def test_matches_reference_formulas(ref):
-    random.seed(20261020)
+    random.seed(20261120)
     rows = [ef3_cable.generate_input_row() for _ in range(300)]
     rows += [_base_row(**overrides) for overrides, _, _ in BRANCHES]
     for row in rows:
         ours = ef3_cable.calculate(row)
-        theirs = expected_from_reference(ref, row, CHANGES)
+        theirs = dict(row)
+        for col in ref.CALCULATED_COLUMNS:
+            theirs[col["name"]] = col["formula"](theirs)
         for name in CALC_NAMES:
             assert ours[name] == theirs[name], (name, row)
 
@@ -155,12 +178,15 @@ def test_columns_match_reference_names(ref):
 
 
 def test_breakdown_covers_every_summed_deduction():
-    """메타데이터 항목 = 원본 합계식에 들어가는 감점 전부(빠지거나 남는 것 없이)."""
+    """메타데이터 항목 = 합계식에 들어가는 감점 전부(빠지거나 남는 것 없이)."""
     fields = {axis: {i["field"] for i in items} for axis, items in ef3_cable.BREAKDOWN.items()}
-    assert len(fields["pof"]) == 10 and len(fields["cof"]) == 7 and len(fields["dof"]) == 7
-    row = ef3_cable.calculate(_base_row(operation_start_time=date.today() - timedelta(days=3650), pd_num=1))
+    assert len(fields["pof"]) == 11 and len(fields["cof"]) == 8 and len(fields["dof"]) == 7
+    row = ef3_cable.calculate(_base_row(
+        operation_start_time=date.today() - timedelta(days=3650), pd_diag_rslt="요주의", la_leak_curr_diag="이상",
+        tl_num=1, laying_type="철탑", reliability="N+1",
+    ))
     for axis in ("pof", "cof", "dof"):
-        assert sum(row[f] for f in fields[axis]) == row[f"{axis}_minus"], axis
+        assert round(sum(row[f] for f in fields[axis]), 1) == row[f"{axis}_minus"], axis
 
 
 def test_mock_rows_pass_import_validation_and_calculate():
@@ -188,27 +214,36 @@ def _write_ef3_dat(tmp_path, rows, name="ef3.dat"):
 
 async def test_import_valid_ef3_file_fills_all_cable_tables(session_factory, tmp_path):
     rows = [ef3_cable.generate_input_row() for _ in range(4)]
-    rows[0]["end_joint"] = "DEBG, EBA"  # 쉼표 든 값도 탭 구분 파일에선 한 칸
+    rows[0]["3rd_har_leak_curr"] = 0.017
     async with session_factory() as session:
         result = await import_file(_write_ef3_dat(tmp_path, rows), "EF3", session)
         assert result.ok, (result.file_errors, result.row_errors)
-        assert result.imported_rows == 4
+        assert result.imported_rows == 4 and not result.unknown_columns
         for model in (CableSpec, CableCondition, CableConsequenceAttribute, CableDesignAttribute, CableScoreDetail):
             assert await session.scalar(select(func.count()).select_from(model)) == 4, model.__tablename__
         names = (await session.execute(select(Equipment.equipment_name).where(Equipment.ef_code == "EF3"))).scalars().all()
         assert sorted(names) == sorted(r["tl_name"] for r in rows)
-        assert "DEBG, EBA" in (await session.execute(select(CableSpec.end_joint))).scalars().all()
+        # 숫자로 시작하는 입력 이름은 DB third_har_leak_curr에 들어가고, 복원하면 원래 이름으로 돌아온다
+        assert 0.017 in (await session.execute(select(CableCondition.third_har_leak_curr))).scalars().all()
+        eq_id = (await session.execute(select(Equipment.equipment_id).where(Equipment.equipment_name == rows[0]["tl_name"]))).scalar_one()
+        restored, _ = await ef3_cable.load_inputs(session, eq_id)
+        assert restored["3rd_har_leak_curr"] == 0.017
+        assert {k: restored[k] for k in rows[0]} == rows[0]
 
 
 @pytest.mark.parametrize(
     ("column", "bad_value", "reason_part"),
     [
-        ("laying_type", "지중", "허용값 아님"),      # 원본 판정에 없는 값 → 원본은 조용히 0점
-        ("end_joint", "DEBG,EBA", "허용값 아님"),   # 공백 빠진 표기
-        ("temp_diag", "o", "허용값 아님"),          # 소문자
-        ("offline_diag", "2년이내", "허용값 아님"),
-        ("cable_mva", 0, "미만"),                  # 부하율 분모
-        ("pd_num", -1, "미만"),
+        ("laying_type2", "지중", "허용값 아님"),      # 판정에 없는 값 → 원본은 조용히 0점
+        ("end_joint", "DEBG, EBA", "허용값 아님"),   # 옛 양식 표기
+        ("emerge_resp", "1초내", "허용값 아님"),      # 옛 양식 표기
+        ("reliability", "3", "허용값 아님"),          # 옛 양식(회선수)
+        ("svl_leak_curr_diag", "양호", "허용값 아님"),  # SVL·피뢰기는 정상/요주의/이상
+        ("pd_diag_rslt", "정상", "허용값 아님"),        # PD·시스순환전류는 양호/요주의/이상
+        ("temp_diag", "o", "허용값 아님"),            # 소문자
+        ("cable_mva", 0, "미만"),                    # 부하율 분모
+        ("tl_num", -1, "미만"),
+        ("max_temp", -60.0, "미만"),                 # 온도가속계수 계산이 넘치지 않게
         ("tl_name", "", "빈 값"),
     ],
 )
@@ -257,7 +292,12 @@ async def test_ef3_replace_import_keeps_other_types_intact(client, session_facto
 
 async def test_ef3_detail_and_metadata_api(client, session_factory):
     async with session_factory() as session:
-        eq_id = await ingest_row(ef3_cable.calculate(ef3_cable.generate_input_row()), session)
+        row = ef3_cable.generate_input_row()
+        row["recent_diag_date"] = date(2025, 6, 30)
+        eq_id = await ingest_row(ef3_cable.calculate(row), session)
+        no_diag = ef3_cable.generate_input_row()
+        no_diag["recent_diag_date"] = None  # N/A → 상태값 측정일(반영 기준일)
+        no_diag_id = await ingest_row(ef3_cable.calculate(no_diag), session)
         await session.commit()
 
     body = (await client.get(f"/api/equipment/{eq_id}")).json()
@@ -265,14 +305,17 @@ async def test_ef3_detail_and_metadata_api(client, session_factory):
     td = body["type_detail"]
     assert td["ef_code"] == "EF3"
     assert {"spec", "condition", "consequence", "design", "score_detail"} <= td.keys()
-    assert "rep_cost" in td["score_detail"]
+    assert td["consequence"]["rep_cost"] == row["rep_cost"]
+    assert td["condition"]["third_har_leak_curr"] == row["3rd_har_leak_curr"]
+    assert {"failure_rate", "la_leak_curr_minus", "tl_minus"} <= td["score_detail"].keys()
 
-    items = (await client.get("/api/equipment", params={"ef_code": "EF3"})).json()
-    assert [i["ef_code"] for i in items] == ["EF3"]
-    assert items[0]["last_diag_date"] == date.today().isoformat()  # 상태값 측정일(반영 기준일)
+    items = {i["equipment_id"]: i for i in (await client.get("/api/equipment", params={"ef_code": "EF3"})).json()}
+    assert items[eq_id]["last_diag_date"] == "2025-06-30"  # 안전공사최근진단일(Stage 22)
+    assert items[no_diag_id]["last_diag_date"] == date.today().isoformat()
     types = {t["ef_code"]: t for t in (await client.get("/api/equipment-types")).json()}
-    assert types["EF3"]["equipment_count"] == 1
+    assert types["EF3"]["equipment_count"] == 2
     assert [i["label"] for i in types["EF3"]["breakdown"]["pof"]][0] == "경과연수"
+    assert "사고영향성(공동포설)" in [i["label"] for i in types["EF3"]["breakdown"]["cof"]]
 
 
 # ------------------------------------------------------------------ 마이그레이션
@@ -299,5 +342,48 @@ def test_cable_migration_round_trip(tmp_path, monkeypatch):
 
         command.upgrade(cfg, "head")
         assert cable_tables <= tables()
+    finally:
+        get_settings.cache_clear()
+
+
+def test_stage22_migration_converts_columns_and_back(tmp_path, monkeypatch):
+    """Stage 22 개정: 옛 EF3 행이 있어도 올라가고(새 칸 null·감점 0, 공급신뢰도 글자), 되돌리면 옛 구조로."""
+    db_path = tmp_path / "cable22.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path.as_posix()}")
+    get_settings.cache_clear()
+
+    def cols(table):
+        with sqlite3.connect(db_path) as conn:
+            return {r[1]: r[2] for r in conn.execute(f"PRAGMA table_info({table})")}
+
+    try:
+        cfg = Config()
+        cfg.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
+        command.upgrade(cfg, "e7f3c1a9d5b2")
+        with sqlite3.connect(db_path) as conn:
+            conn.execute("INSERT INTO equipment_type (ef_code, name) VALUES ('EF3', '케이블')")
+            conn.execute("INSERT INTO equipment (equipment_id, factory_code, ef_code, equipment_name, voltage, operation_start_time)"
+                         " VALUES (1, 'H1', 'EF3', 'tl1', 154000, '2010-01-01')")
+            conn.execute("INSERT INTO cable_design_attribute (equipment_id, updated_at, reliability) VALUES (1, '2026-11-01', 3)")
+            score_cols = [c for c in cols("cable_score_detail") if c not in ("equipment_id", "computed_at", "today", "rep_cost", "risk_mva", "load_percent")]
+            conn.execute(
+                f"INSERT INTO cable_score_detail (equipment_id, today, {', '.join(score_cols)}) VALUES (1, '2026-11-01', {', '.join('0' * len(score_cols))})"
+            )
+        command.upgrade(cfg, "f1a7c3e9b5d4")
+        assert {"tl_num", "laying_type2", "end_joint2"} <= cols("cable_spec").keys() and "cable_length" not in cols("cable_spec")
+        assert {"third_har_leak_curr", "pd_diag_rslt", "recent_diag_date"} <= cols("cable_condition").keys()
+        assert "failure_rate" not in cols("cable_condition")
+        assert "rep_cost" in cols("cable_consequence_attribute")
+        assert cols("cable_design_attribute")["reliability"].startswith("VARCHAR")
+        assert {"failure_rate", "la_leak_curr_minus", "tl_minus"} <= cols("cable_score_detail").keys()
+        with sqlite3.connect(db_path) as conn:
+            assert conn.execute("SELECT reliability FROM cable_design_attribute").fetchone()[0] == "3"
+            assert conn.execute("SELECT la_leak_curr_minus, tl_minus FROM cable_score_detail").fetchone() == (0, 0)
+            conn.execute("UPDATE cable_design_attribute SET reliability = 'N+N'")
+        command.downgrade(cfg, "e7f3c1a9d5b2")
+        assert "cable_length" in cols("cable_spec") and "failure_rate" in cols("cable_condition")
+        assert cols("cable_design_attribute")["reliability"] == "INTEGER"
+        with sqlite3.connect(db_path) as conn:
+            assert conn.execute("SELECT reliability FROM cable_design_attribute").fetchone()[0] is None  # 글자는 비움
     finally:
         get_settings.cache_clear()

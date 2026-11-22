@@ -13,6 +13,13 @@
   항목마다 반올림한 뒤 합치므로 항목 감점을 더하면 축 감점과 정확히 맞는다(맨 아래 _apply_system_rounding).
 - 운전년수(operation_year)도 같은 방식으로 소수 첫째 자리.
 
+EF3 횡전개 수정(2026-11-20, 사용자 제공 — 이 파일이 EF3 계산의 기준, ref_data/ 원본 EF3는 옛 양식)
+- 진단결과(PD·시스순환전류·SVL·피뢰기) 등급 감점, 온도기반손상률은 입력이 아니라 계산값,
+  공동포설 감점(COF), 포설방법·종단접속함 2개 중 나쁜 값, 비상대응시간·사고복구비용·정상화기간 등급,
+  공급신뢰도 N+0/N+1/N+N, 오프라인진단 O/X, 케이블길이 삭제.
+- 피뢰기누설전류 감점(la_leak_curr_minus)을 계산 목록에 추가(POF 합계에 포함, 2026-11-20).
+- 입력 3rd_har_leak_curr는 숫자로 시작해 시스템 DB 컬럼은 third_har_leak_curr(입력 파일 이름은 그대로).
+
 코드가 아니라 시스템이 데이터를 다루는 방식이라 여기에는 반영하지 않은 것(참고)
 - 값 없음(N/A): 입력파일의 N/A는 null로 저장되고, null을 읽는 감점은 0, 그 밖의 파생값은 null이 된다.
 - 계산 기준일: 시스템은 기준일을 지정할 수 있다(기본 오늘 — 이 파일의 date.today()와 같다).
@@ -115,6 +122,12 @@ INPUT_COLUMNS = [
         "generator": lambda: random.choice([414,984]),
     },
     {
+        "name": "recent_diag_date",
+        "label": "안전공사최근진단일",
+        "dtype": "date",
+        "generator": lambda: date(2026, 1, 1),
+    },
+    {
         "name": "operation_start_time",
         "label": "가동년월",
         "dtype": "date",
@@ -134,6 +147,12 @@ INPUT_COLUMNS = [
         "generator": lambda: random.randint(200, 300)/10,
     },
     {
+        "name": "max_temp_diag",
+        "label": "온도진단결과",
+        "dtype": "str",
+        "generator": lambda: random.choice(["양호", "요주의", "이상"]),
+    },
+    {
         "name": "diff_temp",
         "label": "상간온도차",
         "dtype": "float",
@@ -141,11 +160,41 @@ INPUT_COLUMNS = [
         "generator": lambda: random.randint(5, 40)/10,
     },
     {
-        "name": "failure_rate",
-        "label": "온도기반손상률",
-        "dtype": "float",
-        # "generator": lambda: random.choice(["0", "37.5", "43.75","100"]),
-        "generator": lambda: random.randint(60, 700)/100000,
+        "name": "diff_temp_diag",
+        "label": "열화상진단결과",
+        "dtype": "str",
+        "generator": lambda: random.choice(["양호", "요주의", "이상"]),
+    },
+    # {
+    #     "name": "failure_rate",
+    #     "label": "온도기반손상률",
+    #     "dtype": "float",
+    #     # "generator": lambda: random.choice(["0", "37.5", "43.75","100"]),
+    #     "generator": lambda: random.randint(60, 700)/100000,
+    # },
+    {
+        "name": "pd_signal_3Mhz",
+        "label": "PD신호크기(3Mhz)",
+        "dtype": "int",
+        "generator": lambda: random.randint(10, 90),
+    },
+    {
+        "name": "pd_signal_6Mhz",
+        "label": "PD신호크기(6Mhz)",
+        "dtype": "int",
+        "generator": lambda: random.randint(40, 95),
+    },
+        {
+        "name": "pd_signal_10Mhz",
+        "label": "PD신호크기(10Mhz)",
+        "dtype": "int",
+        "generator": lambda: random.randint(50, 95),
+    },
+    {
+        "name": "pd_diag_rslt",
+        "label": "PD진단결과",
+        "dtype": "str",
+        "generator": lambda: random.choice(["양호", "요주의", "이상"]),
     },
     {
         "name": "pd_num",
@@ -154,11 +203,24 @@ INPUT_COLUMNS = [
         "generator": lambda: random.randint(0, 3),
     },
     {
-        "name": "sys_cycle_curr",
-        "label": "시스순환전류",
+        "name": "sys_cycle_theo_curr",
+        "label": "시스순환전류이론치",
         "dtype": "float",
         # "generator": lambda: random.choice(["0", "37.5", "43.75","100"]),
         "generator": lambda: random.randint(20, 400)/10,
+    },
+    {
+        "name": "sys_cycle_curr",
+        "label": "시스순환전류실측치",
+        "dtype": "float",
+        # "generator": lambda: random.choice(["0", "37.5", "43.75","100"]),
+        "generator": lambda: random.randint(20, 400)/10,
+    },
+    {
+        "name": "sys_cycle_curr_diag",
+        "label": "시스순환전류진단결과",
+        "dtype": "str",
+        "generator": lambda: random.choice(["양호", "요주의", "이상"]),
     },
     {
         "name": "svl_leak_curr",
@@ -166,6 +228,32 @@ INPUT_COLUMNS = [
         "dtype": "float",
         # "generator": lambda: random.choice(["0", "37.5", "43.75","100"]),
         "generator": lambda: random.randint(0, 150)/1000,
+    },
+    {
+        "name": "svl_leak_curr_diag",
+        "label": "SVL누설전류진단결과",
+        "dtype": "str",
+        "generator": lambda: random.choice(["정상", "요주의", "이상"]),
+    },
+    {
+        "name": "basic_leak_curr",
+        "label": "기본파누설전류",
+        "dtype": "float",
+        # "generator": lambda: random.choice(["0", "37.5", "43.75","100"]),
+        "generator": lambda: random.randint(400, 970)/1000,
+    },
+    {
+        "name": "3rd_har_leak_curr",
+        "label": "3고조파누설전류",
+        "dtype": "float",
+        # "generator": lambda: random.choice(["0", "37.5", "43.75","100"]),
+        "generator": lambda: random.randint(0, 20)/1000,
+    },
+    {
+        "name": "la_leak_curr_diag",
+        "label": "피뢰기누설전류진단결과",
+        "dtype": "str",
+        "generator": lambda: random.choice(["정상", "요주의", "이상"]),
     },
     {
         "name": "joint_ex_damage",
@@ -180,18 +268,38 @@ INPUT_COLUMNS = [
         # "generator": lambda: random.choice(["0", "37.5", "43.75","100"]),
         "generator": lambda: random.randint(0, 100)/10,
     },
+    # {
+    #     "name": "cable_length",
+    #     "label": "케이블길이",
+    #     "dtype": "int",
+    #     # "generator": lambda: random.choice(["0", "37.5", "43.75","100"]),
+    #     "generator": lambda: random.randint(300, 15000),
+    # },
     {
-        "name": "cable_length",
-        "label": "케이블길이",
+        "name": "tl_apply",
+        "label": "타T/L공동포설여부",
+        "dtype": "str",
+        "generator": lambda: random.choice(["단독"]),
+    },
+    {
+        "name": "tl_num",
+        "label": "타T/L회선수",
         "dtype": "int",
         # "generator": lambda: random.choice(["0", "37.5", "43.75","100"]),
-        "generator": lambda: random.randint(300, 15000),
+        "generator":  lambda: random.choice([0]),
     },
     {
         "name": "laying_type",
-        "label": "포설방법",
+        "label": "포설방법1",
         "dtype": "str",
-        "generator": lambda: random.choice(["관로구", "전력구", "공동구"]),
+        "generator": lambda: random.choice(["철탑"]),
+    },    
+    {
+        "name": "laying_type2",
+        "label": "포설방법2",
+        "dtype": "str",
+        "generator": lambda: random.choice(["관로구"]),
+
     },
     {
         "name": "mid_joint",
@@ -202,29 +310,39 @@ INPUT_COLUMNS = [
     },
     {
         "name": "end_joint",
-        "label": "종단접속함종류",
+        "label": "종단접속함종류1",
         "dtype": "str",
-        "generator": lambda: random.choice(['DEBG, EBA','DEBG', 'WEBG']),
+        "generator": lambda: random.choice(['단독EBA']),
+    },
+    {
+        "name": "end_joint2",
+        "label": "종단접속함종류2",
+        "dtype": "str",
+        "generator": lambda: random.choice(['DEBG', 'WEBG']),
     },
     {
         "name": "emerge_resp",
         "label": "비상대응시간",
         "dtype": "str",
-        "generator": lambda: random.choice(["1초내"]),
+        "generator": lambda: random.choice(["G"]),
+    },
+    {
+        "name": "rep_cost",
+        "label": "사고복구비용",
+        "dtype": "str",
+        "generator": lambda: random.choice(["A"]),
     },
     {
         "name": "rep_time",
-        "label": "정상화기간_설비교체",
+        "label": "정상화기간",
         "dtype": "str",
-        "generator": lambda: random.choice(["3개월이하"]),
+        "generator": lambda: random.choice(["C"]),
     },
-
-
     {
         "name": "reliability",
         "label": "공급신뢰도회선수",
-        "dtype": "int",
-        "generator": lambda: random.choice([2,3,4]),
+        "dtype": "str",
+        "generator": lambda: random.choice(["N+N"]),
     },
     {
         "name": "temp_diag",
@@ -254,7 +372,7 @@ INPUT_COLUMNS = [
         "name": "offline_diag",
         "label": "오프라인진단여부",
         "dtype": "str",
-        "generator": lambda: random.choice(["1년이내"]),
+        "generator": lambda: random.choice(["O"]),
     },
     {
         "name": "longlife_insul",
@@ -319,9 +437,9 @@ INPUT_COLUMNS = [
 # ▶ 엑셀 수식 → 파이썬 변환 예시 100선은 이 파일 맨 아래 "부록" 섹션 참고
 def load_minus_cal(row):
     s = row["load_percent"]
-    if s > 100: return -20
-    if s > 90: return -10
-    if s > 80: return -5
+    if s > 100: return -36
+    if s > 90: return -24
+    if s > 80: return -12
     return 0
 
 def temp_minus_cal(row):
@@ -337,96 +455,137 @@ def diff_temp_minus_cal(row):
     if s > 5: return -5
     return 0
 
+def failure_rate_cal(row):
+    # 온도기반손상률(아레니우스형): (운전년수/40) × (1 + 0.005×상간온도차²) ÷ 온도가속계수
+    # 운전년수를 쓰므로 계산 기준일이 지나면 값이 커진다(5개년 예측·매일 갱신에 반영)
+    a = row["max_temp"]
+    b = math.exp((1.2 / 0.00008617) * ( 1 / (a + 298.15) - 1 / 363.15 ))
+    c = row["diff_temp"]
+    d = row["operation_year"]
+    s = (d /40) *((1 + 0.005 * (c**2))/b)
+    return s
+
 def pd_minus_cal(row):
-    s = row["pd_num"]
-    if s >= 3: return -20
-    if s >= 1: return -10
+    s = row["pd_diag_rslt"]
+    if s == '이상': return -8
+    if s == '요주의': return -4
+    if s == '양호': return 0
     return 0
 
 def sys_cycle_curr_minus_cal(row):
-    s = row["sys_cycle_curr"]
-    if s > 100: return -10
-    if s > 50: return -5
+    s = row["sys_cycle_curr_diag"]
+    if s == '이상': return -8
+    if s == '요주의': return -4
+    if s == '양호': return 0
     return 0
 
 def svl_leak_curr_minus_cal(row):
-    s = row["svl_leak_curr"]
-    if s > 1: return -10
-    if s > 0.5: return -5
+    s = row["svl_leak_curr_diag"]
+    if s == '이상': return -8
+    if s == '요주의': return -4
+    if s == '정상': return 0
+    return 0
+
+def la_leak_curr_minus_cal(row):
+    s = row["la_leak_curr_diag"]
+    if s == '이상': return -8
+    if s == '요주의': return -4
+    if s == '정상': return 0
     return 0
 
 def joint_ex_damage_minus_cal(row):
     s = row["joint_ex_damage"]
     if s == '양호': return 0
-    return -5
+    return -1
 
 def cable_move_minus_cal(row):
     s = row["cable_move"]
-    if s > 10: return -20
-    if s > 5: return -15
-    if s > 3: return -10
-    if s > 1: return -5
+    if s > 5: return -8
+    if s > 3: return -5
+    if s > 1: return -3
     return 0
 
 def pof_minus_cal(row):
     return (
         row["age_minus"]+row["load_minus"]+row["temp_minus"] 
         + row["diff_temp_minus"] + row["failure_rate_minus"] + row["pd_minus"]
-        + row["sys_cycle_curr_minus"] + row["svl_leak_curr_minus"] + row["joint_ex_damage_minus"] 
+        + row["sys_cycle_curr_minus"] + row["svl_leak_curr_minus"] 
+        + row["la_leak_curr_minus"] + row["joint_ex_damage_minus"] 
         + row["cable_move_minus"]
     )
 
 def laying_type_minus_cal(row):
     s = row["laying_type"]
-    if s == '철탑': return -30
-    if s == '공동구': return -20
-    if s == '관로구': return -10
-    if s == '전력구': return 0
-    return 0
+    k = row["laying_type2"]
+    a=0
+    b=0
+    if s == '철탑': a = -24
+    if s == '공동구': a = -16
+    if s == '관로구': a = -8
+    if s == '전력구': a = 0
+    if k == '철탑': b = -24
+    if k == '공동구': b = -16
+    if k == '관로구': b = -8
+    if k == '전력구': b = 0
+    return min(a, b)
 
 def end_joint_minus_cal(row):
     s = row["end_joint"]
-    if s == 'WEBG': return -30
-    if s == 'DEBG, EBA': return -5
-    if s == 'DEBG': return 0
-    return 0
+    k = row["end_joint2"]
+    a=0
+    b=0
+    if s == 'WEBG': a = -24
+    if s == '철탑EBA': a = -12
+    if s == '단독EBA': a = -6
+    if s == 'DEBG': a = 0
+    if k == 'WEBG': b = -24
+    if k == '철탑EBA': b = -12
+    if k == '단독EBA': b = -6
+    if k == 'DEBG': b = 0
+    return min(a, b)
 
 def emerge_resp_minus_cal(row):
     s = row["emerge_resp"]
-    if s == '24시간이하': return -10
-    if s == '12시간이하': return -5
-    if s == '1시간이하': return -3
-    if s == '1초내': return 0
+    if s == 'A': return -6
+    if s == 'B': return -5
+    if s == 'C': return -4
+    if s == 'D': return -3
+    if s == 'E': return -2
+    if s == 'F': return -1
+    if s == 'G': return 0
     return 0
 
 def rep_cost_minus_cal(row):
     s = row["rep_cost"]
-    if s > 100: return -12
-    if s > 50: return -10
-    if s > 20: return -8
-    if s > 10: return -6
-    if s > 5: return -4
-    return -2
+    if s == 'A': return -8
+    if s == 'B': return -6
+    if s == 'C': return -4
+    if s == 'D': return -2
+    if s == 'E': return 0
+    return 0
 
 def rep_time_minus_cal(row):
     s = row["rep_time"]
-    if s == '3개월초과': return -10
-    if s == '3개월이하': return 0
+    if s == 'A': return -6
+    if s == 'B': return -4
+    if s == 'C': return -2
+    if s == 'D': return 0
     return 0
 
 def cof_minus_cal(row):
     return (
-        row["risk_mva_minus"]+row["laying_type_minus"]+row["mid_joint_minus"] 
+        row["risk_mva_minus"]+row["tl_minus"]
+        +row["laying_type_minus"]+row["mid_joint_minus"] 
         + row["end_joint_minus"] + row["emerge_resp_minus"] + row["rep_cost_minus"]
         + row["rep_time_minus"]
     )
 
 def reliability_minus_cal(row):
     s = row["reliability"]
-    if s == 4: return 0
-    if s == 3: return 0
-    if s == 2: return -20
-    return -20
+    if s == 'N+0': return -24
+    if s == 'N+1': return -12
+    if s == 'N+N': return 0
+    return 0
 
 def temp_diag_minus_cal(row):
     s = row["temp_diag"]
@@ -454,9 +613,8 @@ def cable_move_diag_minus_cal(row):
 
 def offline_diag_minus_cal(row):
     s = row["offline_diag"]
-    if s == '미실시': return -20
-    if s == '3년이내': return -10
-    if s == '1년이내': return 0
+    if s == 'X': return -10
+    if s == 'O': return 0
     return 0
 
 def longlife_insul_minus_cal(row):
@@ -523,6 +681,13 @@ CALCULATED_COLUMNS = [
         # 엑셀 수식 예시: =TODAY()-시작일
         "formula": diff_temp_minus_cal,
     },
+        {
+        "name": "failure_rate",
+        "label": "온도기반손상률",
+        "dtype": "float",
+        # 엑셀 수식 예시: =TODAY()-시작일
+        "formula": failure_rate_cal,  # 시스템: 소수 그대로(원본 round)
+    },
     {
         "name": "failure_rate_minus",
         "label": "온도기반손상률감점",
@@ -551,6 +716,13 @@ CALCULATED_COLUMNS = [
         "dtype": "float",
         # 엑셀 수식 예시: =TODAY()-시작일
         "formula": svl_leak_curr_minus_cal,
+    },
+    {
+        "name": "la_leak_curr_minus",
+        "label": "피뢰기누설전류감점",
+        "dtype": "float",
+        # 엑셀 수식 예시: =TODAY()-시작일
+        "formula": la_leak_curr_minus_cal,
     },
     {
         "name": "joint_ex_damage_minus",
@@ -593,10 +765,18 @@ CALCULATED_COLUMNS = [
 
     {
         "name": "risk_mva_minus",
-        "label": "사고영향성감점",
+        "label": "사고영향성(용량)감점",
         "dtype": "float",
         # 엑셀 수식 예시: =TODAY()-시작일
         "formula": lambda row: row["cable_mva"]*0.01*(-1),  # 시스템: 소수 그대로(원본 round)
+    },
+
+    {
+        "name": "tl_minus",
+        "label": "사고영향성(공동포설)감점",
+        "dtype": "float",
+        # 엑셀 수식 예시: =TODAY()-시작일
+        "formula": lambda row: (-5) * row["tl_num"],
     },
 
     {
@@ -631,13 +811,13 @@ CALCULATED_COLUMNS = [
         "formula": emerge_resp_minus_cal,
     },
 
-    {
-        "name": "rep_cost",
-        "label": "사고복구교체비용",
-        "dtype": "float",
-        # 엑셀 수식 예시: =TODAY()-시작일
-        "formula": lambda row: row["cable_length"]*0.0135,
-    },
+    # {
+    #     "name": "rep_cost",
+    #     "label": "사고복구교체비용",
+    #     "dtype": "float",
+    #     # 엑셀 수식 예시: =TODAY()-시작일
+    #     "formula": lambda row: row["cable_length"]*0.0135,
+    # },
 
     {
         "name": "rep_cost_minus",

@@ -19,7 +19,7 @@
 ## 저장소 구조
 
 - `ref_data/` — 엑셀 기반 원본 인풋/계산 로직 참고자료 (`schema_eflms.py`, `main.py`, `output/`). **수정 금지, 참고용으로만 사용.**
-- `ref_data_revised/` — `ref_data/` 계산 양식에 시스템 계산 규칙(감점 소수 계산·소수 첫째 자리·EF2 결정)을 반영한 참고용 수정본(2026-11-19). 시스템 계산기와 결과가 같다는 것을 `backend/tests/test_reference_revised.py`가 확인하므로, **시스템 계산을 바꾸면 이 폴더도 함께 고친다**. 차이 목록은 `ref_data_revised/README.md`.
+- `ref_data_revised/` — `ref_data/` 계산 양식에 시스템 계산 규칙(감점 소수 계산·소수 첫째 자리·EF2 결정)을 반영한 참고용 수정본(2026-11-19). **EF3 케이블은 이 폴더의 `schema_eflms_cable.py`(2026-11-20 사용자 횡전개 수정본)가 계산 기준이고 `ref_data/` EF3는 옛 양식이다.** 시스템 계산기와 결과가 같다는 것을 `backend/tests/test_reference_revised.py`가 확인하므로, **시스템 계산을 바꾸면 이 폴더도 함께 고친다**. 차이 목록은 `ref_data_revised/README.md`.
 - `design/` — 승인된 대시보드 화면(Direction A) 목업 작업파일(`*.dc.html`, `canvas.json`). 캔버스 산출물(`eflms-dashboard-directions.html`)은 재생성 가능하므로 git에는 올리지 않음.
 - `docs/` — 설계 문서:
   - [ARCHITECTURE.md](docs/ARCHITECTURE.md) — DB/인증/데이터모델/계산기 확장 구조

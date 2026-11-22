@@ -36,6 +36,7 @@
 | EF2 GIS | 전기적 감점 `gis_elec_minus` | 경과연수 미합산 | 경과연수 `age_minus` **합산**(2026-10-19) |
 | EF2 GIS | 누적 차단 전류 `cum_trip_current` | `int` | `float`(실데이터에 소수값) |
 | EF3 케이블 | 고장률 `failure_rate_minus`, 용량 `risk_mva_minus` | `round(…)` | 소수 그대로 |
+| EF3 케이블 | **횡전개 개정(2026-11-20)** — 입력·계산 전반 | `ref_data/` 원본은 옛 양식(손상률 입력, 측정값 구간, 케이블길이 비용, 회선수 신뢰도) | 이 파일이 EF3 기준 — 사용자 횡전개 수정본(진단결과 등급 감점, 온도기반손상률 계산값, 공동포설, 포설·종단 1·2 중 나쁜 값, 등급형 COF, N+x 신뢰도, 피뢰기누설전류 감점). `docs/DATA_DICTIONARY.md` EF3 절 |
 | EF4 수배전반 | 차단기 상태 `cb_stat_minus`, 피해규모 `scale_dam_chk_minus` | `round(…)` | 소수 그대로 |
 | EF5 UPS·EF6 VDP | 부품 고장확률 5종 `cb`·`cap`·`fan`·`igbt`·`board_stat_minus`, 전기실 온도 `elec_room_max_temp_minus` | `round(…)` | 소수 그대로 |
 | EF5 UPS·EF6 VDP | 부하율·모듈 순환전류·모듈 전압차·소음 감점 | `int(…)` | 소수 그대로 |
