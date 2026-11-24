@@ -1,4 +1,4 @@
-import { na } from "./formatValue";
+import { na, naOrBlank } from "./formatValue";
 import type { Axis, BreakdownItem, Ef1TypeDetail, Ef2TypeDetail, Ef3TypeDetail, Ef4TypeDetail, Ef5TypeDetail, Ef6TypeDetail, Ef7TypeDetail, EquipmentDetail } from "../types/equipment";
 
 // 감점 항목 라벨은 백엔드 설비유형 모듈의 BREAKDOWN(/api/equipment-types)이 단일 원본이다(Stage 8-5).
@@ -125,9 +125,9 @@ const EF3_EVIDENCE: Record<string, (d: Ef3TypeDetail) => string> = {
 
   risk_mva_minus: (d) => `사고영향성용량 ${na(d.score_detail.risk_mva)}`,
   tl_minus: (d) => `타T/L 공동포설 ${na(d.spec.tl_num, { unit: "회선" })} (${na(d.spec.tl_apply)})`,
-  laying_type_minus: (d) => `포설방법 ${na(d.spec.laying_type)} / ${na(d.spec.laying_type2)} 중 나쁜 값`,
+  laying_type_minus: (d) => `포설방법 ${naOrBlank(d.spec.laying_type)} / ${naOrBlank(d.spec.laying_type2)} 중 나쁜 값`,
   mid_joint_minus: (d) => `중간접속함 ${na(d.spec.mid_joint, { unit: "개" })}`,
-  end_joint_minus: (d) => `종단접속함 ${na(d.spec.end_joint)} / ${na(d.spec.end_joint2)} 중 나쁜 값`,
+  end_joint_minus: (d) => `종단접속함 ${naOrBlank(d.spec.end_joint)} / ${naOrBlank(d.spec.end_joint2)} 중 나쁜 값`,
   emerge_resp_minus: (d) => `비상대응시간 등급 ${na(d.consequence.emerge_resp)}`,
   rep_cost_minus: (d) => `사고복구비용 등급 ${na(d.consequence.rep_cost)}`,
   rep_time_minus: (d) => `정상화기간 등급 ${na(d.consequence.rep_time)}`,

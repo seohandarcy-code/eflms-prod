@@ -39,7 +39,7 @@ class CableCondition(Base):
     equipment_id: Mapped[int] = mapped_column(ForeignKey("equipment.equipment_id"), primary_key=True)
     measured_at: Mapped[date] = mapped_column(Date)
     recent_diag_date: Mapped[date | None] = mapped_column(Date)  # 안전공사최근진단일 — 화면의 최근 진단일(Stage 22)
-    max_load: Mapped[int | None] = mapped_column(Integer)
+    max_load: Mapped[float | None] = mapped_column(Float)  # 소수 허용(Stage 22-8)
     max_temp: Mapped[float | None] = mapped_column(Float)
     max_temp_diag: Mapped[str | None] = mapped_column(String(10))
     diff_temp: Mapped[float | None] = mapped_column(Float)

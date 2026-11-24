@@ -4,7 +4,7 @@
 // 원본 계산 툴에 PoF 그룹 구분이 없어 축별로 나열한다. 계산에 안 쓰는 진단 측정값(PD신호·이론치·누설전류 등)은
 // 맨 아래 "진단 측정값" 묶음. 스타일은 부모 패널이 :deep()으로 입힌다.
 import type { Ef3TypeDetail } from "../../types/equipment";
-import { na } from "../../utils/formatValue";
+import { na, naOrBlank } from "../../utils/formatValue";
 
 defineProps<{ typeDetail: Ef3TypeDetail }>();
 </script>
@@ -50,11 +50,11 @@ defineProps<{ typeDetail: Ef3TypeDetail }>();
       <div class="raw-field"><span>타T/L공동포설여부</span><b>{{ na(typeDetail.spec.tl_apply) }}</b></div>
       <div class="raw-field"><span>타T/L회선수</span><b>{{ na(typeDetail.spec.tl_num, { unit: "회선" }) }}</b></div>
       <div class="raw-field"><span>사고영향성(공동포설) 감점</span><b class="neg">{{ na(typeDetail.score_detail.tl_minus, { digits: 1 }) }}</b></div>
-      <div class="raw-field"><span>포설방법1 / 2</span><b>{{ na(typeDetail.spec.laying_type) }} / {{ na(typeDetail.spec.laying_type2) }}</b></div>
+      <div class="raw-field"><span>포설방법1 / 2</span><b>{{ naOrBlank(typeDetail.spec.laying_type) }} / {{ naOrBlank(typeDetail.spec.laying_type2) }}</b></div>
       <div class="raw-field"><span>포설방법 감점(나쁜 값)</span><b class="neg">{{ na(typeDetail.score_detail.laying_type_minus, { digits: 1 }) }}</b></div>
       <div class="raw-field"><span>중간접속함개수</span><b>{{ na(typeDetail.spec.mid_joint, { unit: "개" }) }}</b></div>
       <div class="raw-field"><span>중간접속함 감점</span><b class="neg">{{ na(typeDetail.score_detail.mid_joint_minus, { digits: 1 }) }}</b></div>
-      <div class="raw-field"><span>종단접속함종류1 / 2</span><b>{{ na(typeDetail.spec.end_joint) }} / {{ na(typeDetail.spec.end_joint2) }}</b></div>
+      <div class="raw-field"><span>종단접속함종류1 / 2</span><b>{{ naOrBlank(typeDetail.spec.end_joint) }} / {{ naOrBlank(typeDetail.spec.end_joint2) }}</b></div>
       <div class="raw-field"><span>종단접속함 감점(나쁜 값)</span><b class="neg">{{ na(typeDetail.score_detail.end_joint_minus, { digits: 1 }) }}</b></div>
       <div class="raw-field"><span>비상대응시간</span><b>{{ na(typeDetail.consequence.emerge_resp) }}</b></div>
       <div class="raw-field"><span>비상대응시간 감점</span><b class="neg">{{ na(typeDetail.score_detail.emerge_resp_minus, { digits: 1 }) }}</b></div>

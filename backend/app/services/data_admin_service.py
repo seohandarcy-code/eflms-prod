@@ -89,7 +89,7 @@ def template(ef_code: str, table: str | None) -> dict[str, Any]:
     columns = []
     for col in source:
         item = {"name": col["name"], "label": col.get("label", ""), "dtype": col.get("dtype", "str")}
-        for opt in ("choices", "min", "max", "gt", "required"):
+        for opt in ("choices", "min", "max", "gt", "required", "allow_blank"):
             if opt in col:
                 item[opt] = list(col[opt]) if opt == "choices" else col[opt]
         item["na_allowed"] = na_allowed(col["name"])
@@ -104,7 +104,11 @@ async def _row_actions(session: AsyncSession, module, table: str | None, text: s
     교체면 기존 데이터를 지우고 넣으므로 전부 추가. 같은 행 판정은 임포트와 같다
     (설비: 사업장 + 설비명, 참고표: 표의 key).
     """
-    header, raw_rows = _parse_lines(text)
+    if table:
+        known = [c["name"] for c in reference_specs(module)[table]["columns"]]
+    else:
+        known = [c["name"] for c in module.INPUT_COLUMNS]
+    header, raw_rows = _parse_lines(text, known)
     if replace:
         return [{"row_number": n, "action": ACTION_INSERT} for n, _ in raw_rows]
 
@@ -221,8 +225,19 @@ def _format_cell(value: Any) -> str:
     return text.replace("\t", " ").replace("\r", " ").replace("\n", " ")
 
 
-def _to_dat(header: list[str], rows: list[list[str]]) -> str:
-    return "\n".join("\t".join(r) for r in [header, *rows]) + "\n"
+def _to_dat(header: list[str], rows: list[list[str]], labels: dict[str, str] | None = None) -> str:
+    """labels가 있으면 1행에 한글 항목명(없는 칸은 영문명), 2행에 영문 헤더(Stage 22-9).
+
+    임포트는 영문 컬럼명이 없는 첫 줄을 한글 항목명 행으로 보고 건너뛰므로 그대로 다시 넣을 수 있다.
+    """
+    lines = [header, *rows]
+    if labels is not None:
+        lines.insert(0, [_format_cell(labels.get(name) or name) for name in header])
+    return "\n".join("\t".join(r) for r in lines) + "\n"
+
+
+def _labels(columns: list[dict]) -> dict[str, str]:
+    return {col["name"]: col.get("label", "") for col in columns}
 
 
 async def _equipment_table(session: AsyncSession, ef_code: str) -> tuple[list[str], list[list[str]]]:
@@ -276,15 +291,20 @@ async def _reference_table(session: AsyncSession, ef_code: str, table: str) -> t
 
 
 async def export_equipment(session: AsyncSession, ef_code: str) -> tuple[str, int]:
-    """유형의 지금 설비 데이터를 입력파일과 같은 dat로 — 그대로 다시 넣을 수 있다(교체·백업용). 반환: (dat 텍스트, 설비 수)."""
+    """유형의 지금 설비 데이터를 입력파일과 같은 dat로(1행 한글 항목명, 2행 영문 헤더) — 그대로 다시 넣을 수 있다(교체·백업용).
+
+    반환: (dat 텍스트, 설비 수).
+    """
     header, rows = await _equipment_table(session, ef_code)
-    return _to_dat(header, rows), len(rows)
+    labels = _labels(_module_or_error(ef_code).INPUT_COLUMNS)
+    return _to_dat(header, rows, labels), len(rows)
 
 
 async def export_reference(session: AsyncSession, ef_code: str, table: str) -> tuple[str, int]:
-    """참고표를 `import_reference`에 그대로 넣을 수 있는 dat로. 반환: (dat 텍스트, 행 수)."""
+    """참고표를 `import_reference`에 그대로 넣을 수 있는 dat로(1행 한글 항목명, 2행 영문 헤더). 반환: (dat 텍스트, 행 수)."""
     header, rows = await _reference_table(session, ef_code, table)
-    return _to_dat(header, rows), len(rows)
+    labels = _labels(_reference_spec_or_error(_module_or_error(ef_code), table)["columns"])
+    return _to_dat(header, rows, labels), len(rows)
 
 
 async def list_rows(session: AsyncSession, ef_code: str, table: str | None) -> dict[str, Any]:

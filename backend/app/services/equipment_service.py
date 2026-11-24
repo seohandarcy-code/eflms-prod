@@ -14,6 +14,7 @@ from app.core.config import get_settings
 from app.db.models import Equipment, ScoreHistory, ScoreRefreshRun, ScoreSnapshot
 from app.services.job_lock import factory_for
 from app.equipment_types.base import EquipmentTypeModule
+from app.equipment_types.formula_docs import build_payload as build_formula_payload
 from app.equipment_types.rounding import round1
 from app.equipment_types.registry import UnknownEquipmentTypeError, all_modules, get_module
 from app.services.reference_data import calc_options
@@ -23,6 +24,7 @@ from app.schemas.equipment import (
     EquipmentStatus,
     EquipmentSummary,
     EquipmentTypeOut,
+    FormulaDocsOut,
     ProjectionChange,
     ScoreHistoryPoint,
     ProjectionPoint,
@@ -234,6 +236,15 @@ async def _summary_dates(session: AsyncSession, ef_codes: list[str]) -> tuple[li
         ids = (await session.execute(select(Equipment.equipment_id).where(Equipment.ef_code == code))).scalars().all()
         diag_dates += [d for d in (await module.last_diag_dates(session, list(ids))).values() if d is not None]
     return score_dates, diag_dates
+
+
+def formula_docs(ef_code: str) -> FormulaDocsOut | None:
+    """유형의 감점 항목 계산식 설명(지표설명 상세 페이지, Stage 22-11). 없는 유형이면 None."""
+    try:
+        module = get_module(ef_code)
+    except UnknownEquipmentTypeError:
+        return None
+    return FormulaDocsOut(**build_formula_payload(module))
 
 
 async def list_equipment_types(session: AsyncSession) -> list[EquipmentTypeOut]:

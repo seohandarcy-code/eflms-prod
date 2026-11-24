@@ -566,6 +566,7 @@ psql -v ON_ERROR_STOP=1 -d eflms_new -f eflms_full_YYYYMMDD_HHMM.sql</pre>
       <div class="sub-heading">설비유형별 (.dat — 입력파일 형식)</div>
       <p class="card-hint">
         지금 DB 내용을 입력파일과 같은 형식(.dat)으로 받습니다. 백업하거나 다른 서버로 옮길 때 그대로 다시 넣을 수 있습니다.
+        첫 행은 한글 항목명, 둘째 행은 영문 컬럼명입니다(다시 넣을 때 한글 항목명 행은 자동으로 건너뜁니다).
       </p>
       <table class="export-table">
         <thead>

@@ -41,6 +41,7 @@ from app.db.models import (
     BatteryTempDecayCoef,
     Equipment,
 )
+from app.equipment_types import formula_docs as fd
 from app.equipment_types.na import evaluate
 from app.equipment_types.rounding import round1
 from app.schemas.ef7 import (
@@ -445,6 +446,94 @@ BREAKDOWN = {
         {"field": "bat_room_fire_resist_minus", "label": "배터리실소화설비"},
     ],
 }
+
+# 지표설명 상세 페이지의 계산식(Stage 22-11) — 실제 계산과 같은지 tests/test_formula_docs.py가 확인한다.
+# 참고표를 쓰는 예시(SOH)는 목업 참고표(MOCK_*) 기준이다(formula_docs.default_calc_kwargs).
+def _over(field: str, var: str, limit: str, rate: str, sym: str, examples: list[tuple[str, float, float]]):
+    """기준 이상이면 (기준 − 값) × 비율, 미만이면 0 — 원본 (기준 − 값) > 0 이면 0."""
+    return fd.expr(
+        field, [rf"\text{{감점}} = \begin{{cases}} ({limit} - x) \times {rate} & x \ge {limit} \\ 0 & x < {limit} \end{{cases}}"],
+        inputs=[var], symbols=[{"sym": "x", "label": sym}],
+        examples=[fd.example(text, v, **{var: x}) for text, v, x in examples],
+    )
+
+
+_SOH_START = date(2020, 1, 1)  # 기준일 2025-01-01이면 사용 5.0년
+_ABC_MINUS_DOC = {"A": -2, "B": -1, "C": 0}
+FORMULA_DOCS = [
+    # POF
+    fd.age_item(),
+    fd.expr(
+        "soh_minus",
+        [
+            r"\text{방전감소계수} = \text{방전인덱스합} \times 0.000579",
+            r"\text{온도감소계수} = \Big(\textstyle\sum_{y \le n} \gamma_y + f \times \gamma_{n+1}\Big) \times e^{d},"
+            r"\quad d = 1823\left(\dfrac{1}{298.15} - \dfrac{1}{T + 273.15}\right)",
+            r"\text{감점} = -2 \times (\text{방전감소계수} + \text{온도감소계수})",
+        ],
+        inputs=["factory_code", "operation_start_time", "bat_room_temp"],
+        symbols=[
+            {"sym": "방전인덱스합", "label": "참고표 '방전이력'에서 같은 사업장 · 설치일 이후 방전인덱스의 합(소수 셋째 자리)"},
+            {"sym": "γ_y", "label": "참고표 '온도감소계수'의 y년차 계수"},
+            {"sym": "n, f", "label": "사용년수의 정수 부분 · 소수 부분"},
+            {"sym": "T", "label": "배터리실온도(℃) — 25℃에서 e^d = 1"},
+        ],
+        examples=[
+            fd.example("H1 사업장 · 사용 5년 · 25℃ → −29.7 (목업 참고표 기준)", -29.7,
+                       as_of=fd.EXAMPLE_AS_OF, operation_start_time=_SOH_START, factory_code="H1", bat_room_temp=25),
+            fd.example("같은 조건 · 30℃ → −32.9", -32.9,
+                       as_of=fd.EXAMPLE_AS_OF, operation_start_time=_SOH_START, factory_code="H1", bat_room_temp=30),
+        ],
+        note="온도감소계수는 소수 첫째 자리로 반올림한 뒤 더합니다. 참고표가 비어 있으면 그 부분은 0입니다. "
+             "방전이력은 설치일 이후 행을 모두 더합니다(점수 기준일 이후 날짜도 포함 — 원본대로).",
+    ),
+    fd.expr(
+        "bms_minus", fd.weibull_tex(r"7.637 \times 10^{12}", "0.1525", "3", temp=True),
+        inputs=["operation_start_time", "bat_room_temp"],
+        symbols=[{"sym": "t", "label": "사용년수"}, {"sym": "T", "label": "배터리실온도(℃)"},
+                 {"sym": "척도 · β", "label": "25℃ 기준 척도 7,637,042,774,839년 · 형상 0.1525"}],
+        examples=[fd.example("사용 5년 · 25℃ → −4.1", -4.1, as_of=fd.EXAMPLE_AS_OF, operation_start_time=_SOH_START, bat_room_temp=25),
+                  fd.example("사용 15년 · 25℃ → −4.9", -4.9, as_of=fd.EXAMPLE_AS_OF, operation_start_time=fd.EXAMPLE_START, bat_room_temp=25)],
+    ),
+    _over("vol_diff_minus", "vol_diff", "0.25", "120", "셀간전압편차", [("0.3 → −6", -6.0, 0.3), ("0.02 → 0", 0.0, 0.02)]),
+    _over("temp_diff_minus", "temp_diff", "5", "2.4", "셀간온도편차", [("6 → −2.4", -2.4, 6), ("2 → 0", 0.0, 2)]),
+    fd.expr(
+        "temp_range_over_minus", [r"\text{감점} = \text{셀온도범위초과이력} \times (-1.5)"], inputs=["temp_range_over"],
+        examples=[fd.example("2 → −3", -3.0, temp_range_over=2)],
+    ),
+    fd.expr(
+        "bat_room_temp_minus", [r"\text{감점} = \begin{cases} 0 & 18 < T < 28 \\ -3 & \text{그 밖}(T \le 18 \text{ 또는 } T \ge 28) \end{cases}"],
+        inputs=["bat_room_temp"], symbols=[{"sym": "T", "label": "배터리실온도(℃)"}],
+        examples=[fd.example("22℃ → 0", 0.0, bat_room_temp=22), fd.example("28℃ → −3", -3.0, bat_room_temp=28),
+                  fd.example("18℃ → −3", -3.0, bat_room_temp=18)],
+        note="경계값 18℃·28℃는 감점입니다 — 원본대로.",
+    ),
+    fd.steps("bat_room_humid_minus", "bat_room_humid", [(80, -3)], op="ge", var_label="배터리실습도", unit="%"),
+    # COF
+    fd.expr(
+        "capa_times_load_minus",
+        [r"\text{부하량} = \dfrac{\text{부하율} \times \text{정격용량}}{100}", r"\text{감점} = -6 \times \text{부하량} \div 500"],
+        inputs=["load", "capa"],
+        examples=[fd.example("부하율 50% · 정격용량 800 → 부하량 400 → −4.8", -4.8, load=50, capa=800)],
+    ),
+    fd.mapping("con_rank_minus", "con_rank", {"공용": -3, "단독": 0}),
+    fd.mapping("ins_build_rank_minus", "ins_build_rank", {"A": -6, "B": -3, "C": 0}),
+    fd.mapping("fire_spread_rank_minus", "fire_spread_rank", {"A": -3, "B": 0}),
+    fd.mapping("emerge_resp_minus", "emerge_resp", _ABC_MINUS_DOC),
+    fd.mapping("rep_time_minus", "rep_time", _ABC_MINUS_DOC),
+    fd.mapping("rep_cost_minus", "rep_cost", _ABC_MINUS_DOC),
+    # DOF
+    fd.mapping("model_gen_minus", "model_gen", {2: -12, 3: -6, 4: 0}),
+    fd.mapping("fire_resist_minus", "fire_resist", {"X": -12, "O": 0}),
+    fd.mapping("ul_auth_minus", "ul_auth", {"미취득": -12, "취득": 0}),
+    fd.steps("fac_rel_minus", "fac_rel", [(3, 0)], op="ge", otherwise=-8, var_label="설비신뢰도등급"),
+    fd.mapping("part_stat_diag_minus", "part_stat_diag", {"미적용": -4, "적용": 0}),
+    fd.mapping("bat_server_minus", "bat_server", {"미적용": -2, "적용": 0}),
+    fd.mapping("bat_room_fire_resist_minus", "bat_room_fire_resist", {"가스계": -8, "수계": 0}),
+]
+FORMULA_NOTES = [
+    "SOH는 관리자 화면에서 넣는 참고표(방전이력 · 온도감소계수)를 씁니다. 화면의 SOH 예시는 목업 참고표로 계산한 값입니다.",
+]
 
 _DOMAIN_MODELS = (BatterySpec, BatteryCondition, BatteryConsequenceAttribute, BatteryDesignAttribute, BatteryScoreDetail)
 

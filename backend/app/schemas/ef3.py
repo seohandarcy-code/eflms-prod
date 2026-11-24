@@ -24,7 +24,7 @@ class CableConditionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     measured_at: date
     recent_diag_date: date | None
-    max_load: int | None
+    max_load: float | None
     max_temp: float | None
     max_temp_diag: str | None
     diff_temp: float | None

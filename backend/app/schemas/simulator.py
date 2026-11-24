@@ -14,6 +14,7 @@ class SimulatorColumn(BaseModel):
     max: float | None = None
     gt: float | None = None
     required: bool | None = None
+    allow_blank: bool | None = None  # 빈칸 허용(EF3 포설·종단, Stage 22-8)
     na_allowed: bool
 
 

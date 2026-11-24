@@ -9,6 +9,7 @@ from app.db import seed
 from app.equipment_types.registry import registered_codes
 from app.main import app
 from app.services.data_admin_service import _format_cell
+from app.services.import_service import _parse_lines
 
 SAMPLES = Path(__file__).resolve().parent.parent / "sample_data"
 
@@ -202,9 +203,10 @@ async def test_export_keeps_extra_columns(client, admin_headers):
     assert first["ok"] and first["unknown_columns"]
 
     resp = await client.get("/api/admin/data/export", params={"ef_code": "EF1"}, headers=headers)
-    header = resp.content.decode("utf-8-sig").splitlines()[0].split("\t")
+    label_row, header = (line.split("\t") for line in resp.content.decode("utf-8-sig").splitlines()[:2])
     for col in first["unknown_columns"]:
         assert col in header
+        assert label_row[header.index(col)] == col  # 한글명이 없는 칸은 영문명 그대로(Stage 22-9)
 
     again = (await _upload(client, headers, resp.content, "EF1", replace=True, check=True)).json()
     assert again["ok"] and sorted(again["unknown_columns"]) == sorted(first["unknown_columns"])
@@ -223,6 +225,63 @@ async def test_export_reference_round_trip(client, admin_headers, session_factor
     assert resp.status_code == 404
     resp = await client.get("/api/admin/data/export", params={"ef_code": "EF99"}, headers=headers)
     assert resp.status_code == 404
+
+
+async def test_export_first_row_is_korean_labels(client, admin_headers, session_factory):
+    """내려받기 1행은 한글 항목명, 2행은 영문 헤더(Stage 22-9) — 설비 데이터와 참고표 모두."""
+    from app.equipment_types import ef3_cable, ef7_battery
+
+    headers, _ = admin_headers
+    await _seed(session_factory, ["EF3", "EF7"], rows=2)
+    cases = [
+        ({"ef_code": "EF3"}, ef3_cable.INPUT_COLUMNS),
+        ({"ef_code": "EF7", "table": "temp_decay_coef"}, ef7_battery.REFERENCE_TABLES["temp_decay_coef"]["columns"]),
+    ]
+    for params, columns in cases:
+        dat = (await client.get("/api/admin/data/export", params=params, headers=headers)).content.decode("utf-8-sig")
+        label_row, header = (line.split("\t") for line in dat.splitlines()[:2])
+        assert header == [c["name"] for c in columns], params
+        assert label_row == [c.get("label") or c["name"] for c in columns], params
+    assert label_row == ["사용 년차", "온도감소계수"]
+
+
+def test_parse_lines_skips_label_row_only_when_header_follows():
+    known = ["year", "gamma_y"]
+    # 한글 항목명 행은 건너뛰고, 줄 번호는 실제 파일 기준
+    header, rows = _parse_lines("사용 년차\t온도감소계수\n\nyear\tgamma_y\n1\t0.5\n", known)
+    assert header == ["year", "gamma_y"] and rows == [(4, ["1", "0.5"])]
+    # 한글명이 없어 영문명이 섞인 항목명 행도 건너뛴다(EF1 dga_h2·EF4~7 eqp_id 등)
+    header, rows = _parse_lines("year\t온도감소계수\nyear\tgamma_y\n1\t0.5\n", known)
+    assert header == ["year", "gamma_y"] and rows == [(3, ["1", "0.5"])]
+    # 영문 헤더만 있는 기존 파일은 그대로
+    header, rows = _parse_lines("year\tgamma_y\n1\t0.5\n", known)
+    assert header == ["year", "gamma_y"] and rows == [(2, ["1", "0.5"])]
+    # 둘째 줄도 헤더가 아니면 첫 줄을 헤더로 둔다(→ 필수 컬럼 없음으로 거부됨)
+    header, _ = _parse_lines("연차\t계수\n1\t0.5\n", known)
+    assert header == ["연차", "계수"]
+    # known_names를 안 주면 예전처럼 첫 줄이 헤더
+    header, _ = _parse_lines("사용 년차\t온도감소계수\nyear\tgamma_y\n")
+    assert header == ["사용 년차", "온도감소계수"]
+
+
+async def test_upload_and_paste_accept_korean_label_row(client, admin_headers):
+    """엑셀에서 한글 항목명 행까지 복사해 붙여넣어도 받는다 — 오류 줄 번호는 실제 줄."""
+    headers, _ = admin_headers
+    text = (SAMPLES / "ef7" / "reference_temp_decay_coef.dat").read_text(encoding="utf-8-sig")
+    body = (await _upload(client, headers, "사용 년차\t온도감소계수\n" + text, "EF7", table="temp_decay_coef")).json()
+    assert body["ok"], body["row_errors"][:3]
+    assert body["total_rows"] == 20 and len(body["row_actions"]) == 20
+    assert body["row_actions"][0]["row_number"] == 3
+
+    bad = text.strip().split("\n")
+    bad[1] = "1\t-1"
+    body = (await _upload(client, headers, "사용 년차\t온도감소계수\n" + "\n".join(bad), "EF7", table="temp_decay_coef")).json()
+    assert not body["ok"] and body["row_errors"][0]["row_number"] == 3
+
+    sample = (SAMPLES / "ef1" / "sample_valid.dat").read_text(encoding="utf-8-sig")
+    body = (await _upload(client, headers, "한글\t항목명\n" + sample, "EF1")).json()
+    assert body["ok"], (body["file_errors"], body["row_errors"][:3])
+    assert body["row_actions"] and body["row_actions"][0]["row_number"] == 3
 
 
 # --- 붙여넣기 형식·양식 ---
@@ -251,6 +310,10 @@ async def test_template_lists_header_and_rules(client, admin_headers):
     assert cols["factory_code"]["na_allowed"] is False and cols["eqp_id"]["na_allowed"] is False
     assert cols["bat_room_humid"]["min"] == 0 and cols["bat_room_humid"]["max"] == 100
     assert "generator" not in cols["factory_code"]
+    assert "allow_blank" not in cols["con_rank"]  # 선언한 칸만(EF3 포설·종단, Stage 22-8)
+    ef3 = (await client.get("/api/admin/data/template", params={"ef_code": "EF3"}, headers=headers)).json()
+    blank = {c["name"] for c in ef3["columns"] if c.get("allow_blank")}
+    assert blank == {"laying_type", "laying_type2", "end_joint", "end_joint2"}
 
     ref = (await client.get("/api/admin/data/template", params={"ef_code": "EF7", "table": "temp_decay_coef"}, headers=headers)).json()
     assert ref["header"] == "year\tgamma_y" and ref["key"] == ["year"]
@@ -279,8 +342,8 @@ async def test_rows_match_export_for_every_type_and_reference(client, admin_head
         body = (await client.get("/api/admin/data/rows", params=params, headers=headers)).json()
         dat = (await client.get("/api/admin/data/export", params=params, headers=headers)).content.decode("utf-8-sig")
         lines = [line.split("\t") for line in dat.splitlines()]
-        assert body["header"] == lines[0], (code, table)
-        assert body["rows"] == lines[1:], (code, table)
+        assert body["header"] == lines[1], (code, table)  # 1행은 한글 항목명(Stage 22-9)
+        assert body["rows"] == lines[2:], (code, table)
         tpl = (await client.get("/api/admin/data/template", params=params, headers=headers)).json()
         assert body["key"] == tpl["key"] and body["columns"] == tpl["columns"]
         assert body["extra_columns"] == []

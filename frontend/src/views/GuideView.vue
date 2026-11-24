@@ -27,11 +27,6 @@ function groupItems(items: BreakdownItem[]): { group: string | null; items: Brea
   return groups;
 }
 
-// typeGuide.ts의 수식 문자열은 여러 식을 공백 3칸 이상으로 이어 둔다 — 화면에서는 한 줄에 한 식씩 보여준다.
-function exprLines(expr: string): string[] {
-  return expr.split(/\s{3,}/).filter((line) => line.length > 0);
-}
-
 function typeAnchor(efCode: string): string {
   return efCode.toLowerCase();
 }
@@ -124,7 +119,7 @@ onMounted(async () => {
       <section class="type-section">
         <h2 class="section-title">4. 설비유형별 계산 방법과 구성 항목</h2>
         <p class="caption">
-          아래 항목에서 기준 미달이 있으면 해당 축에서 감점됩니다 · 대시보드 "점검필요 순위"에서 항목에 마우스를 올리면 그 설비의 실제 측정값을 볼 수 있습니다
+          아래 항목에서 기준 미달이 있으면 해당 축에서 감점됩니다 · 항목별 수식과 구간·등급표는 각 유형의 "계산식 상세 보기"에서 볼 수 있습니다 · 대시보드 "점검필요 순위"에서 항목에 마우스를 올리면 그 설비의 실제 측정값을 볼 수 있습니다
         </p>
         <nav v-if="store.equipmentTypes.length > 0" class="type-jump" aria-label="설비유형 바로가기">
           <RouterLink
@@ -139,7 +134,10 @@ onMounted(async () => {
 
         <div class="type-list">
           <article v-for="info in store.equipmentTypes" :id="typeAnchor(info.ef_code)" :key="info.ef_code" class="card type-card">
-            <h3>{{ info.ef_name }} <span class="muted">{{ info.ef_code }}</span></h3>
+            <div class="type-head">
+              <h3>{{ info.ef_name }} <span class="muted">{{ info.ef_code }}</span></h3>
+              <RouterLink :to="{ path: '/guide/formulas', query: { type: info.ef_code } }" class="detail-link">계산식 상세 보기 →</RouterLink>
+            </div>
             <div class="axis-cards">
               <div v-for="axis in AXES" :key="axis" class="axis-card">
                 <div class="axis-name">{{ AXIS_TITLES[axis] }}</div>
@@ -153,15 +151,6 @@ onMounted(async () => {
                     <li v-for="item in block.items" :key="item.field">{{ item.label }}</li>
                   </ul>
                 </template>
-              </div>
-            </div>
-            <div v-if="TYPE_GUIDES[info.ef_code]?.formulas" class="type-formulas">
-              <div v-for="f in TYPE_GUIDES[info.ef_code].formulas" :key="f.label" class="type-formula">
-                <div class="type-formula-label">{{ f.label }}</div>
-                <div class="formula">
-                  <div v-for="(line, i) in exprLines(f.expr)" :key="i" class="formula-line">{{ line }}</div>
-                </div>
-                <div v-if="f.note" class="type-formula-note">{{ f.note }}</div>
               </div>
             </div>
             <ul v-if="TYPE_GUIDES[info.ef_code]?.notes" class="type-notes">
@@ -298,9 +287,6 @@ h2,
   font-weight: 600;
   padding: 14px 18px;
 }
-.formula-line + .formula-line {
-  margin-top: 4px;
-}
 .table-scroll {
   overflow-x: auto;
 }
@@ -364,9 +350,27 @@ h2,
   border-color: #0f8a8a;
   box-shadow: 0 0 0 3px rgba(15, 138, 138, 0.15);
 }
+.type-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
 .type-card h3 {
-  margin: 0 0 14px;
+  margin: 0;
   font-size: 17px;
+}
+.detail-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0b6f6f;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.detail-link:hover {
+  text-decoration: underline;
 }
 .axis-desc {
   margin-bottom: 10px;
@@ -382,27 +386,6 @@ h2,
 }
 .axis-desc p + p {
   margin-top: 4px;
-}
-.type-formulas {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
-  margin-top: 16px;
-}
-.type-formula {
-  min-width: 0;
-}
-.type-formula-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #4a5568;
-  margin-bottom: 6px;
-}
-.type-formula-note {
-  font-size: 12px;
-  color: #8891a0;
-  line-height: 1.6;
-  margin-top: 6px;
 }
 .type-notes {
   margin: 14px 0 0;

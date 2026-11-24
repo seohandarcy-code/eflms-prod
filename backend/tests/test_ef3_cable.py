@@ -3,6 +3,7 @@
 - 기준 파일(ref_data_revised/schema_eflms_cable.py — 2026-11-20 사용자 횡전개 수정본)과 같은 입력 → 모든 계산 컬럼이 같은지
   (ref_data/ 원본 EF3는 옛 양식이라 더는 대조하지 않는다)
 - 감점 분기별 정답값(mock 범위에선 안 나오는 분기 포함), 온도기반손상률 공식, 1·2 중 나쁜 값 규칙(N/A는 공통 규칙)
+- 포설·종단 빈칸(구간 없음 — 빈 문자열로 저장, 기준 파일처럼 0으로 보고 비교)·최대부하 소수(Stage 22-8)
 - mock 생성값이 임포트 허용값을 통과하는지, 허용값 밖은 거부되는지, 3rd_har_leak_curr ↔ DB third_har_leak_curr
 - EF1·EF2와 공존(EF3만 교체해도 다른 유형 불변), 마이그레이션 왕복
 """
@@ -117,12 +118,12 @@ def test_deduction_branches(overrides, column, expected):
 
 
 def test_failure_rate_formula_grows_with_age():
-    """온도기반손상률 = (운전년수/40)·(1+0.005·상간온도차²)/exp((1.2/0.00008617)·(1/(최고온도+298.15) − 1/363.15))."""
+    """온도기반손상률 = (운전년수/40)·(1+0.005·상간온도차²)/exp((1.2/0.00008617)·(1/(최고온도+293.15) − 1/363.15)) — 2026-11-24 298.15 → 293.15."""
     start = date(2010, 1, 1)
     row = _base_row(operation_start_time=start, max_temp=25.0, diff_temp=2.0)
     calc = ef3_cable.calculate(row, as_of=date(2030, 1, 1))
     years = calc["operation_year"]
-    accel = math.exp((1.2 / 0.00008617) * (1 / (25.0 + 298.15) - 1 / 363.15))
+    accel = math.exp((1.2 / 0.00008617) * (1 / (25.0 + 293.15) - 1 / 363.15))
     expected = (years / 40) * ((1 + 0.005 * 4) / accel)
     assert calc["failure_rate"] == pytest.approx(expected)
     assert calc["failure_rate_minus"] == round(-expected * 1000, 1)
@@ -137,6 +138,35 @@ def test_laying_and_end_joint_na_follows_common_rule():
     """1·2 중 어느 한쪽이라도 N/A면 공통 N/A 규칙대로 그 감점은 0(na.py)."""
     assert ef3_cable.calculate(_base_row(laying_type="철탑", laying_type2=None))["laying_type_minus"] == 0
     assert ef3_cable.calculate(_base_row(end_joint=None, end_joint2="WEBG"))["end_joint_minus"] == 0
+
+
+# 빈칸(Stage 22-8): 기준 파일은 목록에 없는 값을 0으로 보고 min — 둘 다 빈칸이면 0, 한쪽만 빈칸이면 다른 쪽
+BLANK_CASES = [
+    ({"laying_type": "", "laying_type2": ""}, "laying_type_minus", 0),
+    ({"laying_type": "철탑", "laying_type2": ""}, "laying_type_minus", -24),
+    ({"laying_type": "", "laying_type2": "관로구"}, "laying_type_minus", -8),
+    ({"end_joint": "", "end_joint2": ""}, "end_joint_minus", 0),
+    ({"end_joint": "WEBG", "end_joint2": ""}, "end_joint_minus", -24),
+    ({"end_joint": "", "end_joint2": "단독EBA"}, "end_joint_minus", -6),
+]
+
+
+@pytest.mark.parametrize(("overrides", "column", "expected"), BLANK_CASES)
+def test_laying_and_end_joint_blank_means_no_section(overrides, column, expected):
+    assert ef3_cable.calculate(_base_row(**overrides))[column] == expected
+
+
+def test_blank_columns_are_only_laying_and_end_joint():
+    """빈칸은 포설·종단 네 칸만 — 다른 허용값 칸은 그대로 빈칸 거부."""
+    blank_ok = {c["name"] for c in ef3_cable.INPUT_COLUMNS if c.get("choices") and _check_allowed("", c) is None}
+    assert blank_ok == {"laying_type", "laying_type2", "end_joint", "end_joint2"}
+
+
+def test_max_load_accepts_decimal():
+    col = next(c for c in ef3_cable.INPUT_COLUMNS if c["name"] == "max_load")
+    assert col["dtype"] == "float"
+    calc = ef3_cable.calculate(_base_row(max_load=85.5))  # 용량 100 → 부하율 85.5%(80 초과 구간)
+    assert calc["load_percent"] == 85.5 and calc["load_minus"] == -12
 
 
 def test_base_row_totals_and_age_in_pof():
@@ -162,7 +192,8 @@ def test_worst_case_scores_can_go_negative_and_are_kept():
 def test_matches_reference_formulas(ref):
     random.seed(20261120)
     rows = [ef3_cable.generate_input_row() for _ in range(300)]
-    rows += [_base_row(**overrides) for overrides, _, _ in BRANCHES]
+    rows += [_base_row(**overrides) for overrides, _, _ in BRANCHES + BLANK_CASES]
+    rows += [_base_row(max_load=123.4, cable_mva=150)]
     for row in rows:
         ours = ef3_cable.calculate(row)
         theirs = dict(row)
@@ -231,6 +262,24 @@ async def test_import_valid_ef3_file_fills_all_cable_tables(session_factory, tmp
         assert {k: restored[k] for k in rows[0]} == rows[0]
 
 
+async def test_import_accepts_blank_laying_end_joint_and_decimal_max_load(session_factory, tmp_path):
+    rows = [ef3_cable.generate_input_row() for _ in range(3)]
+    rows[0].update(laying_type="", laying_type2="", end_joint="", end_joint2="", max_load=154.5)
+    rows[1].update(laying_type="철탑", laying_type2="", end_joint="", end_joint2="WEBG")
+    async with session_factory() as session:
+        result = await import_file(_write_ef3_dat(tmp_path, rows), "EF3", session)
+        assert result.ok, (result.file_errors, result.row_errors)
+        assert not result.na_values  # 빈칸은 N/A(null)로 세지 않는다
+        for i, (laying, end) in enumerate([(0, 0), (-24, -24)]):
+            eq_id = (await session.execute(select(Equipment.equipment_id).where(Equipment.equipment_name == rows[i]["tl_name"]))).scalar_one()
+            detail = await session.get(CableScoreDetail, eq_id)
+            assert (detail.laying_type_minus, detail.end_joint_minus) == (laying, end)
+            restored, _ = await ef3_cable.load_inputs(session, eq_id)
+            assert {k: restored[k] for k in rows[i]} == rows[i]  # 빈칸은 빈 문자열 그대로, 소수도 그대로
+        spec = await session.get(CableSpec, eq_id)
+        assert spec.laying_type2 == "" and spec.end_joint == ""
+
+
 @pytest.mark.parametrize(
     ("column", "bad_value", "reason_part"),
     [
@@ -244,6 +293,9 @@ async def test_import_valid_ef3_file_fills_all_cable_tables(session_factory, tmp
         ("cable_mva", 0, "미만"),                    # 부하율 분모
         ("tl_num", -1, "미만"),
         ("max_temp", -60.0, "미만"),                 # 온도가속계수 계산이 넘치지 않게
+        ("max_load", -0.5, "미만"),
+        ("max_load", "", "빈 값"),                    # 빈칸 허용은 포설·종단 네 칸만
+        ("emerge_resp", "", "허용값 아님"),
         ("tl_name", "", "빈 값"),
     ],
 )
@@ -385,5 +437,38 @@ def test_stage22_migration_converts_columns_and_back(tmp_path, monkeypatch):
         assert cols("cable_design_attribute")["reliability"] == "INTEGER"
         with sqlite3.connect(db_path) as conn:
             assert conn.execute("SELECT reliability FROM cable_design_attribute").fetchone()[0] is None  # 글자는 비움
+    finally:
+        get_settings.cache_clear()
+
+
+def test_stage22_8_migration_max_load_float_and_back(tmp_path, monkeypatch):
+    """Stage 22-8: max_load 정수 → 실수(값 유지), 되돌리면 반올림한 정수."""
+    db_path = tmp_path / "cable22_8.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path.as_posix()}")
+    get_settings.cache_clear()
+
+    def max_load_type():
+        with sqlite3.connect(db_path) as conn:
+            return {r[1]: r[2] for r in conn.execute("PRAGMA table_info(cable_condition)")}["max_load"]
+
+    try:
+        cfg = Config()
+        cfg.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
+        command.upgrade(cfg, "f1a7c3e9b5d4")
+        assert max_load_type() == "INTEGER"
+        with sqlite3.connect(db_path) as conn:
+            conn.execute("INSERT INTO equipment_type (ef_code, name) VALUES ('EF3', '케이블')")
+            conn.execute("INSERT INTO equipment (equipment_id, factory_code, ef_code, equipment_name, voltage, operation_start_time)"
+                         " VALUES (1, 'H1', 'EF3', 'tl1', 154000, '2010-01-01')")
+            conn.execute("INSERT INTO cable_condition (equipment_id, measured_at, max_load) VALUES (1, '2026-11-01', 150)")
+        command.upgrade(cfg, "a3d9e5f7c1b8")
+        assert max_load_type() == "FLOAT"
+        with sqlite3.connect(db_path) as conn:
+            assert conn.execute("SELECT max_load FROM cable_condition").fetchone()[0] == 150
+            conn.execute("UPDATE cable_condition SET max_load = 154.6")
+        command.downgrade(cfg, "f1a7c3e9b5d4")
+        assert max_load_type() == "INTEGER"
+        with sqlite3.connect(db_path) as conn:
+            assert conn.execute("SELECT max_load FROM cable_condition").fetchone()[0] == 155
     finally:
         get_settings.cache_clear()

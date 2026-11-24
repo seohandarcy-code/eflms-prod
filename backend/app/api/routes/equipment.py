@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_viewer
 from app.db.session import get_session
-from app.schemas.equipment import EquipmentDetail, EquipmentSummary, EquipmentTypeOut, ScoreHistoryPoint, SummaryKPI
+from app.schemas.equipment import EquipmentDetail, EquipmentSummary, EquipmentTypeOut, FormulaDocsOut, ScoreHistoryPoint, SummaryKPI
 from app.services import equipment_service
 
 # AUTH_MODE=sso면 로그인한 사람만(역할 무관) 조회할 수 있다 — none/local은 지금처럼 공개(Stage 16-1).
@@ -14,6 +14,15 @@ router = APIRouter(prefix="/api", tags=["equipment"], dependencies=[Depends(requ
 async def list_equipment_types(session: AsyncSession = Depends(get_session)) -> list[EquipmentTypeOut]:
     """등록된 설비유형, 유형별 설비 수, 감점 항목 메타데이터(화면 라벨용)."""
     return await equipment_service.list_equipment_types(session)
+
+
+@router.get("/equipment-types/{ef_code}/formulas", response_model=FormulaDocsOut)
+async def get_formula_docs(ef_code: str) -> FormulaDocsOut:
+    """감점 항목별 계산식(구간표·등급표·수식) — 지표설명 상세 페이지용(Stage 22-11)."""
+    docs = equipment_service.formula_docs(ef_code)
+    if docs is None:
+        raise HTTPException(status_code=404, detail="Unknown equipment type")
+    return docs
 
 
 @router.get("/equipment", response_model=list[EquipmentSummary])

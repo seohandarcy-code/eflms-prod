@@ -165,6 +165,8 @@ export interface TemplateColumn {
   max?: number;
   gt?: number;
   required?: boolean;
+  /** 빈칸 허용 — 빈 문자열로 저장(N/A와 다름, EF3 포설·종단 Stage 22-8) */
+  allow_blank?: boolean;
   na_allowed: boolean;
 }
 

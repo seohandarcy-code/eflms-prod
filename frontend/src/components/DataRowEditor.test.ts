@@ -14,12 +14,13 @@ vi.mock("../api/admin", () => ({
       { name: "factory_code", label: "사업장", dtype: "str", choices: ["H1", "K1"], na_allowed: false },
       { name: "name", label: "설비명", dtype: "str", na_allowed: false },
       { name: "grade", label: "등급", dtype: "str", choices: ["A", "B"], na_allowed: true },
+      { name: "laying", label: "포설", dtype: "str", choices: ["철탑"], allow_blank: true, na_allowed: true },
     ],
-    header: ["voltage", "factory_code", "name", "grade"],
+    header: ["voltage", "factory_code", "name", "grade", "laying"],
     extra_columns: [],
     rows: [
-      ["22900", "H1", "TR1", "A"],
-      ["154000", "K1", "TR2", "N/A"],
+      ["22900", "H1", "TR1", "A", ""],
+      ["154000", "K1", "TR2", "N/A", "철탑"],
     ],
   })),
   importPastedData: vi.fn(),
@@ -52,7 +53,11 @@ describe("DataRowEditor", () => {
     const firstRow = wrapper.findAll("tbody tr")[0];
     expect(firstRow.findAll(".locked").map((el) => el.text())).toEqual(["H1", "TR1"]);
     expect(firstRow.findAll("input").length).toBe(1); // voltage
-    expect(firstRow.findAll("select").length).toBe(1); // grade
+    expect(firstRow.findAll("select").length).toBe(2); // grade, laying
+    // 빈칸을 받는 칸은 빈 선택지를 "(빈칸)"으로, 아닌 칸은 "(선택)"으로(Stage 22-8)
+    const [grade, laying] = firstRow.findAll("select");
+    expect(grade.find("option").text()).toBe("(선택)");
+    expect(laying.find("option").text()).toBe("(빈칸)");
   });
 
   it("adds an editable new row and duplicates the selected row", async () => {
@@ -88,7 +93,7 @@ describe("DataRowEditor", () => {
 
     const call = vi.mocked(importPastedData).mock.calls[0][1];
     expect(call).toMatchObject({ efCode: "EF1", table: "", replace: false, check: true });
-    expect(call.text).toBe("voltage\tfactory_code\tname\tgrade\nx\tK1\tTR2\tN/A\n");
+    expect(call.text).toBe("voltage\tfactory_code\tname\tgrade\tlaying\nx\tK1\tTR2\tN/A\t철탑\n");
     const cell = wrapper.find("td.cell-error");
     expect(cell.attributes("title")).toBe("정수가 아님");
     expect(wrapper.text()).toContain("오류 1건");

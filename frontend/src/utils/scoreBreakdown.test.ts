@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getEvidence, getReasonsByAxis } from "./scoreBreakdown";
-import type { Axis, BreakdownItem, EquipmentDetail, ScoreDetail } from "../types/equipment";
+import type { Axis, BreakdownItem, Ef3TypeDetail, EquipmentDetail, ScoreDetail } from "../types/equipment";
 
 // 백엔드 /api/equipment-types의 breakdown 모양(일부만). 라벨은 메타데이터가 단일 원본이다.
 const item = (field: string, label: string, group: string | null = null): BreakdownItem => ({ field, label, group, summed: true });
@@ -149,6 +149,10 @@ describe("getEvidence", () => {
     } as unknown as EquipmentDetail;
     expect(getEvidence("load_minus", detail)).toBe("부하율 91.8% (최대부하 380 / 용량 414)");
     expect(getEvidence("end_joint_minus", detail)).toBe("종단접속함 단독EBA / WEBG 중 나쁜 값");
+    // 빈칸(구간 없음)은 N/A와 따로 표시(Stage 22-8)
+    const blank = JSON.parse(JSON.stringify(detail)) as EquipmentDetail;
+    Object.assign((blank.type_detail as Ef3TypeDetail).spec, { end_joint: "", end_joint2: "WEBG" });
+    expect(getEvidence("end_joint_minus", blank)).toBe("종단접속함 (빈칸) / WEBG 중 나쁜 값");
     expect(getEvidence("rep_cost_minus", detail)).toBe("사고복구비용 등급 A");
     expect(getEvidence("tl_minus", detail)).toBe("타T/L 공동포설 2회선 (공동)");
     expect(getEvidence("pd_minus", detail)).toBe("PD진단결과 요주의");

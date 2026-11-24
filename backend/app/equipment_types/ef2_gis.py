@@ -39,6 +39,7 @@ from app.db.models import (
     GisScoreDetail,
     GisSf6Reading,
 )
+from app.equipment_types import formula_docs as fd
 from app.equipment_types.na import evaluate
 from app.equipment_types.rounding import round1
 from app.schemas.ef2 import (
@@ -522,6 +523,93 @@ BREAKDOWN = {
         {"field": "vt_la_minus", "label": "부품신뢰성강화"},
     ],
 }
+
+# 지표설명 상세 페이지의 계산식(Stage 22-11) — 실제 계산과 같은지 tests/test_formula_docs.py가 확인한다.
+def _years_ago(n: int) -> date:
+    return date(fd.EXAMPLE_AS_OF.year - n, 1, 1)
+
+
+_SF6_OK = dict(sf6_so2=0, sf6_leak="없음", sf6_h2o=100, sf6_purity=99)
+_YN_DOF = [
+    ("offline_diag_minus", "offline_diag", -15), ("tbm_minus", "tbm", -12), ("conn_rev_minus", "conn_rev", -4),
+    ("leak_str_minus", "leak_str", -4), ("insul_str_minus", "insul_str", -4), ("vt_la_minus", "vt_la_str", -3),
+]
+FORMULA_DOCS = [
+    # POF — 기계적
+    fd.steps("cb_op_num_minus", "cb_op_num", [(2000, -8), (1000, -6), (500, -4), (300, -2)], op="ge",
+             var_label="차단기동작횟수", unit="회"),
+    fd.expr(
+        "cb_stat_minus", fd.weibull_tex("72", "3.21", "1"), inputs=["operation_start_time"],
+        symbols=[{"sym": "t", "label": "사용년수"}, {"sym": "η, β", "label": "와이블 척도 72년 · 형상 3.21"}],
+        examples=[fd.example(f"사용 {n}년 → {fd.signed(v)}", v, as_of=fd.EXAMPLE_AS_OF, operation_start_time=_years_ago(n))
+                  for n, v in ((20, -1.6), (30, -5.8), (40, -14.1))],
+    ),
+    fd.expr(
+        "insul_stat_minus", fd.weibull_tex("4199", "0.75", "2"), inputs=["operation_start_time"],
+        symbols=[{"sym": "t", "label": "사용년수"}, {"sym": "η, β", "label": "와이블 척도 4,199년 · 형상 0.75"}],
+        examples=[fd.example(f"사용 {n}년 → {fd.signed(v)}", v, as_of=fd.EXAMPLE_AS_OF, operation_start_time=_years_ago(n))
+                  for n, v in ((10, -2.1), (20, -3.6), (30, -4.9))],
+    ),
+    # POF — 전기적
+    fd.steps("rated_trip_count_minus", "rated_trip_count", [(10, -12), (5, -6)], op="ge", var_label="정격 차단 동작 횟수", unit="회"),
+    fd.steps("cum_trip_current_minus", "cum_trip_current", [(500, -16, "gt"), (101, -12, "gt"), (25, -8, "ge")],
+             var_label="누적 차단 전류"),
+    fd.steps("load_minus", "load_percent", [(90, -30), (80, -20), (70, -10)], var_label="부하율", unit="%"),
+    fd.expr(
+        "leakage_curr_minus", [r"\text{감점} = \begin{cases} -6 & \text{누설전류} \ge \text{전압별 기준} \\ 0 & \text{그 밖} \end{cases}"],
+        inputs=["voltage", "leakage_curr"],
+        table={"columns": ["전압", "감점 기준(누설전류)"], "rows": [["154kV", "0.54 이상"], ["345kV", "1.2 이상"]]},
+        examples=[
+            fd.example("154kV · 0.6 → −6", -6.0, voltage=154000, leakage_curr=0.6),
+            fd.example("154kV · 0.5 → 0", 0.0, voltage=154000, leakage_curr=0.5),
+            fd.example("345kV · 1.2 → −6", -6.0, voltage=345000, leakage_curr=1.2),
+        ],
+    ),
+    fd.age_item(),
+    # POF — 화학적
+    fd.mapping("part_dischar_minus", "part_dischar_pat", {"Y": -15, "N": 0}),
+    fd.expr(
+        "sf6_minus",
+        [r"\text{감점} = \text{SO}_2\text{ 감점} + \text{누기 감점} + \text{수분·순도 감점}"],
+        inputs=["sf6_so2", "sf6_leak", "sf6_h2o", "sf6_purity"],
+        table={
+            "columns": ["구분", "조건", "감점"],
+            "rows": [
+                ["SO₂", "1 이상", "−20"],
+                ["누기", "있음", "−12"],
+                ["수분·순도", "수분 150 이하(순도는 보지 않음)", "0"],
+                ["", "수분 300 초과 또는 순도 95 이하", "−15"],
+                ["", "그 밖(수분 150 초과)", "−10"],
+            ],
+        },
+        examples=[
+            fd.example("SO₂ 0 · 누기 없음 · 수분 100 · 순도 99 → 0", 0.0, **_SF6_OK),
+            fd.example("수분 200 · 순도 99 → −10", -10.0, **{**_SF6_OK, "sf6_h2o": 200}),
+            fd.example("수분 200 · 순도 94 → −15", -15.0, **{**_SF6_OK, "sf6_h2o": 200, "sf6_purity": 94}),
+            fd.example("수분 100 · 순도 90 → 0(수분이 낮아 순도는 보지 않음)", 0.0, **{**_SF6_OK, "sf6_purity": 90}),
+            fd.example("SO₂ 1 · 누기 있음 · 수분 400 → −47", -47.0, sf6_so2=1, sf6_leak="있음", sf6_h2o=400, sf6_purity=99),
+        ],
+        note="수분·순도는 원본 판정 순서 그대로 수분을 먼저 봅니다.",
+    ),
+    fd.steps("elec_room_minus", "elec_room_max_temp", [(30, -4)], op="ge", var_label="전기실 최대온도", unit="℃"),
+    # COF
+    fd.mapping("in_vol_minus", "in_vol", {"A": -16, "B": -8, "C": 0}),
+    fd.mapping("productivity_minus", "capa_times_load", {"A": -16, "B": -12, "C": -8, "D": -4, "E": 0}),
+    fd.mapping("fire_spread_minus", "fire_spread", {"A": -6, "B": 0}),
+    fd.mapping("env_minus", "env_loc", {"A": -6, "B": -3, "C": 0}),
+    fd.mapping("emerge_resp_minus", "emerge_resp_pat", {"A": -6, "B": -4, "C": -2, "D": -1, "E": 0}),
+    fd.mapping("rep_cost_minus", "rep_cost", {"A": -8, "B": -6, "C": -4, "D": -2, "E": 0}),
+    fd.mapping("rep_time_minus", "rep_time", {"A": -4, "B": -3, "C": -2, "D": -1, "E": 0}),
+    # DOF
+    fd.mapping("in_line_minus", "in_line_num", {"A": -30, "B": -15, "C": 0}),
+    fd.mapping("ato_minus", "ato", {"N": -30, "Y": 0}),
+    fd.mapping("reliability_minus", "reliability", {"A": -16, "B": 0}),
+    fd.mapping("online_diag_minus", "online_diag", {"A": -15, "B": -10, "C": -5, "D": 0}),
+    *(fd.mapping(field, var, {"N": minus, "Y": 0}) for field, var, minus in _YN_DOF),
+]
+FORMULA_NOTES = [
+    "경과연수는 원본에서 합산하지 않던 항목으로, 이 시스템은 전기적 감점에 더합니다(2026-10-19 결정). 차단기·절연물 고장확률도 사용년수로 커집니다.",
+]
 
 _DOMAIN_MODELS = (GisOperation, GisDiagnosis, GisSf6Reading, GisConsequenceAttribute, GisDesignAttribute, GisScoreDetail)
 # 입력 컬럼 이름 = 테이블 컬럼 이름인 항목(원본 → DB 그대로 저장)

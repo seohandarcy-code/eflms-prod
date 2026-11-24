@@ -126,11 +126,11 @@ def _check_row_extra(value, col: dict) -> str | None:
 def _parse_file(path: str, spec: dict, result: ReferenceImportResult) -> list[dict]:
     """검증을 통과한 행 dict 목록. 오류는 result에 쌓는다."""
     text = _read_text(path)
-    header, raw_rows = _parse_lines(text)
+    columns_by_name = {c["name"]: c for c in spec["columns"]}
+    header, raw_rows = _parse_lines(text, columns_by_name)
     if not header:
         result.file_errors.append("파일이 비어 있음")
         return []
-    columns_by_name = {c["name"]: c for c in spec["columns"]}
     matched = [columns_by_name.get(h.strip()) for h in header]
     result.unknown_columns = [h.strip() for h, col in zip(header, matched) if col is None and h.strip()]
     missing = [name for name in columns_by_name if name not in {c["name"] for c in matched if c}]

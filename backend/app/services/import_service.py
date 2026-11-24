@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import math
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -87,12 +88,15 @@ def _cast_value(raw: str, dtype: str):
 
 
 def _check_allowed(value, col: dict) -> str | None:
-    """컬럼에 선언된 허용값(choices/min/max/required)을 검사해 위반 사유를 돌려준다(없으면 None).
+    """컬럼에 선언된 허용값(choices/min/max/required/allow_blank)을 검사해 위반 사유를 돌려준다(없으면 None).
 
     선언하지 않은 컬럼은 검사하지 않는다 — EF1처럼 허용값을 두지 않은 유형은 동작이 그대로다.
     """
     if col.get("required") and value == "":
         return "빈 값"
+    # allow_blank를 선언한 칸만 빈칸을 받는다(빈 문자열로 저장 — null인 N/A와 다름, Stage 22-8)
+    if col.get("allow_blank") and value == "":
+        return None
     choices = col.get("choices")
     if choices is not None and value not in choices:
         return f"허용값 아님({', '.join(str(c) for c in choices)})"
@@ -172,14 +176,26 @@ def _unquote(cell: str) -> str:
     return cell
 
 
-def _parse_lines(text: str) -> tuple[list[str], list[tuple[int, list[str]]]]:
-    """헤더와 (파일 줄 번호, 칸 목록)을 돌려준다. 빈 줄은 건너뛰되 줄 번호는 실제 파일 기준."""
+def _parse_lines(
+    text: str, known_names: Iterable[str] | None = None
+) -> tuple[list[str], list[tuple[int, list[str]]]]:
+    """헤더와 (파일 줄 번호, 칸 목록)을 돌려준다. 빈 줄은 건너뛰되 줄 번호는 실제 파일 기준.
+
+    known_names(유형·참고표의 영문 컬럼명)를 주면, 둘째 줄이 첫 줄보다 영문 컬럼명과 더 많이 맞을 때
+    첫 줄을 한글 항목명 행(내려받기 파일의 1행, Stage 22-9)으로 보고 건너뛴다.
+    한글명이 없는 칸은 항목명 행에도 영문명이 들어가므로 "하나도 없음"이 아니라 개수로 비교한다.
+    영문 헤더만 있는 파일은 첫 줄이 모든 컬럼명과 맞아 둘째 줄(데이터)이 넘을 수 없다.
+    """
     numbered = [(n, line) for n, line in enumerate(text.splitlines(), start=1) if line.strip() != ""]
     if not numbered:
         return [], []
-    header = [_unquote(c) for c in numbered[0][1].split("\t")]
-    rows = [(n, [_unquote(c) for c in line.split("\t")]) for n, line in numbered[1:]]
-    return header, rows
+    split = [(n, [_unquote(c) for c in line.split("\t")]) for n, line in numbered]
+    if known_names is not None and len(split) >= 2:
+        known = set(known_names)
+        hits = lambda cells: len({c.strip() for c in cells} & known)  # noqa: E731
+        if hits(split[1][1]) > hits(split[0][1]):
+            split = split[1:]
+    return split[0][1], split[1:]
 
 
 async def import_file(
@@ -205,7 +221,7 @@ async def import_file(
     columns_by_name = {col["name"]: col for col in input_columns}
 
     text = _read_text(path)
-    header, raw_rows = _parse_lines(text)
+    header, raw_rows = _parse_lines(text, columns_by_name)
     if not header:
         result.file_errors.append("파일이 비어 있음")
         return result

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mount } from "@vue/test-utils";
-import { formatScore, na, typeLabel } from "./formatValue";
+import { formatScore, na, typeLabel, naOrBlank } from "./formatValue";
 import Ef4DetailBody from "../components/detail/Ef4DetailBody.vue";
 import type { Ef4TypeDetail } from "../types/equipment";
 
@@ -45,5 +45,13 @@ describe("typeLabel", () => {
   it("설비명 뒤에 EF 코드를 붙이고, 이름이 없으면 코드만", () => {
     expect(typeLabel("변압기", "EF1")).toBe("변압기 EF1");
     expect(typeLabel(undefined, "EF9")).toBe("EF9");
+  });
+});
+
+describe("naOrBlank", () => {
+  it("빈칸(구간 없음)과 N/A(null)를 따로 보여준다 — EF3 포설·종단", () => {
+    expect(naOrBlank("")).toBe("(빈칸)");
+    expect(naOrBlank(null)).toBe("N/A");
+    expect(naOrBlank("철탑")).toBe("철탑");
   });
 });

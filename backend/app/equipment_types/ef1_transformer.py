@@ -36,6 +36,7 @@ from app.db.models import (
     TransformerScoreDetail,
     TransformerSpec,
 )
+from app.equipment_types import formula_docs as fd
 from app.equipment_types.na import evaluate
 from app.equipment_types.rounding import round1
 from app.schemas.ef1 import (
@@ -793,6 +794,113 @@ BREAKDOWN = {
         {"field": "oltc2_minus", "label": "OLTC(진공식)"},
     ],
 }
+
+# 지표설명 상세 페이지의 계산식(Stage 22-11) — 실제 계산과 같은지 tests/test_formula_docs.py가 확인한다.
+# 감점 항목 이름과 계산 컬럼 이름이 다른 두 항목(equipment_service._CALC_NAME과 같음)
+FORMULA_CALC_NAMES = {"oltc_96t_minus": "oltc_96T_minus", "first_voltage_minus": "1st_voltage_minus"}
+_GAS0 = dict(dga_h2=0, dga_c2h2=0, dga_c2h4=0, dga_c2h6=0, dga_ch4=0, dga_c3h8=0, dga_co=100, dga_co2=1000)
+_GRADE_CASES = (
+    r"\text{감점} = \begin{cases} 0 & \text{정상} \\ -12 & \text{추적관리1} \\ -24 & \text{추적관리2} \\ -36 & \text{이상} \end{cases}"
+)
+_APPLIED = [
+    ("ato_minus", "ato", -36), ("online_og_minus", "online_og_chk", -30), ("offline_safety_minus", "offline_safety_chk", -25),
+    ("winding_minus", "insul_1st_lvup", -16), ("prod_life_minus", "high_insul_adt", -6), ("connect_part_minus", "double_insul", -2),
+    ("temp_inc_limit_minus", "55k_install", -9), ("test_reliability_minus", "sfra_test", -8), ("bushing_minus", "rip_install", -8),
+    ("oltc2_minus", "vacuum_set", -8),
+]
+FORMULA_DOCS = [
+    # POF
+    fd.age_item(),
+    fd.expr(
+        "dga_minus", [_GRADE_CASES],
+        inputs=["dga_h2", "dga_c2h2", "dga_c2h4", "dga_c2h6", "dga_ch4", "dga_c3h8", "dga_co", "dga_co2"],
+        table={
+            "columns": ["가스(ppm)", "추적관리1", "추적관리2", "이상"],
+            "rows": [
+                ["H₂", "200 초과", "400 초과", "800 초과"],
+                ["C₂H₂", "", "", "1 초과"],
+                ["C₂H₄", "100 초과", "200 초과", "500 초과"],
+                ["C₂H₆", "200 초과", "350 초과", "750 초과"],
+                ["CH₄", "150 초과", "250 초과", "750 초과"],
+                ["C₃H₈", "150 초과", "250 초과", "750 초과"],
+                ["CO", "800 초과", "1,200 초과", ""],
+                ["CO₂", "5,000 초과", "7,000 초과", ""],
+                ["CO₂ ÷ CO", "3 미만", "", ""],
+            ],
+        },
+        examples=[
+            fd.example("모든 가스 기준 이하 → 0", 0.0, **_GAS0),
+            fd.example("H₂ 450 → 추적관리2 → −24", -24.0, **{**_GAS0, "dga_h2": 450}),
+            fd.example("C₂H₂ 2 → 이상 → −36", -36.0, **{**_GAS0, "dga_c2h2": 2}),
+            fd.example("H₂ 250 · C₂H₂ 2 → H₂가 먼저 판정돼 추적관리1 → −12", -12.0, **{**_GAS0, "dga_h2": 250, "dga_c2h2": 2}),
+        ],
+        note="표의 위쪽 가스부터 차례로 보고, 처음 기준을 넘는 가스의 등급으로 판정합니다(가장 나쁜 등급이 아님 — 원본 순서 그대로). "
+             "원본 수식에서 POF 합계에 더하지 않아 점수에는 반영되지 않습니다.",
+    ),
+    fd.steps("load_minus", "load_percent", [(81, -20), (71, -15), (61, -10), (51, -5)], op="ge", var_label="부하율", unit="%"),
+    fd.steps("temp_minus", "coil_max_temp", [(90, -36), (80, -24), (70, -12)], var_label="권선최고온도", unit="℃"),
+    fd.steps(
+        "dielec_str_te_minus", "dielec_str_te_avg", [(20, 0)], op="ge", otherwise=-8, var_label="절연내력 평균",
+        inputs=[f"dielec_str_te_{i}" for i in range(1, 7)],
+        tex=r"\text{평균} = \dfrac{\text{절연내력시험}_1 + \cdots + \text{절연내력시험}_6}{6}",
+        note="평균 20 이상 적합, 미만 부적합.",
+    ),
+    fd.steps("acid_measure_minus", "acid_measure_val", [(0.4, -8), (0.2, -4)], op="ge", var_label="산가도 측정값",
+             note="0.4 이상 부적합, 0.2 이상 요주의, 그 밖 적합."),
+    fd.steps("moisture_minus", "moisture_rslt", [(50, -8, "gt"), (40, -4, "ge")], var_label="수분시험결과",
+             note="50 초과 이상, 40 이상 요주의, 그 밖 정상."),
+    fd.steps(
+        "furan_minus", "furan_total_per_year", [(5, -24)], var_label="Furan 연평균",
+        inputs=["furan_5H2F", "furan_2FOL", "furan_2FAL", "furan_2ACF", "furan_5M2F", "furan_diag_time", "operation_start_time"],
+        tex=r"\text{연평균} = \dfrac{\text{5H2F} + \text{2FOL} + \text{2FAL} + \text{2ACF} + \text{5M2F}}{(\text{Furan진단일} - \text{가동년월}) \div 365}",
+        note="진단 시점 사용년수로 나누므로 점수 기준일이 지나도 바뀌지 않습니다. 진단일이 가동년월보다 늦지 않으면 평가하지 않습니다(감점 0).",
+    ),
+    fd.mapping("part_discharge_minus", "part_discharge_diag", {"양호": 0, "이상": -20}, default=-20),
+    fd.mapping("oltc_96t_minus", "oltc_96T_diag", {"정상": 0, "이상": -12}, default=-12),
+    fd.expr(
+        "oltc_minus", [r"\text{감점} = \begin{cases} -12 & \text{이상} \\ 0 & \text{정상} \end{cases}"],
+        inputs=["oltc_type", "oltc_rslt"],
+        table={"columns": ["탭절환회수타입", "이상 판정(탭절환회수)"], "rows": [["Oil", "50,000 이상"], ["Vacuum", "300,000 이상"]]},
+        examples=[
+            fd.example("Oil · 60,000회 → −12", -12.0, oltc_type="Oil", oltc_rslt=60000),
+            fd.example("Oil · 40,000회 → 0", 0.0, oltc_type="Oil", oltc_rslt=40000),
+            fd.example("Vacuum · 300,000회 → −12", -12.0, oltc_type="Vacuum", oltc_rslt=300000),
+        ],
+        note="타입 표기가 Oil·Vacuum과 정확히 같을 때만 판정하고, 다른 표기는 정상으로 봅니다.",
+    ),
+    fd.mapping("thermal_img_minus", "thermal_img_temp", {"정상": 0, "이상": -8}, default=-8),
+    fd.mapping("noise_minus", "noise_diag", {"정상": 0, "이상": -2}, default=-2),
+    # COF
+    fd.steps("first_voltage_minus", "1st_voltage", [(154000, -24), (22900, -18), (6600, -12), (440, -6)],
+             var_label="1차전압", unit="V", inputs=["voltage"]),
+    fd.steps(
+        "productivity_minus", "capa_times_load", [(100, -36), (50, -30), (20, -24), (10, -18), (5, -12), (1, -6)],
+        var_label="용량 × 부하율", inputs=["ONAN_val", "load_percent"],
+        tex=r"\text{용량} \times \text{부하율} = \dfrac{\text{자냉식용량} \times \text{부하율}}{100}",
+    ),
+    fd.mapping("fire_minus", "fire_vul_type", {"유입": -8, "몰드": 0}),
+    fd.mapping("fire_spread_minus", "fire_spread_loc", {"옥외": -12, "미분리": -8, "미설치": -4, "옥내": 0}),
+    fd.mapping("emerge_response_minus", "emerge_response_1s", {"불가": -6, "가능": 0}),
+    fd.steps(
+        "rep_cost_minus", "1st_voltage", [(154000, -6), (22900, -4), (11000, -2)], var_label="1차전압", unit="V", inputs=["voltage"],
+        note="1차전압으로 교체비용 값(154kV 초과 30, 22.9kV 초과 20, 11kV 초과 8, 6.6kV 초과 1.5, 그 밖 1)을 정하고, "
+             "그 값으로 감점합니다(50 초과 −8, 20 초과 −6, 10 초과 −4, 5 초과 −2). 표는 나올 수 있는 결과를 전압 구간으로 정리한 것입니다.",
+    ),
+    fd.steps(
+        "rep_time_minus", "1st_voltage", [(22900, -8), (11000, -6), (6600, -2)], var_label="1차전압", unit="V", inputs=["voltage"],
+        note="원본 수식대로 교체기간 감점도 교체비용 값으로 판정합니다(12 초과 −8, 6 초과 −6, 3 초과 −4, 1 초과 −2). "
+             "교체기간 값(10·8·6·3년)은 계산되지만 감점에는 쓰이지 않습니다.",
+    ),
+    # DOF
+    fd.mapping("redundancy_minus", "redundancy", {"N+N": 0, "N+1": -18, "N+0": -36}, default=-36),
+    *(fd.mapping(field, var, {"미적용": minus, "적용": 0}) for field, var, minus in _APPLIED[:3]),
+    fd.steps("sec_minus", "sec_num", [(4, 0), (3, -2)], op="ge", otherwise=-4, var_label="보호요소수량"),
+    fd.steps("alarm_minus", "alarm_num", [(5, 0), (4, -1), (3, -2)], op="ge", otherwise=-3, var_label="알람요소수량"),
+    *(fd.mapping(field, var, {"미적용": minus, "적용": 0}) for field, var, minus in _APPLIED[3:]),
+]
+FORMULA_NOTES = [
+    "등급표에 '정상'·'양호'로 적힌 항목은 그 밖의 어떤 표기든 감점 쪽(표의 감점 값)으로 계산합니다.",
+]
 
 _DOMAIN_MODELS = (TransformerSpec, DgaReading, FuranReading, DielectricTest, OilTest, LoadCondition, PeriodicInspection, DesignAttribute, TransformerScoreDetail)
 

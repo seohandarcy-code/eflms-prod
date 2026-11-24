@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Annotated, Literal, Union
+from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -139,3 +139,21 @@ class EquipmentTypeOut(BaseModel):
     ef_name: str
     equipment_count: int
     breakdown: dict[str, list[BreakdownItem]]
+
+
+class FormulaAxisOut(BaseModel):
+    axis: str
+    label: str
+    # 항목 형태(steps/map/worse/expr)마다 칸이 달라 dict로 둔다 — 형식은 app/equipment_types/formula_docs.py
+    items: list[dict[str, Any]]
+
+
+class FormulaDocsOut(BaseModel):
+    """지표설명 상세 페이지의 유형별 계산식(Stage 22-11). documented=False면 아직 설명을 채우지 않은 유형."""
+
+    ef_code: str
+    ef_name: str
+    documented: bool
+    total_tex: str
+    axes: list[FormulaAxisOut]
+    common_rules: list[str]

@@ -4,7 +4,7 @@ from datetime import date
 from sqlalchemy import delete, func, select
 
 from app.db.models import BatteryDischargeHistory, Equipment, ScoreSnapshot
-from app.equipment_types import ef6_vdp, ef7_battery
+from app.equipment_types import ef3_cable, ef6_vdp, ef7_battery
 from app.services.import_service import import_file
 from app.services.ingest import ingest_row
 from app.services.reference_data import calc_options, ensure_mock_reference
@@ -85,6 +85,22 @@ async def test_field_errors_and_na(client, session_factory):
     assert body["ok"]
     noise = next(i for i in body["breakdown"]["pof"] if i["label"] == "소음")
     assert noise["value"] == 0  # N/A면 평가하지 않음(감점 0)
+
+
+async def test_ef3_blank_laying_and_decimal_load(client, session_factory):
+    """Stage 22-8: 포설·종단 빈칸은 받고(다른 쪽 감점), 최대부하는 소수도 받는다 — 데이터 입력과 같은 검사."""
+    row = ef3_cable.generate_input_row()
+    row["factory_code"] = "H1"
+    await _seed(session_factory, ef3_cable, [row])
+    sample = (await client.get("/api/simulator/EF3/sample")).json()
+    values = dict(sample["values"], laying_type="철탑", laying_type2="", end_joint="", end_joint2="", max_load="154.5")
+    body = (await client.post("/api/simulator/EF3/calculate", json={"values": values})).json()
+    assert body["ok"], body["errors"]
+    cof = {i["label"]: i["value"] for i in body["breakdown"]["cof"]}
+    assert cof["포설방법"] == -24 and cof["종단접속함"] == 0
+    bad = dict(values, emerge_resp="")
+    body = (await client.post("/api/simulator/EF3/calculate", json={"values": bad})).json()
+    assert [e["column"] for e in body["errors"]] == ["emerge_resp"]
 
 
 async def test_simulator_never_writes(client, session_factory):

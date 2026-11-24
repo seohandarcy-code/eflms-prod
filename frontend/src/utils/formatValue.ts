@@ -8,6 +8,12 @@ export interface NaOptions {
 }
 
 export const NA_TEXT = "N/A";
+export const BLANK_TEXT = "(빈칸)";
+
+// 빈칸을 받는 칸(EF3 포설방법·종단접속함 1·2, Stage 22-8) — 빈 문자열은 "구간 없음"이라 N/A(null)와 따로 보여준다.
+export function naOrBlank(value: string | null | undefined): string {
+  return value === "" ? BLANK_TEXT : na(value);
+}
 
 // 점수 지표(POF·COF·DOF, 감점 항목, 종합점수)는 모든 설비유형에서 소수 첫째 자리로 보여준다(2026-11-06).
 // 백엔드가 이미 소수 첫째 자리로 반올림해 내려주므로(app/equipment_types/rounding.py) 여기서는 자릿수만 맞춘다.

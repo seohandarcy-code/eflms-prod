@@ -35,6 +35,7 @@ from app.db.models import (
     SwitchgearScoreDetail,
     SwitchgearSpec,
 )
+from app.equipment_types import formula_docs as fd
 from app.equipment_types.na import evaluate
 from app.equipment_types.rounding import round1
 from app.schemas.ef4 import (
@@ -376,6 +377,75 @@ BREAKDOWN = {
         {"field": "spec_use_minus", "label": "스펙강화(장수명FAN,조명등)", "group": "복구시간"},
     ],
 }
+
+# 지표설명 상세 페이지의 계산식(Stage 22-11) — 실제 계산과 같은지 tests/test_formula_docs.py가 확인한다.
+FORMULA_DOCS = [
+    # POF — 내구성
+    fd.age_item(),
+    fd.expr(
+        "cb_stat_minus", fd.weibull_tex("39.24", "7.03", "4.5"), inputs=["operation_start_time"],
+        symbols=[{"sym": "t", "label": "사용년수"}, {"sym": "η, β", "label": "와이블 척도 39.24년 · 형상 7.03"}],
+        examples=[fd.example(f"사용 {n}년 → {fd.signed(v)}", v, as_of=fd.EXAMPLE_AS_OF,
+                             operation_start_time=date(fd.EXAMPLE_AS_OF.year - n, 1, 1))
+                  for n, v in ((20, -3.9), (30, -63.2), (35, -162.4))],
+        note="형상 계수가 커서 30년 무렵부터 감점이 빠르게 커집니다. 상한은 없습니다(최대 −450).",
+    ),
+    # POF — 열적
+    fd.mapping("part_thermal_chk_minus", "part_thermal_chk", {"양호": 0, "불량": -4}, default=-4),
+    fd.expr(
+        "elec_room_avg_temp_minus",
+        [r"\text{감점} = \begin{cases} -(T - 30) \times 2 & T > 30 \\ 0 & T \le 30 \end{cases}"],
+        inputs=["elec_room_avg_temp"], symbols=[{"sym": "T", "label": "전기실평균온도(℃)"}],
+        examples=[fd.example("33℃ → −6", -6.0, elec_room_avg_temp=33), fd.example("25℃ → 0", 0.0, elec_room_avg_temp=25)],
+    ),
+    fd.steps("temp_diff_chk_minus", "temp_diff_chk", [(5, -8), (3, -4)], var_label="각상별온도편차", unit="℃"),
+    fd.steps("max_temp_chk_minus", "max_temp_chk", [(40, -8), (30, -4)], var_label="차단기CLIP최고온도", unit="℃"),
+    fd.steps("load_minus", "load_chk", [(0.8, -8), (0.5, -4)], var_label="부하율(0~1 비율)"),
+    # POF — 물리적
+    fd.mapping("ex_box_chk_minus", "ex_box_chk", {"양호": 0, "불량": -1}, default=-1),
+    fd.mapping("noise_chk_minus", "noise_chk", {"양호": 0, "불량": -1}, default=-1),
+    fd.mapping("bolt_chk_minus", "bolt_chk", {"양호": 0, "불량": -1}, default=-1),
+    # COF — 계통
+    fd.expr(
+        "scale_dam_chk_minus",
+        [r"\text{감점} = \begin{cases} -30 & S > 5000 \\ -6 \times S \div 1000 & 0 \le S \le 5000 \end{cases}"],
+        inputs=["scale_dam_chk"], symbols=[{"sym": "S", "label": "피해규모점검결과"}],
+        examples=[fd.example("450 → −2.7", -2.7, scale_dam_chk=450), fd.example("6,000 → −30", -30.0, scale_dam_chk=6000)],
+    ),
+    fd.mapping("install_building_minus", "install_building",
+               {"FAB동": -12, "UT동": -8, "GCS동": -8, "변전소": -8, "그린동": -4, "사무동": 0, "기타": 0}),
+    fd.mapping("sup_sys_chk_minus", "sup_sys_chk", {"비상": -3, "일반": 0}),
+    # COF — 비용
+    fd.mapping("prod_chk_minus", "prod_chk", {"생산": -4, "비생산": 0}),
+    fd.mapping("op_chk_minus", "op_chk", {"가동": -3, "비가동": 0}),
+    fd.steps("replace_chk_minus", "replace_chk", [(1, -6), (0.5, -2)], var_label="교체비용점검결과"),
+    # COF — 기간
+    fd.steps("recovery_time_chk_minus", "recovery_time_chk", [(5, -9), (1, -6), (0, -3)], var_label="복구시 부하정상동작시간"),
+    fd.steps("replace_time_chk_minus", "replace_time_chk", [(30, -6), (10, -4), (1, -2)], var_label="설비교체기간"),
+    # DOF — 계통
+    fd.mapping("reliability_minus", "reliability", {"X": -4, "O": 0}),
+    fd.mapping("ato_minus", "ato", {"미적용": -4, "적용": 0}, default=-4),
+    # DOF — 비용
+    fd.mapping("cb_inspect_minus", "cb_inspect", {"미실시": -2, "실시": 0}),
+    fd.mapping("relay_chk_minus", "relay_chk", {"미실시": -1, "실시": 0}),
+    fd.mapping("online_diag_minus", "online_diag", {"미적용": -2, "적용": 0}),
+    # DOF — 복구시간
+    fd.mapping("part_shortage_minus", "part_shortage", {"단종": -1, "공급가능": 0}, default=-1),
+    fd.expr(
+        "ct_use_minus", [r"\text{감점} = \begin{cases} -1 & \text{가동 연도} < 2010 \\ 0 & \text{그 밖} \end{cases}"],
+        inputs=["operation_start_time"],
+        examples=[fd.example("2009년 가동 → −1", -1.0, operation_start_time=date(2009, 12, 1)),
+                  fd.example("2010년 가동 → 0", 0.0, operation_start_time=date(2010, 1, 1))],
+        note="관통형CT는 가동년월로 판정합니다(2010년 이전 설치 = 미적용).",
+    ),
+    fd.expr(
+        "spec_use_minus", [r"\text{감점} = \begin{cases} -1 & \text{가동 연도} < 2018 \\ 0 & \text{그 밖} \end{cases}"],
+        inputs=["operation_start_time"],
+        examples=[fd.example("2017년 가동 → −1", -1.0, operation_start_time=date(2017, 12, 1)),
+                  fd.example("2018년 가동 → 0", 0.0, operation_start_time=date(2018, 1, 1))],
+        note="장수명 FAN(2015년 이후 가동)과 조명등(2018년 이후 가동)이 둘 다 적용일 때만 0이라, 결과적으로 2018년 기준입니다.",
+    ),
+]
 
 _DOMAIN_MODELS = (
     SwitchgearSpec, SwitchgearCondition, SwitchgearConsequenceAttribute, SwitchgearDesignAttribute, SwitchgearScoreDetail,

@@ -12,6 +12,7 @@ export function ruleText(col: TemplateColumn): string {
   else if (col.min !== undefined) parts.push(`${col.min} 이상`);
   else if (col.max !== undefined) parts.push(`${col.max} 이하`);
   if (col.gt !== undefined) parts.push(`${col.gt} 초과`);
+  if (col.allow_blank) parts.push("빈칸 가능");
   return parts.join(", ");
 }
 

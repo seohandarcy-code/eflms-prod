@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 안내 페이지 공통 머리글(Stage 17) — "설비 안내"(/guide/facilities)와 "지표 설명"(/guide) 탭.
+// 안내 페이지 공통 머리글(Stage 17) — "설비 안내"(/guide/facilities), "지표 설명"(/guide), "계산식 상세"(/guide/formulas, Stage 22-11) 탭.
 </script>
 
 <template>
@@ -18,6 +18,7 @@
     <nav class="tabs" aria-label="안내 페이지">
       <RouterLink to="/guide/facilities" class="tab" exact-active-class="active">설비 안내</RouterLink>
       <RouterLink to="/guide" class="tab" exact-active-class="active">지표 설명 (POF·COF·DOF)</RouterLink>
+      <RouterLink to="/guide/formulas" class="tab" active-class="active">계산식 상세</RouterLink>
       <RouterLink to="/" class="back-link">← 대시보드로</RouterLink>
     </nav>
   </header>

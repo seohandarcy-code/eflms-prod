@@ -325,9 +325,10 @@ function fieldClass(name: string) {
                   class="sim-box"
                   :class="fieldClass(col.name)"
                 >
-                  <option v-if="!col.choices?.map(String).includes(values[col.name]) && values[col.name] !== NA" :value="values[col.name]">
+                  <option v-if="!col.choices?.map(String).includes(values[col.name]) && values[col.name] !== NA && !(col.allow_blank && values[col.name] === '')" :value="values[col.name]">
                     {{ values[col.name] || "(선택)" }}
                   </option>
+                  <option v-if="col.allow_blank" value="">(빈칸)</option>
                   <option v-for="c in col.choices ?? []" :key="String(c)" :value="String(c)">{{ c }}</option>
                   <option v-if="col.na_allowed" :value="NA">N/A</option>
                 </select>

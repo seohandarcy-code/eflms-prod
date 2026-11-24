@@ -38,6 +38,7 @@ from app.db.models import (
     CableSpec,
     Equipment,
 )
+from app.equipment_types import formula_docs as fd
 from app.equipment_types.na import evaluate
 from app.equipment_types.rounding import round1
 from app.schemas.ef3 import (
@@ -103,8 +104,8 @@ INPUT_COLUMNS = [
      "generator": lambda: date(2026, 1, 1)},
     {"name": "operation_start_time", "label": "가동년월", "dtype": "date",
      "generator": lambda: date(2005, 1, 1) + timedelta(days=random.randint(0, 3650))},
-    {"name": "max_load", "label": "최대부하", "dtype": "int", "min": 0,
-     "generator": lambda: random.randint(80, 200)},
+    {"name": "max_load", "label": "최대부하", "dtype": "float", "min": 0,
+     "generator": lambda: random.randint(800, 2000) / 10},
     {"name": "max_temp", "label": "최고온도", "dtype": "float", "min": -50,
      "generator": lambda: random.randint(200, 300) / 10},
     {"name": "max_temp_diag", "label": "온도진단결과", "dtype": "str", "choices": _DIAG3,
@@ -149,15 +150,15 @@ INPUT_COLUMNS = [
      "generator": lambda: random.choice(["단독"])},
     {"name": "tl_num", "label": "타T/L회선수", "dtype": "int", "min": 0,
      "generator": lambda: random.choice([0])},
-    {"name": "laying_type", "label": "포설방법1", "dtype": "str", "choices": _LAYING,
+    {"name": "laying_type", "label": "포설방법1", "dtype": "str", "choices": _LAYING, "allow_blank": True,
      "generator": lambda: random.choice(["철탑"])},
-    {"name": "laying_type2", "label": "포설방법2", "dtype": "str", "choices": _LAYING,
+    {"name": "laying_type2", "label": "포설방법2", "dtype": "str", "choices": _LAYING, "allow_blank": True,
      "generator": lambda: random.choice(["관로구"])},
     {"name": "mid_joint", "label": "중간접속함개수", "dtype": "int", "min": 0,
      "generator": lambda: random.randint(0, 10)},
-    {"name": "end_joint", "label": "종단접속함종류1", "dtype": "str", "choices": _END_JOINT,
+    {"name": "end_joint", "label": "종단접속함종류1", "dtype": "str", "choices": _END_JOINT, "allow_blank": True,
      "generator": lambda: random.choice(["단독EBA"])},
-    {"name": "end_joint2", "label": "종단접속함종류2", "dtype": "str", "choices": _END_JOINT,
+    {"name": "end_joint2", "label": "종단접속함종류2", "dtype": "str", "choices": _END_JOINT, "allow_blank": True,
      "generator": lambda: random.choice(["DEBG", "WEBG"])},
     {"name": "emerge_resp", "label": "비상대응시간", "dtype": "str", "choices": list("ABCDEFG"),
      "generator": lambda: random.choice(["G"])},
@@ -214,8 +215,9 @@ def diff_temp_minus_cal(row):
 
 def failure_rate_cal(row):
     """온도기반손상률 = (운전년수/40) × (1 + 0.005×상간온도차²) ÷ 온도가속계수.
-    온도가속계수 = exp((1.2/0.00008617) × (1/(최고온도+298.15) − 1/363.15)) — 기준 파일 그대로."""
-    accel = math.exp((1.2 / 0.00008617) * (1 / (row["max_temp"] + 298.15) - 1 / 363.15))
+    온도가속계수 = exp((1.2/0.00008617) × (1/(최고온도+293.15) − 1/363.15)) — 기준 파일 그대로.
+    293.15 = 20 + 273.15(최고온도에 20℃를 더한 켈빈, 2026-11-24 사용자 수정 — 이전 298.15)."""
+    accel = math.exp((1.2 / 0.00008617) * (1 / (row["max_temp"] + 293.15) - 1 / 363.15))
     return (row["operation_year"] / 40) * ((1 + 0.005 * (row["diff_temp"] ** 2)) / accel)
 
 
@@ -258,7 +260,11 @@ _RELIABILITY = {"N+0": -24, "N+1": -12, "N+N": 0}
 
 
 def _worse_of_two(field1, field2, table):
-    """1·2 중 나쁜(더 작은) 감점 — 기준 파일의 min(a, b). 어느 한쪽이라도 N/A면 공통 N/A 규칙대로 감점 0(na.py)."""
+    """1·2 중 나쁜(더 작은) 감점 — 기준 파일의 min(a, b).
+
+    빈칸("" — 구간 없음, Stage 22-8)은 기준 파일처럼 0으로 보고 비교한다 → 둘 다 빈칸이면 0, 한쪽만 빈칸이면
+    다른 쪽 감점. 어느 한쪽이라도 N/A(null — 값 모름)면 공통 N/A 규칙대로 감점 0(na.py).
+    """
     return lambda row: min(table.get(row[field1], 0), table.get(row[field2], 0))
 
 
@@ -419,6 +425,83 @@ BREAKDOWN = {
         {"field": "longlife_insul_minus", "label": "장수명절연물"},
     ],
 }
+
+# 지표설명 상세 페이지의 계산식(Stage 22-11) — 실제 계산과 같은지 tests/test_formula_docs.py가 확인한다.
+_START = date(2010, 1, 1)
+_AS_OF = date(2025, 1, 1)  # 가동 후 15.0년
+FORMULA_DOCS = [
+    # POF
+    fd.expr(
+        "age_minus", [r"\text{감점} = -\,\text{사용년수}"], inputs=["operation_start_time"],
+        symbols=[{"sym": "사용년수", "label": "(점수 기준일 − 가동년월) ÷ 365, 소수 첫째 자리"}],
+        examples=[fd.example("가동 15년 → −15.0", -15.0, as_of=_AS_OF, operation_start_time=_START)],
+    ),
+    fd.steps(
+        "load_minus", "load_percent", [(100, -36), (90, -24), (80, -12)], var_label="부하율", unit="%",
+        inputs=["max_load", "cable_mva"], tex=r"\text{부하율} = \dfrac{\text{최대부하}}{\text{회선별용량}} \times 100",
+    ),
+    fd.steps("temp_minus", "max_temp", [(90, -20), (80, -10), (70, -5)], var_label="최고온도", unit="℃"),
+    fd.steps("diff_temp_minus", "diff_temp", [(10, -10), (5, -5)], var_label="상간온도차", unit="℃"),
+    fd.expr(
+        "failure_rate_minus",
+        [
+            r"\text{온도가속계수 } A = \exp\!\left[\dfrac{1.2}{0.00008617}\left(\dfrac{1}{T + 293.15} - \dfrac{1}{363.15}\right)\right]",
+            r"\text{손상률} = \dfrac{\text{사용년수}}{40} \times \dfrac{1 + 0.005\,\Delta T^{2}}{A}",
+            r"\text{감점} = \text{손상률} \times (-1000)",
+        ],
+        inputs=["max_temp", "diff_temp", "operation_start_time"],
+        symbols=[
+            {"sym": "T", "label": "최고온도(℃)"},
+            {"sym": "ΔT", "label": "상간온도차(℃)"},
+            {"sym": "1.2 / 0.00008617", "label": "활성화에너지 1.2eV ÷ 볼츠만 상수(eV/K) ≈ 13,925.7"},
+            {"sym": "363.15", "label": "기준 온도(K) — 최고온도 70℃에서 A = 1"},
+            {"sym": "40", "label": "설계수명(년)"},
+        ],
+        examples=[
+            fd.example("최고온도 25℃ · 상간온도차 2℃ · 사용 15년 → −1.7", -1.7,
+                       as_of=_AS_OF, operation_start_time=_START, max_temp=25.0, diff_temp=2.0),
+            fd.example("최고온도 40℃ · 상간온도차 2℃ · 사용 15년 → −12.1", -12.1,
+                       as_of=_AS_OF, operation_start_time=_START, max_temp=40.0, diff_temp=2.0),
+        ],
+        note="사용년수에 비례하므로 측정값이 같아도 해마다 커집니다. 최고온도가 5℃ 오르면 약 2배가 되고, 상한은 없습니다.",
+    ),
+    fd.mapping("pd_minus", "pd_diag_rslt", _DIAG_MINUS, default_label="양호"),
+    fd.mapping("sys_cycle_curr_minus", "sys_cycle_curr_diag", _DIAG_MINUS, default_label="양호"),
+    fd.mapping("svl_leak_curr_minus", "svl_leak_curr_diag", _DIAG_MINUS, default_label="정상"),
+    fd.mapping("la_leak_curr_minus", "la_leak_curr_diag", _DIAG_MINUS, default_label="정상"),
+    fd.mapping("joint_ex_damage_minus", "joint_ex_damage", {"양호": 0, "이상": -1}, default=-1),
+    fd.steps("cable_move_minus", "cable_move", [(5, -8), (3, -5), (1, -3)], var_label="케이블이동량"),
+    # COF
+    fd.expr(
+        "risk_mva_minus", [r"\text{감점} = \text{회선별용량} \times (-0.01)"], inputs=["cable_mva"],
+        examples=[fd.example("회선별용량 984 → −9.8", -9.8, cable_mva=984)],
+        note="용량에 비례하므로 감점 0인 케이블은 없습니다.",
+    ),
+    fd.expr(
+        "tl_minus", [r"\text{감점} = \text{타T/L회선수} \times (-5)"], inputs=["tl_num"],
+        examples=[fd.example("타T/L 2회선 → −10", -10.0, tl_num=2)],
+    ),
+    fd.worse("laying_type_minus", "laying_type", "laying_type2", _LAYING_MINUS,
+             note="포설방법 1·2 중 감점이 큰 쪽. 빈칸(구간 없음)은 0으로 비교 — 둘 다 빈칸이면 0."),
+    fd.expr(
+        "mid_joint_minus", [r"\text{감점} = \text{중간접속함개수} \times (-1)"], inputs=["mid_joint"],
+        examples=[fd.example("중간접속함 5개 → −5", -5.0, mid_joint=5)],
+    ),
+    fd.worse("end_joint_minus", "end_joint", "end_joint2", _END_JOINT_MINUS,
+             note="종단접속함 1·2 중 감점이 큰 쪽. 빈칸(구간 없음)은 0으로 비교 — 둘 다 빈칸이면 0."),
+    fd.mapping("emerge_resp_minus", "emerge_resp", _EMERGE_RESP),
+    fd.mapping("rep_cost_minus", "rep_cost", _REP_COST),
+    fd.mapping("rep_time_minus", "rep_time", _REP_TIME),
+    # DOF
+    fd.mapping("reliability_minus", "reliability", _RELIABILITY),
+    *(
+        fd.mapping(f"{name}_minus", name, {"X": -10, "O": 0})
+        for name in ("temp_diag", "pd_diag", "live_line_diag", "cable_move_diag", "offline_diag", "longlife_insul")
+    ),
+]
+FORMULA_NOTES = [
+    "포설방법·종단접속함의 빈칸은 '구간 없음'(0으로 비교), N/A는 '값 모름'(항목 감점 0)으로 서로 다릅니다.",
+]
 
 _DOMAIN_MODELS = (CableSpec, CableCondition, CableConsequenceAttribute, CableDesignAttribute, CableScoreDetail)
 

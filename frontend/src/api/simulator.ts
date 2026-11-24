@@ -12,6 +12,7 @@ export interface SimulatorColumn {
   max?: number | null;
   gt?: number | null;
   required?: boolean | null;
+  allow_blank?: boolean | null;
   na_allowed: boolean;
 }
 

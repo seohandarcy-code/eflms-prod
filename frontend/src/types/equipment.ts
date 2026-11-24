@@ -749,3 +749,57 @@ export interface EquipmentTypeInfo {
   equipment_count: number;
   breakdown: Record<Axis, BreakdownItem[]>;
 }
+
+// --- 지표설명 상세 페이지 계산식(Stage 22-11, GET /api/equipment-types/{ef}/formulas) ---
+// 형식 원본은 backend app/equipment_types/formula_docs.py — 설명이 실제 계산과 같은지는 백엔드 테스트가 확인한다.
+export interface FormulaInput {
+  name: string;
+  label: string;
+}
+
+interface FormulaItemBase {
+  field: string;
+  label: string;
+  group: string | null;
+  summed: boolean;
+  inputs: FormulaInput[];
+  note: string | null;
+}
+
+export interface FormulaStepsItem extends FormulaItemBase {
+  kind: "steps";
+  var: string;
+  var_label: string;
+  unit: string;
+  /** 큰 기준부터. op: gt = 초과, ge = 이상 */
+  bands: { value: number; op: "gt" | "ge"; minus: number }[];
+  otherwise: number;
+  tex: string | null;
+}
+
+export interface FormulaMapItem extends FormulaItemBase {
+  kind: "map" | "worse";
+  table: { value: string; minus: number }[];
+  default: number;
+  default_label?: string | null;
+}
+
+export interface FormulaExprItem extends FormulaItemBase {
+  kind: "expr";
+  tex: string[];
+  symbols: { sym: string; label: string }[];
+  examples: { text: string; expect: number }[];
+  /** 판정 기준표(예: EF1 DGA 가스별 기준) — 없으면 null */
+  table: { columns: string[]; rows: string[][] } | null;
+}
+
+export type FormulaItem = FormulaStepsItem | FormulaMapItem | FormulaExprItem;
+
+export interface FormulaDocs {
+  ef_code: string;
+  ef_name: string;
+  documented: boolean;
+  total_tex: string;
+  axes: { axis: Axis; label: string; items: FormulaItem[] }[];
+  common_rules: string[];
+}

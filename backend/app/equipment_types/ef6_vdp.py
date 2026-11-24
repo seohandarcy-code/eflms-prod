@@ -38,6 +38,7 @@ from app.db.models import (
     VdpScoreDetail,
     VdpSpec,
 )
+from app.equipment_types import formula_docs as fd
 from app.equipment_types.na import evaluate
 from app.equipment_types.rounding import round1
 from app.schemas.ef6 import (
@@ -352,6 +353,93 @@ BREAKDOWN = {
         {"field": "online_diag_minus", "label": "온라인진단"},
     ],
 }
+
+# 지표설명 상세 페이지의 계산식(Stage 22-11) — 실제 계산과 같은지 tests/test_formula_docs.py가 확인한다.
+def _part(field: str, scale: str, shape: str, life: str, examples: list[tuple[str, float, dict]], *, inputs=None, symbols=(), note=None):
+    """온도 보정 와이블 부품 고장확률(배율 3). 예시는 사용 15년(가동 2010-01-01, 기준일 2025-01-01)."""
+    return fd.expr(
+        field, fd.weibull_tex(scale, shape, "3", life=life, temp=True),
+        inputs=inputs or ["operation_start_time", "elec_room_max_temp"],
+        symbols=[
+            *symbols,
+            {"sym": "T", "label": "전기실최대온도(℃) — 25℃보다 10℃ 높을 때마다 척도가 절반"},
+            {"sym": "척도 · β", "label": f"25℃ 기준 척도 {scale}년 · 형상 {shape}"},
+        ],
+        examples=[fd.example(text, v, as_of=fd.EXAMPLE_AS_OF, operation_start_time=fd.EXAMPLE_START, **kw) for text, v, kw in examples],
+        note=note,
+    )
+
+
+def _over(field: str, var: str, limit: int, rate: str, sym: str, examples: list[tuple[str, float, float]]):
+    """기준 이상이면 (기준 − 값) × 비율, 미만이면 0 — 원본 (기준 − 값) > 0 이면 0."""
+    return fd.expr(
+        field, [rf"\text{{감점}} = \begin{{cases}} ({limit} - x) \times {rate} & x \ge {limit} \\ 0 & x < {limit} \end{{cases}}"],
+        inputs=[var], symbols=[{"sym": "x", "label": sym}],
+        examples=[fd.example(text, v, **{var: x}) for text, v, x in examples],
+    )
+
+
+_ABC_MINUS_DOC = {"A": -2, "B": -1, "C": 0}
+FORMULA_DOCS = [
+    # POF
+    fd.age_item(),
+    _part(
+        "cb_stat_minus", "37.44", "8.55", r"t_{\text{차단기}}",
+        [("사용 15년(교체 1회 → 7.5년) · 25℃ → 0", 0.0, {"elec_room_max_temp": 25}),
+         ("사용 15년(교체 1회 → 7.5년) · 40℃ → −2.3", -2.3, {"elec_room_max_temp": 40})],
+        symbols=[{"sym": "t차단기", "label": "사용년수 − 7.5 × 교체횟수, 교체횟수 = min(1, ⌊사용년수 ÷ 7.5⌋)"}],
+        note="차단기는 7.5년에 한 번 교체한다고 가정합니다(최대 1회). 교체 시점에 감점이 줄어 5개년 예측에서 POF가 오를 수 있습니다.",
+    ),
+    _part("cap_stat_minus", "25.67", "7.21", "t",
+          [("사용 15년 · 25℃ → −6.2", -6.2, {"elec_room_max_temp": 25}), ("사용 15년 · 30℃ → −67.0", -67.0, {"elec_room_max_temp": 30})],
+          symbols=[{"sym": "t", "label": "사용년수"}]),
+    _part(
+        "fan_stat_minus", "20.22", "7.9", r"t_{\text{팬}}",
+        [("사용 15년 · 교체 0회 · 25℃ → −27.1", -27.1, {"elec_room_max_temp": 25, "fan_replace_no": 0}),
+         ("사용 15년 · 교체 1회 · 25℃ → −0.1", -0.1, {"elec_room_max_temp": 25, "fan_replace_no": 1})],
+        inputs=["operation_start_time", "fan_replace_no", "elec_room_max_temp"],
+        symbols=[{"sym": "t팬", "label": "max(0, 사용년수 − 7.5 × 팬교체횟수)"}],
+    ),
+    _part("igbt_stat_minus", "311205.69", "0.45", "t",
+          [("사용 15년 · 25℃ → −3.4", -3.4, {"elec_room_max_temp": 25}), ("사용 15년 · 30℃ → −4.0", -4.0, {"elec_room_max_temp": 30})],
+          symbols=[{"sym": "t", "label": "사용년수"}]),
+    _part("board_stat_minus", "283.18", "0.7", "t",
+          [("사용 15년 · 25℃ → −36.0", -36.0, {"elec_room_max_temp": 25}), ("사용 15년 · 30℃ → −45.1", -45.1, {"elec_room_max_temp": 30})],
+          symbols=[{"sym": "t", "label": "사용년수"}]),
+    fd.expr(
+        "elec_room_max_temp_minus", [r"\text{감점} = (25 - T) \times 1.5"], inputs=["elec_room_max_temp"],
+        symbols=[{"sym": "T", "label": "전기실최대온도(℃)"}],
+        examples=[fd.example("28℃ → −4.5", -4.5, elec_room_max_temp=28), fd.example("22℃ → +4.5(가점)", 4.5, elec_room_max_temp=22)],
+        note="25℃보다 낮으면 가점(+)이 됩니다 — 원본대로.",
+    ),
+    _over("load_minus", "load", 95, "0.75", "부하율(%)", [("99% → −3", -3.0, 99), ("60% → 0", 0.0, 60)]),
+    _over("mod_cir_curr_minus", "mod_cir_curr", 5, "0.5", "모듈간순환전류", [("8 → −1.5", -1.5, 8), ("3 → 0", 0.0, 3)]),
+    _over("mod_vol_diff_minus", "mod_vol_diff", 5, "0.5", "모듈간출력전압차이", [("8 → −1.5", -1.5, 8), ("3 → 0", 0.0, 3)]),
+    _over("noise_minus", "noise", 80, "0.25", "소음", [("90 → −2.5", -2.5, 90), ("70 → 0", 0.0, 70)]),
+    fd.mapping("thermal_img_chk_minus", "thermal_img_chk", {"이상": -0.5, "정상": 0}),
+    fd.mapping("ex_box_chk_minus", "ex_box_chk", {"이상": -0.3, "정상": 0}, note="원본 −0.25를 소수 첫째 자리로 반올림한 값입니다."),
+    # COF
+    fd.expr(
+        "capa_times_load_minus",
+        [r"\text{부하량} = \dfrac{\text{부하율} \times \text{정격용량}}{100}", r"\text{감점} = -9 \times \text{부하량} \div 500"],
+        inputs=["load", "capa"],
+        examples=[fd.example("부하율 60% · 정격용량 2,500 → 부하량 1,500 → −27", -27.0, load=60, capa=2500)],
+    ),
+    fd.mapping("ins_build_rank_minus", "ins_build_rank", {"A": -6, "B": -3, "C": 0}),
+    fd.mapping("fire_spread_rank_minus", "fire_spread_rank", {"A": -3, "B": 0, "C": 0}),
+    fd.mapping("emerge_resp_minus", "emerge_resp", _ABC_MINUS_DOC),
+    fd.mapping("rep_time_minus", "rep_time", _ABC_MINUS_DOC),
+    fd.mapping("rep_cost_minus", "rep_cost", _ABC_MINUS_DOC),
+    # DOF
+    fd.mapping("sys_rel_minus", "sys_rel", {"N": -4, "N+1": -2, "N+N": 0}),
+    fd.mapping("emerge_sys_minus", "emerge_sys", {"불가": -4, "EMG": -2, "타설비": 0}),
+    fd.mapping("fac_rel_minus", "fac_rel", {"N": -9, "N+1": 0}),
+    fd.mapping("part_shortage_minus", "part_shortage", {"단종": -9, "공급가능": 0}),
+    fd.mapping("model_type_minus", "model_type", {"콘덴서": -2, "공용배터리": 0}),
+    fd.mapping("switching_type_minus", "switching_type", {"2레벨PWM": -1, "3레벨PWM": 0}),
+    fd.mapping("igbt_rev_minus", "igbt_rev", {"600V": -1, "1200V": 0}),
+    fd.mapping("online_diag_minus", "online_diag", {"미적용": -9, "적용": 0}),
+]
 
 _DOMAIN_MODELS = (VdpSpec, VdpCondition, VdpConsequenceAttribute, VdpDesignAttribute, VdpScoreDetail)
 

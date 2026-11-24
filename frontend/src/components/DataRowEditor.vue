@@ -395,7 +395,7 @@ onBeforeUnmount(() => window.removeEventListener("beforeunload", onBeforeUnload)
                 :disabled="busy"
                 :aria-label="`${rowLabel(row)} ${header[ci]}`"
               >
-                <option value="">(선택)</option>
+                <option value="">{{ colOf(ci)?.allow_blank ? "(빈칸)" : "(선택)" }}</option>
                 <option v-for="opt in choicesFor(row, ci)!" :key="opt" :value="opt">{{ opt }}</option>
               </select>
               <input

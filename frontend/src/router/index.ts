@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import AdminView from "../views/AdminView.vue";
 import DashboardView from "../views/DashboardView.vue";
 import FacilityGuideView from "../views/FacilityGuideView.vue";
+import FormulaGuideView from "../views/FormulaGuideView.vue";
 import GuideView from "../views/GuideView.vue";
 
 const router = createRouter({
@@ -10,6 +11,7 @@ const router = createRouter({
     { path: "/", name: "dashboard", component: DashboardView },
     { path: "/guide", name: "guide", component: GuideView },
     { path: "/guide/facilities", name: "guide-facilities", component: FacilityGuideView },
+    { path: "/guide/formulas", name: "guide-formulas", component: FormulaGuideView },
     { path: "/admin", name: "admin", component: AdminView },
   ],
   // 설비 안내 페이지의 #ef7 같은 앵커로 이동(Stage 17). SSO 콜백 해시(#token=…)는 앵커가 아니므로 무시한다.
