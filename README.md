@@ -76,6 +76,57 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-dev.ps1
 
 `backend\.env`의 `AUTO_SEED_IF_EMPTY`는 false(기본값)로 둔다 — true면 비어 있는 유형에 mock이 섞인다.
 
+## 다른 PC로 옮겨서 기존 DB 이어 쓰기 (SQLite, Windows)
+
+실파일을 다시 넣지 않고 지금 PC의 데이터를 그대로 새 PC에서 쓰고 싶을 때. 데이터는 전부 **`backend\eflms.db` 파일 하나**에 들어 있으므로 이 파일만 옮기면 된다.
+
+**옮길 것 / 옮기지 않을 것** (모두 git 제외 대상이라 클론으로는 따라오지 않는다)
+
+| 대상 | 옮기나 | 설명 |
+|---|---|---|
+| `backend\eflms.db` | **옮긴다** | 설비·입력값·점수·이력·접근 권한 전부. **복사 전에 원래 PC 서버를 끈다**(`scripts\stop-dev.ps1`) — 켜 둔 채 복사하면 쓰던 내용이 빠질 수 있다 |
+| `backend\.env`, `frontend\.env`, `nginx\.env` | 바꿔 쓴 값이 있으면 옮긴다 | 포트·`AUTH_MODE`·관리자 비밀번호 등을 기본값에서 바꿨다면 그대로 가져간다. 아니면 새 PC에서 `.env.example`을 복사해도 된다 |
+| `real_data\` | 필요할 때만 | 새 PC에서 입력파일을 다시 넣을 계획이 있을 때만 |
+| `backend\eflms.before-*.db` | 옮기지 않는다 | 단계별 작업 전 백업본 |
+| `backend\.venv`, `frontend\node_modules` | **옮기지 않는다** | 만든 PC·폴더 경로에 묶여 있어 옮기면 깨진다 — 새 PC에서 새로 설치 |
+
+**새 PC에서 할 일**
+```powershell
+git clone https://github.com/seohandarcy-code/eflms-prod.git
+cd eflms-prod\backend
+py -3.11 -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt   # alembic도 여기서 같이 설치됨
+# 여기서 원래 PC의 eflms.db를 backend\ 폴더에, .env 파일들을 각 폴더에 복사
+.venv\Scripts\python -m alembic current        # DB 버전 확인 — "(head)"가 붙어 있으면 최신
+.venv\Scripts\python -m alembic upgrade head   # 최신이면 아무것도 안 바뀜, 예전 DB면 최신 구조로 올림
+cd ..\frontend
+npm install
+cd ..
+powershell -ExecutionPolicy Bypass -File .\scripts\start-dev.ps1
+```
+- 파일 이름은 `eflms.db` 그대로 둔다 — `backend\.env`의 `DATABASE_URL=sqlite+aiosqlite:///./eflms.db`가 이 이름을 가리킨다.
+- **mock 시드(`app.db.seed`)는 실행하지 않는다** — 옮겨 온 실데이터에 가짜 데이터가 섞인다. `AUTO_SEED_IF_EMPTY`도 false로 둔다.
+- 서버가 시작되면 점수 기준일이 오늘보다 이전인 설비의 점수를 자동으로 다시 계산한다(입력값은 그대로).
+- 나중에 코드를 업데이트(`git pull`)했을 때도 서버를 켜기 전에 `alembic upgrade head`를 한 번 실행한다. DB 버전이 코드보다 낮으면 서버는 점수 갱신·임포트를 멈추고 "DB 업그레이드 필요"를 띄운다.
+- `alembic`이 무엇이고 어떻게 동작하는지는 아래 "DB 구조 버전 관리(Alembic)" 참고.
+
+## DB 구조 버전 관리(Alembic)
+
+Alembic은 **DB 구조(테이블·컬럼) 변경 이력을 코드로 관리하는 도구**다. 코드가 바뀌어 새 테이블이나 컬럼이 필요할 때, 데이터는 그대로 두고 구조만 순서대로 고쳐 준다.
+
+- 변경 하나하나가 `backend\alembic\versions\` 안의 파이썬 파일 하나다(예: `a3d9e5f7c1b8_ef3_max_load_float.py` — EF3 최대부하를 정수→실수로). 각 파일은 자기 앞 버전을 가리켜 한 줄로 이어진다.
+- DB 안의 `alembic_version` 테이블에 "이 DB가 어디까지 적용됐는지"가 한 줄 기록된다.
+- `alembic upgrade head`는 그 기록 다음부터 최신(head)까지 남은 변경만 차례로 적용한다. 이미 최신이면 아무것도 하지 않으므로 여러 번 실행해도 안전하다.
+- 접속 대상은 앱과 같은 `backend\.env`의 `DATABASE_URL`(또는 `DB_*`)을 그대로 쓴다 — SQLite든 PostgreSQL이든 같은 명령.
+- 앱은 기동할 때 `alembic upgrade`를 스스로 하지 않는다. **설치 직후·코드 업데이트 후에는 직접 한 번 실행**한다(운영은 배포마다 migrate Job 1회 — [docs/DEPLOY_PDEP.md](docs/DEPLOY_PDEP.md)).
+
+| 명령 (backend 폴더에서) | 하는 일 |
+|---|---|
+| `.venv\Scripts\python -m alembic current` | 이 DB의 현재 버전 표시(`(head)`가 붙으면 최신) |
+| `.venv\Scripts\python -m alembic upgrade head` | 최신까지 남은 변경 적용 |
+| `.venv\Scripts\python -m alembic history` | 전체 변경 목록 |
+| `.venv\Scripts\python -m alembic downgrade -1` | 한 단계 되돌리기 — 데이터가 줄어들 수 있으니 **먼저 DB 백업** |
+
 ## 빠른 시작 (Windows, backend+frontend+nginx 동시 기동)
 
 최초 1회 아래 "백엔드 실행"/"프론트엔드 실행" 섹션의 설치 단계(`pip install`, `alembic upgrade head`, `npm install` 등)를 먼저 끝낸 뒤:
